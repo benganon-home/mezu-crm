@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   ShoppingBag, Users, Bell, BarChart2, Settings,
-  Menu, X, Moon, Sun, Package
+  Menu, X, Moon, Sun, Package, ChevronsLeft
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -21,6 +21,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [dark, setDark] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
 
   const toggleDark = () => {
     setDark(d => !d)
@@ -41,31 +42,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar — right side (RTL) */}
       <aside className={cn(
         'fixed top-0 right-0 h-full z-50 flex flex-col',
-        'w-[220px] bg-navy text-cream',
-        'border-l border-navy-light',
-        'transition-transform duration-250',
+        'bg-white dark:bg-navy-deeper border-l border-cream-dark dark:border-navy-light',
+        'transition-all duration-250',
         'md:translate-x-0 md:static md:z-auto',
+        collapsed ? 'w-[64px]' : 'w-[220px]',
         mobileOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
       )}>
 
         {/* Logo */}
-        <div className="flex items-center justify-between px-5 py-5 border-b border-navy-light">
+        <div className={cn('flex items-center justify-between py-5 border-b border-cream-dark dark:border-navy-light', collapsed ? 'px-3' : 'px-5')}>
           <div className="flex items-center gap-2.5">
-            <Package size={18} className="text-gold" />
-            <span className="text-lg font-semibold tracking-[0.12em] text-cream">
-              MEZU
-            </span>
+            <Package size={18} className="text-navy" />
+            {!collapsed && (
+              <span className="text-lg font-semibold tracking-[0.12em] text-navy dark:text-cream">
+                MEZU
+              </span>
+            )}
           </div>
           <button
             onClick={() => setMobileOpen(false)}
-            className="md:hidden text-muted hover:text-cream"
+            className="md:hidden text-muted hover:text-navy dark:hover:text-cream"
           >
             <X size={16} />
           </button>
         </div>
 
         {/* Nav items */}
-        <nav className="flex-1 py-4 px-3 flex flex-col gap-0.5">
+        <nav className="flex-1 py-4 px-2 flex flex-col gap-0.5">
           {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
             const active = pathname.startsWith(href)
             return (
@@ -73,28 +76,43 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 key={href}
                 href={href}
                 onClick={() => setMobileOpen(false)}
+                title={collapsed ? label : undefined}
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors duration-100',
+                  'flex items-center gap-3 py-2.5 rounded-lg text-sm transition-colors duration-100',
+                  collapsed ? 'justify-center px-0' : 'px-3',
                   active
-                    ? 'bg-gold/15 text-gold font-medium'
-                    : 'text-cream/55 hover:text-cream hover:bg-white/7'
+                    ? 'bg-navy/10 text-navy dark:bg-white/10 dark:text-cream font-medium'
+                    : 'text-muted hover:text-navy dark:hover:text-cream hover:bg-cream-dark/50 dark:hover:bg-white/7'
                 )}
               >
                 <Icon size={16} strokeWidth={active ? 2 : 1.5} />
-                <span>{label}</span>
+                {!collapsed && <span>{label}</span>}
               </Link>
             )
           })}
         </nav>
 
         {/* Bottom actions */}
-        <div className="px-3 py-4 border-t border-navy-light flex items-center gap-2">
+        <div className="px-2 py-4 border-t border-cream-dark dark:border-navy-light flex flex-col gap-1">
+          <button
+            onClick={() => setCollapsed(c => !c)}
+            className={cn(
+              'hidden md:flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted hover:text-navy dark:hover:text-cream hover:bg-cream-dark/50 dark:hover:bg-white/7 transition-colors w-full',
+              collapsed && 'justify-center px-0'
+            )}
+          >
+            <ChevronsLeft size={14} className={cn('transition-transform', collapsed && 'rotate-180')} />
+            {!collapsed && <span>כווץ</span>}
+          </button>
           <button
             onClick={toggleDark}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-cream/50 hover:text-cream hover:bg-white/7 transition-colors w-full"
+            className={cn(
+              'flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted hover:text-navy dark:hover:text-cream hover:bg-cream-dark/50 dark:hover:bg-white/7 transition-colors w-full',
+              collapsed && 'justify-center px-0'
+            )}
           >
             {dark ? <Sun size={14} /> : <Moon size={14} />}
-            <span>{dark ? 'מצב יום' : 'מצב לילה'}</span>
+            {!collapsed && <span>{dark ? 'מצב יום' : 'מצב לילה'}</span>}
           </button>
         </div>
       </aside>
@@ -103,9 +121,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 overflow-auto bg-cream dark:bg-navy-deeper min-w-0">
 
         {/* Mobile header */}
-        <div className="md:hidden flex items-center justify-between px-4 py-3 bg-navy text-cream">
-          <span className="font-semibold tracking-wide">MEZU</span>
-          <button onClick={() => setMobileOpen(true)}>
+        <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white dark:bg-navy-deeper border-b border-cream-dark dark:border-navy-light">
+          <span className="font-semibold tracking-wide text-navy dark:text-cream">MEZU</span>
+          <button onClick={() => setMobileOpen(true)} className="text-navy dark:text-cream">
             <Menu size={20} />
           </button>
         </div>

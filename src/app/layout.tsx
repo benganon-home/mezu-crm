@@ -1,10 +1,10 @@
 import type { Metadata } from 'next'
-import { Assistant } from 'next/font/google'
+import { Heebo } from 'next/font/google'
 import '@/styles/globals.css'
 
-const assistant = Assistant({
+const heebo = Heebo({
   subsets: ['latin', 'hebrew'],
-  weight: ['300', '400', '500', '600'],
+  weight: ['300', '400', '500', '600', '700'],
   display: 'swap',
 })
 
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="he" dir="rtl" className={assistant.className}>
+    <html lang="he" dir="rtl" className={heebo.className}>
       <body>{children}</body>
     </html>
   )

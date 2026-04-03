@@ -4,16 +4,16 @@
 
 /* ─── CSS Variables ─────────────────────────────────────────── */
 :root {
-  --navy:        #30324D;
-  --navy-light:  #3D3F5C;
-  --navy-dark:   #252740;
-  --navy-deeper: #1C1E30;
-  --cream:       #F0EDE9;
-  --cream-dark:  #E8E4DE;
-  --gold:        #C9A84C;
-  --gold-light:  #E0C87A;
-  --gold-dark:   #9E8038;
-  --muted:       #A8A9BF;
+  --navy:        #2D2B55;
+  --navy-light:  #3D3A6B;
+  --navy-dark:   #1E1B3E;
+  --navy-deeper: #14122A;
+  --cream:       #F8F7FC;
+  --cream-dark:  #EEEDF5;
+  --gold:        #6C5CE7;
+  --gold-light:  #8577ED;
+  --gold-dark:   #5A4BD1;
+  --muted:       #9B97B3;
   --sidebar-w:   220px;
 }
 
@@ -147,7 +147,7 @@ h3 { font-size: 15px; font-weight: 500; }
 
 .crm-table td {
   padding: 10px 14px;
-  border-bottom: 1px solid #F5F2EE;
+  border-bottom: 1px solid #EEEDF5;
   vertical-align: middle;
 }
 
@@ -161,7 +161,7 @@ h3 { font-size: 15px; font-weight: 500; }
 }
 
 .crm-table tbody tr:hover {
-  background: rgba(48, 50, 77, 0.04);
+  background: rgba(108, 92, 231, 0.05);
 }
 
 .dark .crm-table tbody tr:hover {
@@ -169,7 +169,7 @@ h3 { font-size: 15px; font-weight: 500; }
 }
 
 .crm-table tbody tr.selected {
-  background: rgba(201, 168, 76, 0.07);
+  background: rgba(108, 92, 231, 0.06);
 }
 
 .crm-table tbody tr:last-child td {
@@ -186,8 +186,8 @@ h3 { font-size: 15px; font-weight: 500; }
 }
 
 .crm-table .order-items-row td {
-  background: rgba(240, 237, 233, 0.35);
-  border-bottom: 2px solid #E8E4DF;
+  background: rgba(108, 92, 231, 0.03);
+  border-bottom: 2px solid #EEEDF5;
   padding-top: 0;
   padding-bottom: 10px;
 }
@@ -199,7 +199,7 @@ h3 { font-size: 15px; font-weight: 500; }
 
 .crm-table .order-items-row:hover td,
 .crm-table .order-header-row:hover + .order-items-row td {
-  background: rgba(240, 237, 233, 0.55);
+  background: rgba(108, 92, 231, 0.06);
 }
 
 .dark .crm-table .order-items-row:hover td,

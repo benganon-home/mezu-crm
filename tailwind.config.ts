@@ -6,26 +6,26 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Assistant', 'sans-serif'],
+        sans: ['Heebo', 'sans-serif'],
       },
       colors: {
-        // MEZU Brand
+        // MEZU Brand — soft purple palette
         navy: {
-          DEFAULT: '#30324D',
-          light:   '#3D3F5C',
-          dark:    '#252740',
-          deeper:  '#1C1E30',
+          DEFAULT: '#2D2B55',
+          light:   '#3D3A6B',
+          dark:    '#1E1B3E',
+          deeper:  '#14122A',
         },
         cream: {
-          DEFAULT: '#F0EDE9',
-          dark:    '#E8E4DE',
+          DEFAULT: '#F8F7FC',
+          dark:    '#EEEDF5',
         },
         gold: {
-          DEFAULT: '#C9A84C',
-          light:   '#E0C87A',
-          dark:    '#9E8038',
+          DEFAULT: '#6C5CE7',
+          light:   '#8577ED',
+          dark:    '#5A4BD1',
         },
-        muted: '#A8A9BF',
+        muted: '#9B97B3',
         // Status colors
         status: {
           received:   { bg: '#F1F5F9', text: '#475569', border: '#CBD5E1' },
