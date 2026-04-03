@@ -1,11 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Plus, Search, Truck, Home } from 'lucide-react'
+import { Plus, Search, Truck } from 'lucide-react'
 import { Order, OrderStatus, ALL_STATUSES, STATUS_CONFIG } from '@/types'
-import { formatDateShort, formatPrice, cn } from '@/lib/utils'
-import { StatusBadge } from '@/components/ui/StatusBadge'
-import { CopyButton } from '@/components/ui/CopyButton'
+import { formatPrice, cn } from '@/lib/utils'
 import { StatCard } from '@/components/ui/StatCard'
 import { OrderDrawer } from '@/components/orders/OrderDrawer'
 import { BulkStatusBar } from '@/components/orders/BulkStatusBar'
@@ -215,7 +213,6 @@ export default function OrdersPage() {
                 </th>
                 <th className="w-28 text-left">תאריך</th>
                 <th>לקוח</th>
-                <th>מוצרים</th>
                 <th>כתובת</th>
                 <th>סטטוס</th>
                 <th className="w-10">משלוח</th>
@@ -224,10 +221,10 @@ export default function OrdersPage() {
             </thead>
             <tbody>
               {loading && (
-                <tr><td colSpan={8} className="text-center py-12 text-muted">טוען...</td></tr>
+                <tr><td colSpan={7} className="text-center py-12 text-muted">טוען...</td></tr>
               )}
               {!loading && orders.length === 0 && (
-                <tr><td colSpan={8} className="text-center py-12 text-muted">לא נמצאו הזמנות</td></tr>
+                <tr><td colSpan={7} className="text-center py-12 text-muted">לא נמצאו הזמנות</td></tr>
               )}
               {orders.map(order => (
                 <OrderRow
