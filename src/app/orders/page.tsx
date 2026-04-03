@@ -193,7 +193,8 @@ export default function OrdersPage() {
         >
           {loadError}
           <span className="block mt-1 text-xs opacity-90">
-            בדרך כלל זה אומר שחסרים משתני Supabase ב־.env.local או שיש שגיאה ב־API.
+            אם כתוב שחסרה טבלה — הריצו את <code className="text-[0.85em]">docs/schema.sql</code> ב־Supabase → SQL Editor.
+            אחרת בדקו משתני סביבה (URL + מפתח) ב־Vercel / ‎.env.local.
           </span>
         </div>
       )}
