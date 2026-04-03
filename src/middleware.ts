@@ -3,9 +3,23 @@ import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
 type CookieToSet = { name: string; value: string; options: CookieOptions }
 
+function supabaseEnv() {
+  /* Prefer server-only vars on Vercel Edge — NEXT_PUBLIC_* can be empty in middleware after build. */
+  const url = (
+    process.env.SUPABASE_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_URL ||
+    ''
+  ).trim()
+  const anonKey = (
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    ''
+  ).trim()
+  return { url, anonKey }
+}
+
 export async function middleware(request: NextRequest) {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const { url, anonKey } = supabaseEnv()
   if (!url || !anonKey) {
     return NextResponse.next()
   }
@@ -47,5 +61,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|public).*)'],
+  matcher: [
+    /* Root is easy to miss with a single negative regex on some hosts (e.g. Vercel). */
+    '/',
+    '/((?!_next/static|_next/image|favicon.ico|public/).*)',
+  ],
 }
