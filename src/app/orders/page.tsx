@@ -21,9 +21,11 @@ export default function OrdersPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [activeOrder, setActiveOrder] = useState<Order | null>(null)
   const [page, setPage]               = useState(1)
+  const [loadError, setLoadError]     = useState<string | null>(null)
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     const params = new URLSearchParams({
       status:   statusFilter,
       delivery: deliveryFilter,
@@ -31,11 +33,29 @@ export default function OrdersPage() {
       page:     String(page),
       pageSize: '60',
     })
-    const res = await fetch(`/api/orders?${params}`)
-    const json = await res.json()
-    setOrders(json.data || [])
-    setCount(json.count || 0)
-    setLoading(false)
+    try {
+      const res = await fetch(`/api/orders?${params}`)
+      let json: { data?: Order[]; count?: number; error?: string } = {}
+      try {
+        json = await res.json()
+      } catch {
+        /* HTML error page etc. */
+      }
+      if (!res.ok) {
+        setLoadError(json.error || `שגיאת שרת (${res.status})`)
+        setOrders([])
+        setCount(0)
+        return
+      }
+      setOrders(json.data || [])
+      setCount(json.count || 0)
+    } catch {
+      setLoadError('לא ניתן להתחבר לשרת')
+      setOrders([])
+      setCount(0)
+    } finally {
+      setLoading(false)
+    }
   }, [statusFilter, deliveryFilter, search, page])
 
   useEffect(() => { fetchOrders() }, [fetchOrders])
@@ -164,6 +184,18 @@ export default function OrdersPage() {
           onApply={onBulkStatus}
           onClear={() => setSelectedIds(new Set())}
         />
+      )}
+
+      {loadError && (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200"
+        >
+          {loadError}
+          <span className="block mt-1 text-xs opacity-90">
+            בדרך כלל זה אומר שחסרים משתני Supabase ב־.env.local או שיש שגיאה ב־API.
+          </span>
+        </div>
       )}
 
       {/* Table */}

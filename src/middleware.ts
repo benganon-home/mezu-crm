@@ -1,25 +1,12 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { getSupabasePublishableKey, getSupabaseUrl } from '@/lib/supabase/env'
 
 type CookieToSet = { name: string; value: string; options: CookieOptions }
 
-function supabaseEnv() {
-  /* Prefer server-only vars on Vercel Edge — NEXT_PUBLIC_* can be empty in middleware after build. */
-  const url = (
-    process.env.SUPABASE_URL ||
-    process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    ''
-  ).trim()
-  const anonKey = (
-    process.env.SUPABASE_ANON_KEY ||
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
-    ''
-  ).trim()
-  return { url, anonKey }
-}
-
 export async function middleware(request: NextRequest) {
-  const { url, anonKey } = supabaseEnv()
+  const url = getSupabaseUrl()
+  const anonKey = getSupabasePublishableKey()
   if (!url || !anonKey) {
     return NextResponse.next()
   }

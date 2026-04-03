@@ -1,13 +1,16 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { getSupabasePublishableKey, getSupabaseUrl } from '@/lib/supabase/env'
 
 type CookieToSet = { name: string; value: string; options: CookieOptions }
 
 export function createClient() {
   const cookieStore = cookies()
+  const url = getSupabaseUrl()
+  const key = getSupabasePublishableKey()
   return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    key,
     {
       cookies: {
         getAll() { return cookieStore.getAll() },

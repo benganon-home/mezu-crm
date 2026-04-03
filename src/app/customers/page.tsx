@@ -14,15 +14,35 @@ export default function CustomersPage() {
   const [loading, setLoading]     = useState(true)
   const [active, setActive]       = useState<Customer | null>(null)
   const [page, setPage]           = useState(1)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   const fetch_ = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     const params = new URLSearchParams({ search, page: String(page), pageSize: '60' })
-    const res  = await fetch(`/api/customers?${params}`)
-    const json = await res.json()
-    setCustomers(json.data || [])
-    setCount(json.count || 0)
-    setLoading(false)
+    try {
+      const res = await fetch(`/api/customers?${params}`)
+      let json: { data?: Customer[]; count?: number; error?: string } = {}
+      try {
+        json = await res.json()
+      } catch {
+        /* non-JSON error body */
+      }
+      if (!res.ok) {
+        setLoadError(json.error || `שגיאת שרת (${res.status})`)
+        setCustomers([])
+        setCount(0)
+        return
+      }
+      setCustomers(json.data || [])
+      setCount(json.count || 0)
+    } catch {
+      setLoadError('לא ניתן להתחבר לשרת')
+      setCustomers([])
+      setCount(0)
+    } finally {
+      setLoading(false)
+    }
   }, [search, page])
 
   useEffect(() => { fetch_() }, [fetch_])
@@ -51,6 +71,18 @@ export default function CustomersPage() {
           onChange={e => setSearch(e.target.value)}
         />
       </div>
+
+      {loadError && (
+        <div
+          role="alert"
+          className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200"
+        >
+          {loadError}
+          <span className="block mt-1 text-xs opacity-90">
+            בדרך כלל זה אומר שחסרים משתני Supabase ב־.env.local או שיש שגיאה ב־API.
+          </span>
+        </div>
+      )}
 
       {/* Table */}
       <div className="surface overflow-hidden">
