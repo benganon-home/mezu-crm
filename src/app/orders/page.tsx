@@ -111,6 +111,19 @@ export default function OrdersPage() {
     fetchOrders()
   }
 
+  const onItemStatusChange = (itemId: string, newStatus: OrderStatus) => {
+    setOrders(prev => prev.map(order => {
+      const items = order.items?.map(i => i.id === itemId ? { ...i, status: newStatus } : i)
+      return items ? { ...order, items } : order
+    }))
+    if (activeOrder?.items?.some(i => i.id === itemId)) {
+      setActiveOrder(prev => prev ? {
+        ...prev,
+        items: prev.items?.map(i => i.id === itemId ? { ...i, status: newStatus } : i),
+      } : null)
+    }
+  }
+
   const onOrderUpdate = (updated: Order) => {
     setOrders(prev => prev.map(o => o.id === updated.id ? updated : o))
     setActiveOrder(updated)
@@ -253,6 +266,7 @@ export default function OrdersPage() {
                   selectedItemIds={selectedItemIds}
                   onToggleItem={toggleItemSelect}
                   onToggleOrderItems={toggleOrderItems}
+                  onItemStatusChange={onItemStatusChange}
                   onClick={() => setActiveOrder(order)}
                 />
               ))}
