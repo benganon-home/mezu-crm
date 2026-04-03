@@ -18,7 +18,11 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderIt
   const items    = order.items || []
   const allItemsSelected = items.length > 0 && items.every(i => selectedItemIds.has(i.id))
   const someItemsSelected = items.some(i => selectedItemIds.has(i.id))
-  const isShipped = order.status === 'shipped'
+  /** Fully done only when every line item is shipped — not just order-level status */
+  const allItemsShipped =
+    items.length > 0
+      ? items.every(i => i.status === 'shipped')
+      : order.status === 'shipped'
 
   return (
     <>
@@ -28,12 +32,12 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderIt
           'order-header-row',
           someItemsSelected && 'selected',
           order.is_pinned && 'bg-gold/5',
-          isShipped && 'opacity-50'
+          allItemsShipped && 'opacity-50'
         )}
         onClick={onClick}
       >
         <td onClick={e => onToggleOrderItems(order, e)}>
-          {isShipped ? (
+          {allItemsShipped ? (
             <CheckCircle2 size={16} className="text-emerald-400" strokeWidth={2} />
           ) : (
             <input
@@ -87,7 +91,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderIt
       </tr>
 
       {/* ── Items sub-row ── */}
-      <tr className={cn('order-items-row', isShipped && 'opacity-50')}>
+      <tr className={cn('order-items-row', allItemsShipped && 'opacity-50')}>
         <td colSpan={7} className="!pt-0 !pb-3 !pr-6">
           <div className="flex flex-col gap-0.5">
             {items.map(item => {
