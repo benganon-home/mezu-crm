@@ -96,7 +96,8 @@ async function fetchBase44Orders(): Promise<Base44Order[]> {
     { headers: { 'Content-Type': 'application/json' } }
   )
   const data = await response.json()
-  return data.entities || []
+  if (Array.isArray(data)) return data as Base44Order[]
+  return (data.entities || []) as Base44Order[]
 }
 
 // ─── Parse item name into components ─────────────────────────
