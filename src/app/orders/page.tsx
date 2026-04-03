@@ -138,7 +138,7 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className={cn('flex flex-col gap-5', selectedItemIds.size > 0 && 'pb-24')}>
 
       {/* Page header */}
       <div className="page-header">

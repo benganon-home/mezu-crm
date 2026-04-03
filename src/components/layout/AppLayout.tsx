@@ -29,7 +29,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className={cn('flex h-screen overflow-hidden', dark && 'dark')}>
+    <div
+      className={cn('flex h-screen overflow-hidden', dark && 'dark')}
+      style={{ ['--app-sidebar-width' as string]: collapsed ? '64px' : '220px' }}
+    >
 
       {/* Mobile overlay */}
       {mobileOpen && (
