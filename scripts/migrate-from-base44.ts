@@ -2,7 +2,7 @@
  * MEZU CRM — Migration script: Base44 → Supabase
  * 
  * Usage:
- *   1. Fill in .env.local with Supabase credentials
+ *   1. Fill in .env.local with Supabase credentials (incl. SUPABASE_SERVICE_ROLE_KEY)
  *   2. npm run migrate
  * 
  * What it does:
@@ -13,13 +13,47 @@
  *   - Maps old statuses → new statuses
  */
 
+import * as fs from 'fs'
+import * as path from 'path'
 import { createClient } from '@supabase/supabase-js'
 
+function loadEnvLocal() {
+  const p = path.join(process.cwd(), '.env.local')
+  if (!fs.existsSync(p)) return
+  const text = fs.readFileSync(p, 'utf8')
+  for (const line of text.split('\n')) {
+    const t = line.trim()
+    if (!t || t.startsWith('#')) continue
+    const eq = t.indexOf('=')
+    if (eq === -1) continue
+    const key = t.slice(0, eq).trim()
+    let val = t.slice(eq + 1).trim()
+    if (
+      (val.startsWith('"') && val.endsWith('"')) ||
+      (val.startsWith("'") && val.endsWith("'"))
+    ) {
+      val = val.slice(1, -1)
+    }
+    if (process.env[key] === undefined) process.env[key] = val
+  }
+}
+loadEnvLocal()
+
 // ─── Config ──────────────────────────────────────────────────
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const SUPABASE_URL =
+  process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 const BASE44_APP_ID = '68c655a4315f6d1a8c30e408'
 const BASE44_API_BASE = 'https://app.base44.com/api/apps'
+
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+  console.error(
+    'Missing SUPABASE_SERVICE_ROLE_KEY or URL. Add to .env.local:\n' +
+      '  SUPABASE_SERVICE_ROLE_KEY=...  (from Supabase → Settings → API → service_role)\n' +
+      '  NEXT_PUBLIC_SUPABASE_URL=https://....supabase.co'
+  )
+  process.exit(1)
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY)
 
@@ -38,6 +72,7 @@ const STATUS_MAP: Record<string, string> = {
 // ─── Types ────────────────────────────────────────────────────
 interface Base44Order {
   id: string
+  is_sample?: boolean
   customer_name: string
   customer_phone: string
   item: string
