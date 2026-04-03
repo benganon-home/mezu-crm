@@ -204,12 +204,11 @@ h3 { font-size: 15px; font-weight: 500; }
 /* ─── LTR overrides for numbers/phone ───────────────────────── */
 .ltr { direction: ltr; unicode-bidi: embed; }
 
-  /* Status filter chips */
-  .chip-btn {
-    @apply px-3 py-1.5 rounded-full text-xs font-medium border border-cream-dark dark:border-navy-light
-           text-muted hover:text-navy dark:hover:text-cream transition-colors;
-  }
-  .chip-btn-active {
-    @apply bg-navy text-cream border-navy dark:bg-cream dark:text-navy dark:border-cream;
-  }
+/* Status filter chips */
+.chip-btn {
+  @apply px-3 py-1.5 rounded-full text-xs font-medium border border-cream-dark dark:border-navy-light
+         text-muted hover:text-navy dark:hover:text-cream transition-colors;
+}
+.chip-btn-active {
+  @apply bg-navy text-cream border-navy dark:bg-cream dark:text-navy dark:border-cream;
 }
