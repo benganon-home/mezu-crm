@@ -2,7 +2,7 @@ import { Order, OrderStatus, ITEM_COLOR_MAP } from '@/types'
 import { formatDateShort, formatPrice, cn } from '@/lib/utils'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { ItemStatusDropdown } from '@/components/orders/ItemStatusDropdown'
-import { Truck, Home, Pin, ImageIcon } from 'lucide-react'
+import { Truck, Home, Pin, ImageIcon, CheckCircle2 } from 'lucide-react'
 
 interface Props {
   order: Order
@@ -18,22 +18,32 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderIt
   const items    = order.items || []
   const allItemsSelected = items.length > 0 && items.every(i => selectedItemIds.has(i.id))
   const someItemsSelected = items.some(i => selectedItemIds.has(i.id))
+  const isShipped = order.status === 'shipped'
 
   return (
     <>
       {/* ── Header row ── */}
       <tr
-        className={cn('order-header-row', someItemsSelected && 'selected', order.is_pinned && 'bg-gold/5')}
+        className={cn(
+          'order-header-row',
+          someItemsSelected && 'selected',
+          order.is_pinned && 'bg-gold/5',
+          isShipped && 'opacity-50'
+        )}
         onClick={onClick}
       >
         <td onClick={e => onToggleOrderItems(order, e)}>
-          <input
-            type="checkbox"
-            checked={allItemsSelected}
-            ref={el => { if (el) el.indeterminate = someItemsSelected && !allItemsSelected }}
-            onChange={() => {}}
-            className="accent-gold"
-          />
+          {isShipped ? (
+            <CheckCircle2 size={16} className="text-emerald-400" strokeWidth={2} />
+          ) : (
+            <input
+              type="checkbox"
+              checked={allItemsSelected}
+              ref={el => { if (el) el.indeterminate = someItemsSelected && !allItemsSelected }}
+              onChange={() => {}}
+              className="accent-gold"
+            />
+          )}
         </td>
 
         <td className="text-left">
@@ -77,9 +87,9 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderIt
       </tr>
 
       {/* ── Items sub-row ── */}
-      <tr className="order-items-row" onClick={onClick}>
+      <tr className={cn('order-items-row', isShipped && 'opacity-50')}>
         <td colSpan={7} className="!pt-0 !pb-3 !pr-6">
-          <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-0.5">
             {items.map(item => {
               const colorEntry = item.color ? ITEM_COLOR_MAP[item.color] : null
               const isSelected = selectedItemIds.has(item.id)
@@ -87,8 +97,10 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderIt
               return (
                 <div
                   key={item.id}
+                  onClick={e => onToggleItem(item.id, e)}
                   className={cn(
-                    'flex items-center gap-2.5 text-xs rounded-md px-2 py-1.5 -mx-2 transition-colors',
+                    'flex items-center gap-3 text-xs rounded-lg px-2 py-2.5 -mx-2 transition-colors cursor-pointer',
+                    'hover:bg-gold/6',
                     isSelected && 'bg-gold/8'
                   )}
                 >
@@ -97,59 +109,66 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderIt
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => {}}
-                    onClick={e => onToggleItem(item.id, e)}
-                    className="accent-gold flex-shrink-0"
+                    className="accent-gold flex-shrink-0 pointer-events-none"
                   />
 
-                  {/* Color circle + name */}
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <div
-                      className="w-5 h-5 rounded-full flex-shrink-0"
-                      style={{
-                        backgroundColor: colorEntry?.hex ?? '#D1D5DB',
-                        border: colorEntry?.border ? '1px solid #D1D5DB' : undefined,
-                      }}
-                    />
-                    {item.color && (
-                      <span className="text-muted whitespace-nowrap">{item.color}</span>
-                    )}
+                  {/* Placeholder product image */}
+                  <div className="w-10 h-10 rounded-lg bg-cream-dark/50 dark:bg-navy-light/30 flex items-center justify-center flex-shrink-0">
+                    <ImageIcon size={16} className="text-muted/40" strokeWidth={1.5} />
                   </div>
 
+                  {/* Item name */}
                   <span className="font-medium text-navy dark:text-cream/90">{item.item_name}</span>
 
+                  {/* Spacer */}
+                  <span className="text-cream-dark dark:text-navy-light select-none">|</span>
+
+                  {/* Color circle + name */}
+                  {item.color && (
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <div
+                        className="w-4 h-4 rounded-full flex-shrink-0"
+                        style={{
+                          backgroundColor: colorEntry?.hex ?? '#D1D5DB',
+                          border: colorEntry?.border ? '1px solid #D1D5DB' : undefined,
+                        }}
+                      />
+                      <span className="text-muted whitespace-nowrap">{item.color}</span>
+                    </div>
+                  )}
+
+                  {/* Spacer before sign text */}
                   {item.sign_text && (
-                    <span className="text-gold font-medium">
-                      ״{item.sign_text}״
-                    </span>
+                    <>
+                      <span className="text-cream-dark dark:text-navy-light select-none">|</span>
+                      <span className="text-gold font-medium">
+                        ״{item.sign_text}״
+                      </span>
+                    </>
                   )}
 
-                  {item.size && (
-                    <span className="text-muted">{item.size}</span>
+                  {/* Font */}
+                  {item.font && (
+                    <>
+                      <span className="text-cream-dark dark:text-navy-light select-none">|</span>
+                      <span className="text-muted">{item.font}</span>
+                    </>
                   )}
 
-                  <div className="mr-auto flex items-center gap-2.5">
+                  {/* Status dropdown pushed to far left (end in RTL) */}
+                  <div className="mr-auto" onClick={e => e.stopPropagation()}>
                     <ItemStatusDropdown
                       itemId={item.id}
                       status={item.status}
                       onStatusChange={onItemStatusChange}
                     />
-                    {item.price > 0 && (
-                      <span className="ltr text-muted tabular-nums">
-                        {formatPrice(item.price)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Placeholder product image */}
-                  <div className="w-10 h-10 rounded bg-cream-dark/40 dark:bg-navy-light/30 flex items-center justify-center flex-shrink-0">
-                    <ImageIcon size={16} className="text-muted/50" strokeWidth={1.5} />
                   </div>
                 </div>
               )
             })}
 
             {items.length === 0 && (
-              <span className="text-xs text-muted/60">—</span>
+              <span className="text-xs text-muted/60 py-2">—</span>
             )}
           </div>
         </td>

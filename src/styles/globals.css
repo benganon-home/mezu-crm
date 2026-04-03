@@ -182,29 +182,22 @@ h3 { font-size: 15px; font-weight: 500; }
 }
 
 .crm-table .order-items-row {
-  cursor: pointer;
+  cursor: default;
+}
+
+.crm-table .order-items-row:hover {
+  background: transparent !important;
 }
 
 .crm-table .order-items-row td {
-  background: rgba(108, 92, 231, 0.03);
+  background: transparent;
   border-bottom: 2px solid #EEEDF5;
   padding-top: 0;
   padding-bottom: 10px;
 }
 
 .dark .crm-table .order-items-row td {
-  background: rgba(255, 255, 255, 0.02);
   border-bottom-color: rgba(255, 255, 255, 0.08);
-}
-
-.crm-table .order-items-row:hover td,
-.crm-table .order-header-row:hover + .order-items-row td {
-  background: rgba(108, 92, 231, 0.06);
-}
-
-.dark .crm-table .order-items-row:hover td,
-.dark .crm-table .order-header-row:hover + .order-items-row td {
-  background: rgba(255, 255, 255, 0.05);
 }
 
 /* ─── Drawer ─────────────────────────────────────────────────── */
