@@ -65,6 +65,7 @@ create table if not exists order_items (
   sign_type   text,
   size        text,
   price       numeric(10,2) not null default 0,
+  status      order_status not null default 'received',
   created_at  timestamptz default now()
 );
 

@@ -1,32 +1,36 @@
-import { Order } from '@/types'
+import { Order, ITEM_COLOR_MAP } from '@/types'
 import { formatDateShort, formatPrice, cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { CopyButton } from '@/components/ui/CopyButton'
-import { Truck, Home, Pin, Package } from 'lucide-react'
+import { Truck, Home, Pin } from 'lucide-react'
 
 interface Props {
   order: Order
-  selected: boolean
-  onToggle: (id: string, e: React.MouseEvent) => void
+  selectedItemIds: Set<string>
+  onToggleItem: (id: string, e: React.MouseEvent) => void
+  onToggleOrderItems: (order: Order, e: React.MouseEvent) => void
   onClick: () => void
 }
 
-export function OrderRow({ order, selected, onToggle, onClick }: Props) {
+export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderItems, onClick }: Props) {
   const customer = order.customer
   const items    = order.items || []
+  const allItemsSelected = items.length > 0 && items.every(i => selectedItemIds.has(i.id))
+  const someItemsSelected = items.some(i => selectedItemIds.has(i.id))
 
   return (
     <>
       {/* ── Header row ── */}
       <tr
-        className={cn('order-header-row', selected && 'selected', order.is_pinned && 'bg-gold/5')}
+        className={cn('order-header-row', someItemsSelected && 'selected', order.is_pinned && 'bg-gold/5')}
         onClick={onClick}
       >
-        {/* Checkbox */}
-        <td onClick={e => onToggle(order.id, e)}>
+        {/* Checkbox — toggles all items in this order */}
+        <td onClick={e => onToggleOrderItems(order, e)}>
           <input
             type="checkbox"
-            checked={selected}
+            checked={allItemsSelected}
+            ref={el => { if (el) el.indeterminate = someItemsSelected && !allItemsSelected }}
             onChange={() => {}}
             className="accent-gold"
           />
@@ -59,8 +63,8 @@ export function OrderRow({ order, selected, onToggle, onClick }: Props) {
           </div>
         </td>
 
-        {/* Status */}
-        <td><StatusBadge status={order.status} /></td>
+        {/* Status — empty in header, statuses live per-item */}
+        <td />
 
         {/* Delivery icon */}
         <td>
@@ -80,41 +84,62 @@ export function OrderRow({ order, selected, onToggle, onClick }: Props) {
 
       {/* ── Items sub-row ── */}
       <tr className="order-items-row" onClick={onClick}>
-        <td colSpan={7} className="!pt-0 !pb-3 !pr-12">
-          <div className="flex flex-col gap-1">
-            {items.map(item => (
-              <div key={item.id} className="flex items-center gap-2.5 text-xs">
-                <div className="w-7 h-7 rounded bg-cream-dark/60 dark:bg-navy-light/40 flex items-center justify-center flex-shrink-0">
-                  <Package size={13} className="text-muted" strokeWidth={1.5} />
+        <td colSpan={7} className="!pt-0 !pb-3 !pr-6">
+          <div className="flex flex-col gap-1.5">
+            {items.map(item => {
+              const colorEntry = item.color ? ITEM_COLOR_MAP[item.color] : null
+              const isSelected = selectedItemIds.has(item.id)
+
+              return (
+                <div
+                  key={item.id}
+                  className={cn(
+                    'flex items-center gap-2.5 text-xs rounded-md px-2 py-1 -mx-2 transition-colors',
+                    isSelected && 'bg-gold/8'
+                  )}
+                >
+                  {/* Per-item checkbox */}
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => {}}
+                    onClick={e => onToggleItem(item.id, e)}
+                    className="accent-gold flex-shrink-0"
+                  />
+
+                  {/* Color circle */}
+                  <div
+                    className="w-5 h-5 rounded-full flex-shrink-0"
+                    style={{
+                      backgroundColor: colorEntry?.hex ?? '#D1D5DB',
+                      border: colorEntry?.border ? '1px solid #D1D5DB' : undefined,
+                    }}
+                    title={item.color || ''}
+                  />
+
+                  <span className="font-medium text-navy dark:text-cream/90">{item.item_name}</span>
+
+                  {item.sign_text && (
+                    <span className="text-gold font-medium">
+                      ״{item.sign_text}״
+                    </span>
+                  )}
+
+                  {item.size && (
+                    <span className="text-muted">{item.size}</span>
+                  )}
+
+                  <div className="mr-auto flex items-center gap-2.5">
+                    <StatusBadge status={item.status} size="sm" />
+                    {item.price > 0 && (
+                      <span className="ltr text-muted tabular-nums">
+                        {formatPrice(item.price)}
+                      </span>
+                    )}
+                  </div>
                 </div>
-
-                <span className="font-medium text-navy dark:text-cream/90">{item.item_name}</span>
-
-                {item.color && (
-                  <span className="text-muted">
-                    {item.color}
-                  </span>
-                )}
-
-                {item.sign_text && (
-                  <span className="text-gold font-medium">
-                    ״{item.sign_text}״
-                  </span>
-                )}
-
-                {item.size && (
-                  <span className="text-muted">
-                    {item.size}
-                  </span>
-                )}
-
-                {item.price > 0 && (
-                  <span className="ltr text-muted tabular-nums mr-auto">
-                    {formatPrice(item.price)}
-                  </span>
-                )}
-              </div>
-            ))}
+              )
+            })}
 
             {items.length === 0 && (
               <span className="text-xs text-muted/60">—</span>

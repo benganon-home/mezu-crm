@@ -37,6 +37,7 @@ export interface OrderItem {
   sign_type?: string | null
   size?: string | null
   price: number
+  status: OrderStatus
   created_at: string
 }
 
@@ -94,6 +95,16 @@ export const STATUS_CONFIG: Record<OrderStatus, StatusConfig> = {
 }
 
 export const ALL_STATUSES: OrderStatus[] = ['received', 'preparing', 'ready', 'shipped', 'cancelled']
+
+// ─── Item color map ──────────────────────────────────────────────────────────
+
+export const ITEM_COLOR_MAP: Record<string, { hex: string; border?: boolean }> = {
+  'שיש בהיר':      { hex: '#E8DDD3' },
+  'שיש אפור חול':  { hex: '#C4B9A8' },
+  'שיש אפור':      { hex: '#9A9A9A' },
+  'שיש כהה':       { hex: '#4A4A4A' },
+  'לבן שלג':       { hex: '#FAFAFA', border: true },
+}
 
 // ─── API response types ───────────────────────────────────────────────────────
 

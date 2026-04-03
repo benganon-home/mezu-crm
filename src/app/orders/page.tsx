@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Plus, Search, Truck } from 'lucide-react'
 import { Order, OrderStatus, ALL_STATUSES, STATUS_CONFIG } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
@@ -16,10 +16,15 @@ export default function OrdersPage() {
   const [search, setSearch]           = useState('')
   const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all')
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'delivery' | 'pickup'>('all')
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
   const [activeOrder, setActiveOrder] = useState<Order | null>(null)
   const [page, setPage]               = useState(1)
   const [loadError, setLoadError]     = useState<string | null>(null)
+
+  const allItemIds = useMemo(
+    () => orders.flatMap(o => (o.items || []).map(i => i.id)),
+    [orders]
+  )
 
   const fetchOrders = useCallback(async () => {
     setLoading(true)
@@ -64,30 +69,45 @@ export default function OrdersPage() {
     return () => clearTimeout(t)
   }, [search]) // eslint-disable-line
 
-  const toggleSelect = (id: string, e: React.MouseEvent) => {
+  const toggleItemSelect = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
-    setSelectedIds(prev => {
+    setSelectedItemIds(prev => {
       const next = new Set(prev)
       next.has(id) ? next.delete(id) : next.add(id)
       return next
     })
   }
 
+  const toggleOrderItems = (order: Order, e: React.MouseEvent) => {
+    e.stopPropagation()
+    const itemIds = (order.items || []).map(i => i.id)
+    setSelectedItemIds(prev => {
+      const next = new Set(prev)
+      const allSelected = itemIds.every(id => next.has(id))
+      if (allSelected) {
+        itemIds.forEach(id => next.delete(id))
+      } else {
+        itemIds.forEach(id => next.add(id))
+      }
+      return next
+    })
+  }
+
   const toggleSelectAll = () => {
-    if (selectedIds.size === orders.length) {
-      setSelectedIds(new Set())
+    if (selectedItemIds.size === allItemIds.length && allItemIds.length > 0) {
+      setSelectedItemIds(new Set())
     } else {
-      setSelectedIds(new Set(orders.map(o => o.id)))
+      setSelectedItemIds(new Set(allItemIds))
     }
   }
 
   const onBulkStatus = async (status: OrderStatus) => {
-    await fetch('/api/orders/bulk', {
+    await fetch('/api/order-items/bulk', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids: Array.from(selectedIds), status }),
+      body: JSON.stringify({ ids: Array.from(selectedItemIds), status }),
     })
-    setSelectedIds(new Set())
+    setSelectedItemIds(new Set())
     fetchOrders()
   }
 
@@ -176,11 +196,11 @@ export default function OrdersPage() {
       </div>
 
       {/* Bulk action bar */}
-      {selectedIds.size > 0 && (
+      {selectedItemIds.size > 0 && (
         <BulkStatusBar
-          count={selectedIds.size}
+          count={selectedItemIds.size}
           onApply={onBulkStatus}
-          onClear={() => setSelectedIds(new Set())}
+          onClear={() => setSelectedItemIds(new Set())}
         />
       )}
 
@@ -206,7 +226,7 @@ export default function OrdersPage() {
                 <th className="w-10">
                   <input
                     type="checkbox"
-                    checked={selectedIds.size === orders.length && orders.length > 0}
+                    checked={selectedItemIds.size === allItemIds.length && allItemIds.length > 0}
                     onChange={toggleSelectAll}
                     className="accent-gold"
                   />
@@ -230,8 +250,9 @@ export default function OrdersPage() {
                 <OrderRow
                   key={order.id}
                   order={order}
-                  selected={selectedIds.has(order.id)}
-                  onToggle={toggleSelect}
+                  selectedItemIds={selectedItemIds}
+                  onToggleItem={toggleItemSelect}
+                  onToggleOrderItems={toggleOrderItems}
                   onClick={() => setActiveOrder(order)}
                 />
               ))}
