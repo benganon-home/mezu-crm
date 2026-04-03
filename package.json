@@ -10,7 +10,7 @@
     "migrate": "ts-node --project tsconfig.scripts.json scripts/migrate-from-base44.ts"
   },
   "dependencies": {
-    "next": "14.2.5",
+    "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18",
     "@supabase/supabase-js": "^2.43.0",
@@ -30,7 +30,7 @@
     "autoprefixer": "^10.0.1",
     "postcss": "^8",
     "eslint": "^8",
-    "eslint-config-next": "14.2.5",
+    "eslint-config-next": "14.2.35",
     "ts-node": "^10.9.2"
   }
 }
