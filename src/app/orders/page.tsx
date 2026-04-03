@@ -93,7 +93,7 @@ export default function OrdersPage() {
       <div className="page-header">
         <div>
           <h1>הזמנות</h1>
-          <p className="text-xs text-muted mt-0.5">{count} הזמנות סה"כ</p>
+          <p className="text-xs text-muted mt-0.5">{count} הזמנות סה״כ</p>
         </div>
         <button className="btn-primary flex items-center gap-2">
           <Plus size={14} strokeWidth={1.5} />

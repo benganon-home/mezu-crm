@@ -15,7 +15,7 @@ const NAV_ITEMS = [
   { href: '/reminders', icon: Bell,        label: 'תזכורות'  },
   { href: '/analytics', icon: BarChart2,   label: 'אנליטיקס' },
   { href: '/settings',  icon: Settings,    label: 'הגדרות'   },
-]
+] as const
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()

@@ -118,7 +118,7 @@ export function OrderDrawer({ order, onClose, onUpdate }: Props) {
             )}
 
             <div className="flex justify-between items-center mt-3 pt-3 border-t border-cream-dark dark:border-navy-light">
-              <span className="text-sm text-muted">סה"כ לתשלום</span>
+              <span className="text-sm text-muted">סה״כ לתשלום</span>
               <span className="text-lg font-semibold text-gold ltr">{formatPrice(totalPrice)}</span>
             </div>
           </div>

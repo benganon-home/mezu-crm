@@ -77,7 +77,7 @@ export function CustomerDrawer({ customer, onClose, onUpdate }: Props) {
             </div>
             <div className="bg-cream dark:bg-navy-deeper rounded-lg p-3 text-center">
               <div className="text-xl font-semibold text-gold ltr">{formatPrice(totalSpent)}</div>
-              <div className="text-xs text-muted mt-0.5">סה"כ</div>
+              <div className="text-xs text-muted mt-0.5">סה״כ</div>
             </div>
             <div className="bg-cream dark:bg-navy-deeper rounded-lg p-3 text-center">
               <div className="text-xl font-semibold text-amber-600">{activeOrders.length}</div>

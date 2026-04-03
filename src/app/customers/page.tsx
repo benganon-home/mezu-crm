@@ -60,7 +60,7 @@ export default function CustomersPage() {
               <th>לקוח</th>
               <th>כתובת</th>
               <th className="text-center">הזמנות</th>
-              <th className="text-left">סה"כ הוצאה</th>
+              <th className="text-left">סה״כ הוצאה</th>
               <th className="text-left">הזמנה אחרונה</th>
               <th className="w-20"></th>
             </tr>
