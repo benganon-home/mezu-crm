@@ -14,11 +14,12 @@ export function createClient() {
     {
       cookies: {
         getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet: CookieToSet[]) {
+        setAll(cookiesToSet: CookieToSet[], _headers: Record<string, string>) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
               cookieStore.set(name, value, options)
             )
+            /* Response cache headers belong on middleware response; RSC/API often cannot set them here. */
           } catch {}
         },
       },

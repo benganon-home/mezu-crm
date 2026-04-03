@@ -11,33 +11,36 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  let supabaseResponse = NextResponse.next({ request })
+  let supabaseResponse = NextResponse.next({
+    request,
+  })
 
-  const supabase = createServerClient(
-    url,
-    anonKey,
-    {
-      cookies: {
-        getAll() { return request.cookies.getAll() },
-        setAll(cookiesToSet: CookieToSet[]) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({ request })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          )
-        },
+  const supabase = createServerClient(url, anonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
       },
-    }
-  )
+      setAll(cookiesToSet: CookieToSet[], headers: Record<string, string>) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+        supabaseResponse = NextResponse.next({
+          request,
+        })
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options)
+        )
+        Object.entries(headers).forEach(([key, value]) => {
+          supabaseResponse.headers.set(key, value)
+        })
+      },
+    },
+  })
 
   const { data: { user } } = await supabase.auth.getUser()
   const isAuthPage = request.nextUrl.pathname.startsWith('/auth')
   const isApiRoute = request.nextUrl.pathname.startsWith('/api')
 
-  // Allow API routes and auth pages through
   if (isApiRoute || isAuthPage) return supabaseResponse
 
-  // Redirect unauthenticated users to login
   if (!user) {
     const loginUrl = request.nextUrl.clone()
     loginUrl.pathname = '/auth/login'
@@ -49,7 +52,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /* Root is easy to miss with a single negative regex on some hosts (e.g. Vercel). */
     '/',
     '/((?!_next/static|_next/image|favicon.ico|public/).*)',
   ],

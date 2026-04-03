@@ -1,8 +1,9 @@
 /**
  * Single place for Supabase URL + publishable/anon key.
- * Supports dashboard naming: NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
- * and classic: NEXT_PUBLIC_SUPABASE_ANON_KEY
- * Server-only duplicates help Vercel Edge middleware (see .env.local.example).
+ * Names from Supabase docs / Connect dialog (any one is enough):
+ * - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY
+ * - NEXT_PUBLIC_SUPABASE_ANON_KEY (legacy JWT)
+ * Server-only duplicates help Vercel Edge middleware.
  */
 export function getSupabaseUrl(): string {
   return (
@@ -14,8 +15,10 @@ export function getSupabaseUrl(): string {
 
 export function getSupabasePublishableKey(): string {
   return (
+    process.env.SUPABASE_PUBLISHABLE_KEY ||
     process.env.SUPABASE_PUBLISHABLE_DEFAULT_KEY ||
     process.env.SUPABASE_ANON_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
     ''

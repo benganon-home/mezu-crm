@@ -19,7 +19,7 @@ export function createClient() {
       key = key || 'dev-placeholder-anon-key'
     } else {
       throw new Error(
-        'Missing Supabase env: set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY (or NEXT_PUBLIC_SUPABASE_ANON_KEY). See .env.local.example.'
+        'Missing Supabase env: set NEXT_PUBLIC_SUPABASE_URL and a publishable/anon key (NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, *_PUBLISHABLE_DEFAULT_KEY, or *_ANON_KEY). See .env.local.example.'
       )
     }
   }
