@@ -6,6 +6,7 @@ import { Order, OrderStatus, ALL_STATUSES, STATUS_CONFIG } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
 import { StatCard } from '@/components/ui/StatCard'
 import { OrderDrawer } from '@/components/orders/OrderDrawer'
+import { NewOrderDrawer } from '@/components/orders/NewOrderDrawer'
 import { BulkStatusBar } from '@/components/orders/BulkStatusBar'
 import { OrderRow } from '@/components/orders/OrderRow'
 
@@ -18,6 +19,7 @@ export default function OrdersPage() {
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'delivery' | 'pickup'>('all')
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
   const [activeOrder, setActiveOrder] = useState<Order | null>(null)
+  const [showNewOrder, setShowNewOrder] = useState(false)
   const [page, setPage]               = useState(1)
   const [loadError, setLoadError]     = useState<string | null>(null)
 
@@ -146,7 +148,10 @@ export default function OrdersPage() {
           <h1>הזמנות</h1>
           <p className="text-xs text-muted mt-0.5">{count} הזמנות סה״כ</p>
         </div>
-        <button className="btn-primary flex items-center gap-2">
+        <button
+          onClick={() => setShowNewOrder(true)}
+          className="btn-primary flex items-center gap-2"
+        >
           <Plus size={14} strokeWidth={1.5} />
           הזמנה חדשה
         </button>
@@ -302,6 +307,14 @@ export default function OrdersPage() {
           order={activeOrder}
           onClose={() => setActiveOrder(null)}
           onUpdate={onOrderUpdate}
+        />
+      )}
+
+      {/* New order drawer */}
+      {showNewOrder && (
+        <NewOrderDrawer
+          onClose={() => setShowNewOrder(false)}
+          onCreated={() => { setShowNewOrder(false); fetchOrders() }}
         />
       )}
     </div>
