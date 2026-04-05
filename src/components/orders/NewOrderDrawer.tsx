@@ -45,6 +45,7 @@ const QUICK_ITEMS: { category: string; products: { label: string; item_name: str
   },
 ]
 
+// Ordered by frequency (most common first)
 const COLORS = Object.entries(ITEM_COLOR_MAP)
 
 function makeItem(item_name = '', model = ''): NewItem {
