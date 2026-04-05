@@ -2,7 +2,7 @@ import { Order, OrderStatus, ITEM_COLOR_MAP } from '@/types'
 import { formatDateShort, formatPrice, cn } from '@/lib/utils'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { ItemStatusDropdown } from '@/components/orders/ItemStatusDropdown'
-import { Truck, Home, Pin, ImageIcon, CheckCircle2 } from 'lucide-react'
+import { Truck, Home, Pin, ImageIcon, CheckCircle2, StickyNote } from 'lucide-react'
 
 interface Props {
   order: Order
@@ -91,7 +91,21 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderIt
           </div>
         </td>
 
-        <td />
+        <td>
+          {order.notes && (
+            <div className="relative group inline-flex" onClick={onClick}>
+              <StickyNote size={14} className="text-gold cursor-pointer" strokeWidth={1.5} />
+              <div className="pointer-events-none absolute bottom-full right-1/2 translate-x-1/2 mb-2 z-50
+                              hidden group-hover:block
+                              max-w-[220px] w-max rounded-lg bg-navy text-cream dark:bg-cream dark:text-navy
+                              text-xs px-3 py-2 shadow-lg leading-relaxed whitespace-pre-wrap">
+                {order.notes}
+                <div className="absolute top-full right-1/2 translate-x-1/2 -mt-px
+                                border-4 border-transparent border-t-navy dark:border-t-cream" />
+              </div>
+            </div>
+          )}
+        </td>
 
         <td>
           {order.delivery_type === 'delivery'
