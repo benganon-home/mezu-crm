@@ -22,19 +22,21 @@
 
 html {
   direction: rtl;
-  font-size: 13px;
+  font-size: 14px;
   -webkit-font-smoothing: antialiased;
 }
 
 body {
-  background: var(--cream);
+  background: linear-gradient(135deg, #F8F7FC 0%, #EDE8FA 60%, #F5ECF8 100%);
+  background-attachment: fixed;
   color: var(--navy);
   margin: 0;
 }
 
 /* Dark mode */
 .dark body {
-  background: var(--navy-deeper);
+  background: linear-gradient(135deg, #14122A 0%, #1C1735 60%, #1A1230 100%);
+  background-attachment: fixed;
   color: var(--cream);
 }
 
@@ -45,9 +47,9 @@ body {
 .dark ::-webkit-scrollbar-thumb { background: var(--navy-light); }
 
 /* ─── Typography ─────────────────────────────────────────────── */
-h1 { font-size: 20px; font-weight: 500; letter-spacing: -0.01em; }
-h2 { font-size: 17px; font-weight: 500; }
-h3 { font-size: 15px; font-weight: 500; }
+h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+h2 { font-size: 18px; font-weight: 600; }
+h3 { font-size: 16px; font-weight: 500; }
 
 /* ─── Focus rings ────────────────────────────────────────────── */
 :focus-visible {
@@ -67,18 +69,18 @@ h3 { font-size: 15px; font-weight: 500; }
   }
 
   .btn-primary {
-    @apply bg-gold text-navy font-medium px-4 py-2 rounded-lg text-sm
+    @apply bg-gold text-white font-medium px-5 py-2 rounded-full text-sm
            hover:bg-gold-light active:scale-[0.98] transition-all duration-100;
   }
 
   .btn-secondary {
     @apply bg-transparent border border-cream-dark dark:border-navy-light text-navy dark:text-cream
-           font-normal px-4 py-2 rounded-lg text-sm
+           font-normal px-5 py-2 rounded-full text-sm
            hover:bg-cream dark:hover:bg-navy-light transition-colors duration-100;
   }
 
   .btn-ghost {
-    @apply bg-transparent text-navy dark:text-cream px-3 py-1.5 rounded-md text-sm
+    @apply bg-transparent text-navy dark:text-cream px-3 py-1.5 rounded-full text-sm
            hover:bg-cream dark:hover:bg-navy-light transition-colors duration-100;
   }
 
