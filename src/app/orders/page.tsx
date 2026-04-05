@@ -244,7 +244,7 @@ export default function OrdersPage() {
 
       {/* Table */}
       <div className="surface overflow-hidden">
-        <div className="overflow-auto max-h-[calc(100vh-280px)]">
+        <div className="overflow-x-clip">
           <table className="crm-table">
             <thead>
               <tr>
