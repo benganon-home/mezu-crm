@@ -178,7 +178,11 @@ h3 { font-size: 15px; font-weight: 500; }
 
 /* ─── Order grouped rows ─────────────────────────────────────── */
 .crm-table .order-header-row td {
-  border-bottom: none;
+  border-bottom: 1px solid var(--cream-dark);
+}
+
+.dark .crm-table .order-header-row td {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
 }
 
 .crm-table .order-items-row {

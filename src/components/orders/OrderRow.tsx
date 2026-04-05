@@ -70,7 +70,10 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderIt
               {getInitials(customer?.name || '')}
             </div>
             <div>
-              <div className="font-medium text-sm">{customer?.name}</div>
+              <div className="flex items-center gap-1">
+                <span className="font-medium text-sm">{customer?.name}</span>
+                <CopyButton text={customer?.name || ''} />
+              </div>
               <div className="flex items-center gap-1 mt-0.5">
                 <span className="ltr text-xs text-muted">{customer?.phone}</span>
                 <CopyButton text={customer?.phone || ''} />
