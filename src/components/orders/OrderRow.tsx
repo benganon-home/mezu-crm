@@ -66,7 +66,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderIt
         </td>
 
         <td>
-          <div className="text-xs text-muted max-w-[150px] truncate">
+          <div className="text-xs text-muted">
             {order.delivery_type === 'pickup'
               ? 'איסוף עצמי'
               : order.delivery_address || '—'
