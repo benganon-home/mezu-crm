@@ -25,7 +25,7 @@ const config: Config = {
           light:   '#8577ED',
           dark:    '#5A4BD1',
         },
-        muted: '#9B97B3',
+        muted: '#6B6880',
         // Status colors
         status: {
           received:   { bg: '#F1F5F9', text: '#475569', border: '#CBD5E1' },
