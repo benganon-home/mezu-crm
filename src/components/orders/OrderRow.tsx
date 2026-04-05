@@ -13,6 +13,13 @@ interface Props {
   onClick: () => void
 }
 
+function getInitials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return '?'
+  if (words.length === 1) return words[0].charAt(0)
+  return words[0].charAt(0) + words[words.length - 1].charAt(0)
+}
+
 export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderItems, onItemStatusChange, onClick }: Props) {
   const customer = order.customer
   const items    = order.items || []
@@ -50,18 +57,25 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderIt
           )}
         </td>
 
-        <td className="text-left">
-          <div className="ltr text-xs text-muted tabular-nums">
+        <td>
+          <div className="text-xs text-muted tabular-nums">
             {formatDateShort(order.created_at)}
           </div>
           {order.is_pinned && <Pin size={10} className="text-gold mt-0.5" />}
         </td>
 
         <td>
-          <div className="font-medium text-sm">{customer?.name}</div>
-          <div className="flex items-center gap-1 mt-0.5">
-            <span className="ltr text-xs text-muted">{customer?.phone}</span>
-            <CopyButton text={customer?.phone || ''} />
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-full bg-navy/10 dark:bg-cream/10 flex items-center justify-center flex-shrink-0 text-xs font-semibold text-navy dark:text-cream select-none">
+              {getInitials(customer?.name || '')}
+            </div>
+            <div>
+              <div className="font-medium text-sm">{customer?.name}</div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="ltr text-xs text-muted">{customer?.phone}</span>
+                <CopyButton text={customer?.phone || ''} />
+              </div>
+            </div>
           </div>
         </td>
 
