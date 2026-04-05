@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, MessageCircle, FileText, Edit2, Plus, Trash2, Package } from 'lucide-react'
+import { X, MessageCircle, Edit2, Plus, Trash2, Package, AlertTriangle } from 'lucide-react'
 import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG } from '@/types'
 import { formatDate, formatPrice, cn } from '@/lib/utils'
 import { getWaLink, getInvoiceWaLink } from '@/lib/whatsapp'
@@ -12,14 +12,17 @@ interface Props {
   order: Order
   onClose: () => void
   onUpdate: (order: Order) => void
+  onDelete?: (orderId: string) => void
 }
 
-export function OrderDrawer({ order, onClose, onUpdate }: Props) {
-  const [saving, setSaving]   = useState(false)
-  const [status, setStatus]   = useState<OrderStatus>(order.status)
-  const [notes, setNotes]     = useState(order.notes || '')
-  const [tracking, setTracking] = useState(order.tracking_number || '')
+export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
+  const [saving, setSaving]         = useState(false)
+  const [status, setStatus]         = useState<OrderStatus>(order.status)
+  const [notes, setNotes]           = useState(order.notes || '')
+  const [tracking, setTracking]     = useState(order.tracking_number || '')
   const [editingItems, setEditingItems] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting]     = useState(false)
   const customer = order.customer
 
   const save = async (patch: Partial<Order>) => {
@@ -39,6 +42,13 @@ export function OrderDrawer({ order, onClose, onUpdate }: Props) {
     await save({ status: s })
   }
 
+  const handleDelete = async () => {
+    setDeleting(true)
+    await fetch(`/api/orders/${order.id}`, { method: 'DELETE' })
+    onDelete?.(order.id)
+    onClose()
+  }
+
   const totalPrice = (order.items || []).reduce((sum, i) => sum + (i.price || 0), 0) || order.total_price
   const waReady    = customer ? getWaLink(customer, 'order_ready',  { itemSummary: order.items?.map(i => i.item_name).join(', ') }) : '#'
   const waShipped  = customer ? getWaLink(customer, 'order_shipped', { trackingNumber: tracking, invoiceUrl: order.invoice_url || undefined }) : '#'
@@ -48,6 +58,38 @@ export function OrderDrawer({ order, onClose, onUpdate }: Props) {
     <>
       {/* Overlay */}
       <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+
+      {/* ── Delete confirmation dialog ── */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setConfirmDelete(false)} />
+          <div className="relative bg-white dark:bg-navy-dark rounded-2xl shadow-2xl p-6 w-full max-w-sm text-center">
+            <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center mx-auto mb-4">
+              <AlertTriangle size={22} className="text-red-500" />
+            </div>
+            <h3 className="text-lg font-semibold mb-1">מחיקת הזמנה</h3>
+            <p className="text-sm text-muted mb-5">
+              האם למחוק את ההזמנה של <span className="font-medium text-navy dark:text-cream">{customer?.name}</span>?<br />
+              פעולה זו אינה ניתנת לביטול.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 rounded-full transition-colors disabled:opacity-50"
+              >
+                {deleting ? 'מוחק...' : 'כן, מחק'}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 btn-secondary py-2.5"
+              >
+                ביטול
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Drawer */}
       <div className="drawer open">
@@ -62,9 +104,18 @@ export function OrderDrawer({ order, onClose, onUpdate }: Props) {
                 <CopyButton text={customer?.phone || ''} />
               </div>
             </div>
-            <button onClick={onClose} className="text-muted hover:text-navy dark:hover:text-cream p-1 rounded">
-              <X size={18} />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="text-muted hover:text-red-500 transition-colors p-1 rounded"
+                title="מחיקת הזמנה"
+              >
+                <Trash2 size={16} />
+              </button>
+              <button onClick={onClose} className="text-muted hover:text-navy dark:hover:text-cream p-1 rounded">
+                <X size={18} />
+              </button>
+            </div>
           </div>
         </div>
 

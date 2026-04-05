@@ -310,6 +310,7 @@ export default function OrdersPage() {
           order={activeOrder}
           onClose={() => setActiveOrder(null)}
           onUpdate={onOrderUpdate}
+          onDelete={id => { setOrders(prev => prev.filter(o => o.id !== id)); setCount(c => c - 1) }}
         />
       )}
 
