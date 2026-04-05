@@ -10,60 +10,56 @@ import { NewOrderDrawer } from '@/components/orders/NewOrderDrawer'
 import { BulkStatusBar } from '@/components/orders/BulkStatusBar'
 import { OrderRow } from '@/components/orders/OrderRow'
 
+const DEFAULT_STATUSES: OrderStatus[] = ['received', 'preparing', 'ready', 'cancelled']
+
 export default function OrdersPage() {
   const [orders, setOrders]           = useState<Order[]>([])
   const [count, setCount]             = useState(0)
   const [loading, setLoading]         = useState(true)
   const [search, setSearch]           = useState('')
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | 'all'>('all')
+  const [selectedStatuses, setSelectedStatuses] = useState<OrderStatus[]>(DEFAULT_STATUSES)
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'delivery' | 'pickup'>('all')
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
   const [activeOrder, setActiveOrder] = useState<Order | null>(null)
   const [showNewOrder, setShowNewOrder] = useState(false)
   const [page, setPage]               = useState(1)
   const [loadError, setLoadError]     = useState<string | null>(null)
-  const [readyFilter, setReadyFilter] = useState(false)
 
   const allItemIds = useMemo(
     () => orders.flatMap(o => (o.items || []).map(i => i.id)),
     [orders]
   )
 
+  const statusesKey = selectedStatuses.slice().sort().join(',')
+
   const fetchOrders = useCallback(async () => {
     setLoading(true)
     setLoadError(null)
     const params = new URLSearchParams({
-      status:   statusFilter,
+      statuses: statusesKey,
       delivery: deliveryFilter,
       search,
       page:     String(page),
       pageSize: '60',
-      ...(readyFilter && { allReady: '1' }),
     })
     try {
       const res = await fetch(`/api/orders?${params}`)
       let json: { data?: Order[]; count?: number; error?: string } = {}
-      try {
-        json = await res.json()
-      } catch {
-        /* HTML error page etc. */
-      }
+      try { json = await res.json() } catch { /* HTML error page */ }
       if (!res.ok) {
         setLoadError(json.error || `שגיאת שרת (${res.status})`)
-        setOrders([])
-        setCount(0)
+        setOrders([]); setCount(0)
         return
       }
       setOrders(json.data || [])
       setCount(json.count || 0)
     } catch {
       setLoadError('לא ניתן להתחבר לשרת')
-      setOrders([])
-      setCount(0)
+      setOrders([]); setCount(0)
     } finally {
       setLoading(false)
     }
-  }, [statusFilter, deliveryFilter, search, page, readyFilter])
+  }, [statusesKey, deliveryFilter, search, page])
 
   useEffect(() => { fetchOrders() }, [fetchOrders])
 
@@ -72,6 +68,15 @@ export default function OrdersPage() {
     const t = setTimeout(() => fetchOrders(), 350)
     return () => clearTimeout(t)
   }, [search]) // eslint-disable-line
+
+  const toggleStatus = (s: OrderStatus) => {
+    setSelectedStatuses(prev =>
+      prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
+    )
+    setPage(1)
+  }
+
+  const allSelected = selectedStatuses.length === ALL_STATUSES.length
 
   const toggleItemSelect = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -87,12 +92,9 @@ export default function OrdersPage() {
     const itemIds = (order.items || []).map(i => i.id)
     setSelectedItemIds(prev => {
       const next = new Set(prev)
-      const allSelected = itemIds.every(id => next.has(id))
-      if (allSelected) {
-        itemIds.forEach(id => next.delete(id))
-      } else {
-        itemIds.forEach(id => next.add(id))
-      }
+      const allSel = itemIds.every(id => next.has(id))
+      if (allSel) { itemIds.forEach(id => next.delete(id)) }
+      else        { itemIds.forEach(id => next.add(id)) }
       return next
     })
   }
@@ -135,10 +137,10 @@ export default function OrdersPage() {
 
   // Stats
   const stats = {
-    total:      count,
-    preparing:  orders.flatMap(o => o.items || []).filter(i => i.status === 'preparing').length,
-    ready:      orders.flatMap(o => o.items || []).filter(i => i.status === 'ready').length,
-    revenue:    orders.reduce((s, o) => s + (o.total_price || 0), 0),
+    total:     count,
+    preparing: orders.flatMap(o => o.items || []).filter(i => i.status === 'preparing').length,
+    ready:     orders.flatMap(o => o.items || []).filter(i => i.status === 'ready').length,
+    revenue:   orders.reduce((s, o) => s + (o.total_price || 0), 0),
   }
 
   return (
@@ -161,13 +163,10 @@ export default function OrdersPage() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="סה״כ הזמנות"    value={stats.total}                         sub="בסינון הנוכחי" />
-        <StatCard label="בהכנה"          value={stats.preparing}                      valueClass="text-amber-600" />
-        <StatCard label="מוכן לשליחה"    value={stats.ready}  valueClass="text-emerald-600"
-          active={readyFilter}
-          onClick={() => { setReadyFilter(r => !r); setPage(1) }}
-        />
-        <StatCard label="הכנסות (תצוגה)" value={formatPrice(stats.revenue)}           valueClass="text-gold" />
+        <StatCard label="סה״כ הזמנות"    value={stats.total}              sub="בסינון הנוכחי" />
+        <StatCard label="בהכנה"          value={stats.preparing}           valueClass="text-amber-600" />
+        <StatCard label="מוכן לשליחה"    value={stats.ready}               valueClass="text-emerald-600" />
+        <StatCard label="הכנסות (תצוגה)" value={formatPrice(stats.revenue)} valueClass="text-gold" />
       </div>
 
       {/* Toolbar */}
@@ -183,29 +182,32 @@ export default function OrdersPage() {
           />
         </div>
 
-        {/* Status chips */}
+        {/* Status chips — multi-select */}
         <div className="flex gap-1.5 flex-wrap">
           <button
-            onClick={() => { setStatusFilter('all'); setPage(1) }}
-            className={cn('chip-btn', statusFilter === 'all' && 'chip-btn-active')}
+            onClick={() => { setSelectedStatuses(ALL_STATUSES); setPage(1) }}
+            className={cn('chip-btn', allSelected && 'chip-btn-active')}
           >
             הכל
           </button>
-          {ALL_STATUSES.map(s => (
-            <button
-              key={s}
-              onClick={() => { setStatusFilter(s); setPage(1) }}
-              className={cn(
-                'badge cursor-pointer transition-all',
-                statusFilter === s
-                  ? cn(STATUS_CONFIG[s].activeBg, STATUS_CONFIG[s].activeText, 'border-transparent font-semibold')
-                  : cn(STATUS_CONFIG[s].bg, STATUS_CONFIG[s].text, STATUS_CONFIG[s].border, 'opacity-70 hover:opacity-100')
-              )}
-            >
-              <span className={cn('badge-dot', statusFilter === s ? 'bg-white/70' : STATUS_CONFIG[s].dot)} />
-              {STATUS_CONFIG[s].label}
-            </button>
-          ))}
+          {ALL_STATUSES.map(s => {
+            const active = selectedStatuses.includes(s)
+            return (
+              <button
+                key={s}
+                onClick={() => toggleStatus(s)}
+                className={cn(
+                  'badge cursor-pointer transition-all',
+                  active
+                    ? cn(STATUS_CONFIG[s].activeBg, STATUS_CONFIG[s].activeText, 'border-transparent font-semibold')
+                    : cn(STATUS_CONFIG[s].bg, STATUS_CONFIG[s].text, STATUS_CONFIG[s].border, 'opacity-50 hover:opacity-80')
+                )}
+              >
+                <span className={cn('badge-dot', active ? 'bg-white/70' : STATUS_CONFIG[s].dot)} />
+                {STATUS_CONFIG[s].label}
+              </button>
+            )
+          })}
         </div>
 
         {/* Delivery filter */}

@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { OrderFilters } from '@/types'
+import { OrderFilters, OrderStatus } from '@/types'
 
 export async function GET(req: NextRequest) {
   const supabase = createClient()
   const { searchParams } = new URL(req.url)
 
-  const status    = searchParams.get('status') || 'all'
-  const search    = searchParams.get('search') || ''
-  const delivery  = searchParams.get('delivery') || 'all'
-  const allReady  = searchParams.get('allReady') === '1'
-  const page      = parseInt(searchParams.get('page') || '1')
-  const pageSize  = parseInt(searchParams.get('pageSize') || '50')
-  const from      = (page - 1) * pageSize
-  const to        = from + pageSize - 1
+  const statusesParam = searchParams.get('statuses') || ''
+  const statuses      = statusesParam ? (statusesParam.split(',') as OrderStatus[]) : []
+  const search        = searchParams.get('search') || ''
+  const delivery      = searchParams.get('delivery') || 'all'
+  const page          = parseInt(searchParams.get('page') || '1')
+  const pageSize      = parseInt(searchParams.get('pageSize') || '50')
+  const from          = (page - 1) * pageSize
+  const to            = from + pageSize - 1
 
   let query = supabase
     .from('orders')
@@ -25,50 +25,32 @@ export async function GET(req: NextRequest) {
     .order('created_at', { ascending: false })
     .range(from, to)
 
-  if (status !== 'all') {
+  // Filter by item statuses: show orders that have at least one item matching
+  // any of the selected statuses. An order where ALL items are shipped and
+  // shipped is not in the list will have no matching items and won't appear.
+  if (statuses.length > 0) {
     const { data: matchingItems } = await supabase
       .from('order_items')
       .select('order_id')
-      .eq('status', status)
+      .in('status', statuses)
+
     if (!matchingItems || matchingItems.length === 0) {
       return NextResponse.json({ data: [], count: 0, page, pageSize })
     }
     const orderIds = [...new Set(matchingItems.map(i => i.order_id))]
     query = query.in('id', orderIds)
   }
-  if (allReady) {
-    // Orders where ALL items are ready: fetch orders that have no non-ready items
-    const { data: notReadyItems } = await supabase
-      .from('order_items')
-      .select('order_id')
-      .neq('status', 'ready')
-    const excludedIds = [...new Set((notReadyItems || []).map(i => i.order_id))]
-
-    const { data: anyReadyItems } = await supabase
-      .from('order_items')
-      .select('order_id')
-      .eq('status', 'ready')
-    const readyOrderIds = [...new Set((anyReadyItems || []).map(i => i.order_id))]
-      .filter(id => !excludedIds.includes(id))
-
-    if (readyOrderIds.length === 0) {
-      return NextResponse.json({ data: [], count: 0, page, pageSize })
-    }
-    query = query.in('id', readyOrderIds)
-  }
 
   if (delivery !== 'all') query = query.eq('delivery_type', delivery)
 
   if (search) {
-    // search in joined customer name/phone via separate query
     const { data: matchedCustomers } = await supabase
       .from('customers')
       .select('id')
       .or(`name.ilike.%${search}%,phone.ilike.%${search}%,address.ilike.%${search}%`)
 
     if (matchedCustomers && matchedCustomers.length > 0) {
-      const ids = matchedCustomers.map(c => c.id)
-      query = query.in('customer_id', ids)
+      query = query.in('customer_id', matchedCustomers.map(c => c.id))
     } else {
       return NextResponse.json({ data: [], count: 0, page, pageSize })
     }
