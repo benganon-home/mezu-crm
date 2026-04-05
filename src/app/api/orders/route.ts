@@ -24,7 +24,17 @@ export async function GET(req: NextRequest) {
     .order('created_at', { ascending: false })
     .range(from, to)
 
-  if (status !== 'all') query = query.eq('status', status)
+  if (status !== 'all') {
+    const { data: matchingItems } = await supabase
+      .from('order_items')
+      .select('order_id')
+      .eq('status', status)
+    if (!matchingItems || matchingItems.length === 0) {
+      return NextResponse.json({ data: [], count: 0, page, pageSize })
+    }
+    const orderIds = [...new Set(matchingItems.map(i => i.order_id))]
+    query = query.in('id', orderIds)
+  }
   if (delivery !== 'all') query = query.eq('delivery_type', delivery)
 
   if (search) {
