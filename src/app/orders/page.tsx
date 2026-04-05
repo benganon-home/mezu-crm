@@ -139,7 +139,7 @@ export default function OrdersPage() {
   const stats = {
     total:     count,
     preparing: orders.flatMap(o => o.items || []).filter(i => i.status === 'preparing').length,
-    ready:     orders.flatMap(o => o.items || []).filter(i => i.status === 'ready').length,
+    ready:     orders.filter(o => (o.items || []).length > 0 && (o.items || []).every(i => i.status === 'ready')).length,
     revenue:   orders.reduce((s, o) => s + (o.total_price || 0), 0),
   }
 
