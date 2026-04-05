@@ -104,18 +104,9 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
                 <CopyButton text={customer?.phone || ''} />
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setConfirmDelete(true)}
-                className="text-muted hover:text-red-500 transition-colors p-1 rounded"
-                title="מחיקת הזמנה"
-              >
-                <Trash2 size={16} />
-              </button>
-              <button onClick={onClose} className="text-muted hover:text-navy dark:hover:text-cream p-1 rounded">
-                <X size={18} />
-              </button>
-            </div>
+            <button onClick={onClose} className="text-muted hover:text-navy dark:hover:text-cream p-1 rounded">
+              <X size={18} />
+            </button>
           </div>
         </div>
 
@@ -261,6 +252,17 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
             <div>נוצר: {formatDate(order.created_at)}</div>
             <div>עודכן: {formatDate(order.updated_at)}</div>
             {order.source && <div>מקור: {order.source}</div>}
+          </div>
+
+          {/* Delete */}
+          <div className="pt-2 border-t border-cream-dark dark:border-navy-light">
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="w-full flex items-center justify-center gap-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 py-2.5 rounded-full transition-colors"
+            >
+              <Trash2 size={14} />
+              מחיקת הזמנה
+            </button>
           </div>
         </div>
       </div>
