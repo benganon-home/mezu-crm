@@ -130,13 +130,12 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderIt
                   {/* Color circle + name */}
                   {item.color && (
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <div
-                        className="w-4 h-4 rounded-full flex-shrink-0"
-                        style={{
-                          backgroundColor: colorEntry?.hex ?? '#D1D5DB',
-                          border: colorEntry?.border ? '1px solid #D1D5DB' : undefined,
-                        }}
-                      />
+                      {colorEntry && (
+                        <div
+                          className="w-4 h-4 rounded-full flex-shrink-0 border border-black/10"
+                          style={{ backgroundColor: colorEntry.hex }}
+                        />
+                      )}
                       <span className="text-muted whitespace-nowrap">{item.color}</span>
                     </div>
                   )}

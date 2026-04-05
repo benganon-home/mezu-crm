@@ -399,11 +399,10 @@ function ItemCard({
               onClick={() => onChange('color', item.color === name ? '' : name)}
               title={name}
               className={cn(
-                'w-5 h-5 rounded-full flex-shrink-0 transition-all hover:scale-110',
-                cfg.border ? 'border border-gray-300' : '',
+                'w-6 h-6 rounded-full flex-shrink-0 transition-all hover:scale-110 border border-black/15',
                 item.color === name
-                  ? 'ring-2 ring-gold ring-offset-1 scale-110'
-                  : ''
+                  ? 'ring-2 ring-gold ring-offset-2 scale-110'
+                  : 'hover:border-black/30'
               )}
               style={{ backgroundColor: cfg.hex }}
             />
