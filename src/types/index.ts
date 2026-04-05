@@ -84,14 +84,16 @@ export interface StatusConfig {
   text: string
   border: string
   dot: string
+  activeBg: string
+  activeText: string
 }
 
 export const STATUS_CONFIG: Record<OrderStatus, StatusConfig> = {
-  received:  { label: 'התקבלה',  bg: 'bg-slate-100',  text: 'text-slate-600',  border: 'border-slate-200', dot: 'bg-slate-400'  },
-  preparing: { label: 'בהכנה',   bg: 'bg-amber-50',   text: 'text-amber-700',  border: 'border-amber-200', dot: 'bg-amber-400'  },
-  ready:     { label: 'מוכן',    bg: 'bg-emerald-50', text: 'text-emerald-700',border: 'border-emerald-200',dot: 'bg-emerald-500'},
-  shipped:   { label: 'נשלח',    bg: 'bg-blue-50',    text: 'text-blue-700',   border: 'border-blue-200',  dot: 'bg-blue-500'   },
-  cancelled: { label: 'בוטל',    bg: 'bg-red-50',     text: 'text-red-700',    border: 'border-red-200',   dot: 'bg-red-400'    },
+  received:  { label: 'התקבלה',  bg: 'bg-slate-100',  text: 'text-slate-600',  border: 'border-slate-200', dot: 'bg-slate-400',  activeBg: 'bg-slate-500',   activeText: 'text-white' },
+  preparing: { label: 'בהכנה',   bg: 'bg-amber-50',   text: 'text-amber-700',  border: 'border-amber-200', dot: 'bg-amber-400',  activeBg: 'bg-amber-400',   activeText: 'text-white' },
+  ready:     { label: 'מוכן',    bg: 'bg-emerald-50', text: 'text-emerald-700',border: 'border-emerald-200',dot: 'bg-emerald-500',activeBg: 'bg-emerald-500', activeText: 'text-white' },
+  shipped:   { label: 'נשלח',    bg: 'bg-blue-50',    text: 'text-blue-700',   border: 'border-blue-200',  dot: 'bg-blue-500',   activeBg: 'bg-blue-500',    activeText: 'text-white' },
+  cancelled: { label: 'בוטל',    bg: 'bg-red-50',     text: 'text-red-700',    border: 'border-red-200',   dot: 'bg-red-400',    activeBg: 'bg-red-400',     activeText: 'text-white' },
 }
 
 export const ALL_STATUSES: OrderStatus[] = ['received', 'preparing', 'ready', 'shipped', 'cancelled']

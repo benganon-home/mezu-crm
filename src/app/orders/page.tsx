@@ -192,15 +192,12 @@ export default function OrdersPage() {
               onClick={() => { setStatusFilter(s); setPage(1) }}
               className={cn(
                 'badge cursor-pointer transition-all',
-                STATUS_CONFIG[s].bg,
-                STATUS_CONFIG[s].text,
-                STATUS_CONFIG[s].border,
                 statusFilter === s
-                  ? 'ring-2 ring-offset-1 ring-current font-semibold scale-105'
-                  : 'opacity-60 hover:opacity-100'
+                  ? cn(STATUS_CONFIG[s].activeBg, STATUS_CONFIG[s].activeText, 'border-transparent font-semibold')
+                  : cn(STATUS_CONFIG[s].bg, STATUS_CONFIG[s].text, STATUS_CONFIG[s].border, 'opacity-70 hover:opacity-100')
               )}
             >
-              <span className={cn('badge-dot', STATUS_CONFIG[s].dot)} />
+              <span className={cn('badge-dot', statusFilter === s ? 'bg-white/70' : STATUS_CONFIG[s].dot)} />
               {STATUS_CONFIG[s].label}
             </button>
           ))}
