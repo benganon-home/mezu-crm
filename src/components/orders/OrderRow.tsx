@@ -104,8 +104,8 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderIt
                   onClick={e => onToggleItem(item.id, e)}
                   className={cn(
                     'flex items-center gap-3 text-xs rounded-lg px-2 py-2.5 -mx-2 transition-colors cursor-pointer',
-                    'hover:bg-gold/6',
-                    isSelected && 'bg-gold/8'
+                    'hover:bg-cream-dark dark:hover:bg-navy-light/30',
+                    isSelected && 'bg-gold/10'
                   )}
                 >
                   {/* Per-item checkbox */}
