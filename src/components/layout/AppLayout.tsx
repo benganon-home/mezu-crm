@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   ShoppingBag, Users, Bell, BarChart2, Settings,
-  Menu, X, Moon, Sun, Package, ChevronsLeft
+  Menu, X, Moon, Sun, ChevronsLeft
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -54,14 +54,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Logo */}
         <div className={cn('flex items-center justify-between py-5 border-b border-cream-dark dark:border-navy-light', collapsed ? 'px-3' : 'px-5')}>
-          <div className="flex items-center gap-2.5">
-            <Package size={18} className="text-navy" />
-            {!collapsed && (
-              <span className="text-lg font-semibold tracking-[0.12em] text-navy dark:text-cream">
-                MEZU
-              </span>
-            )}
-          </div>
+          {!collapsed && (
+            <img
+              src="/logo svg.svg"
+              alt="MEZU"
+              className="h-6 w-auto dark:brightness-0 dark:invert"
+              style={{ maxWidth: 90 }}
+            />
+          )}
+          {collapsed && <div className="w-full" />}
           <button
             onClick={() => setMobileOpen(false)}
             className="md:hidden text-muted hover:text-navy dark:hover:text-cream"
@@ -125,7 +126,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Mobile header */}
         <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white dark:bg-navy-deeper border-b border-cream-dark dark:border-navy-light">
-          <span className="font-semibold tracking-wide text-navy dark:text-cream">MEZU</span>
+          <img src="/logo svg.svg" alt="MEZU" className="h-5 w-auto dark:brightness-0 dark:invert" />
           <button onClick={() => setMobileOpen(true)} className="text-navy dark:text-cream">
             <Menu size={20} />
           </button>
