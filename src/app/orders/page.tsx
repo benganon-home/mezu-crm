@@ -22,6 +22,7 @@ export default function OrdersPage() {
   const [showNewOrder, setShowNewOrder] = useState(false)
   const [page, setPage]               = useState(1)
   const [loadError, setLoadError]     = useState<string | null>(null)
+  const [readyFilter, setReadyFilter] = useState(false)
 
   const allItemIds = useMemo(
     () => orders.flatMap(o => (o.items || []).map(i => i.id)),
@@ -37,6 +38,7 @@ export default function OrdersPage() {
       search,
       page:     String(page),
       pageSize: '60',
+      ...(readyFilter && { allReady: '1' }),
     })
     try {
       const res = await fetch(`/api/orders?${params}`)
@@ -61,7 +63,7 @@ export default function OrdersPage() {
     } finally {
       setLoading(false)
     }
-  }, [statusFilter, deliveryFilter, search, page])
+  }, [statusFilter, deliveryFilter, search, page, readyFilter])
 
   useEffect(() => { fetchOrders() }, [fetchOrders])
 
@@ -161,7 +163,10 @@ export default function OrdersPage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="סה״כ הזמנות"    value={stats.total}                         sub="בסינון הנוכחי" />
         <StatCard label="בהכנה"          value={stats.preparing}                      valueClass="text-amber-600" />
-        <StatCard label="מוכן לשליחה"    value={stats.ready}                          valueClass="text-emerald-600" />
+        <StatCard label="מוכן לשליחה"    value={stats.ready}  valueClass="text-emerald-600"
+          active={readyFilter}
+          onClick={() => { setReadyFilter(r => !r); setPage(1) }}
+        />
         <StatCard label="הכנסות (תצוגה)" value={formatPrice(stats.revenue)}           valueClass="text-gold" />
       </div>
 

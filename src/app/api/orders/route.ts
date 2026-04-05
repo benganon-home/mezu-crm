@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
   const status    = searchParams.get('status') || 'all'
   const search    = searchParams.get('search') || ''
   const delivery  = searchParams.get('delivery') || 'all'
+  const allReady  = searchParams.get('allReady') === '1'
   const page      = parseInt(searchParams.get('page') || '1')
   const pageSize  = parseInt(searchParams.get('pageSize') || '50')
   const from      = (page - 1) * pageSize
@@ -35,6 +36,27 @@ export async function GET(req: NextRequest) {
     const orderIds = [...new Set(matchingItems.map(i => i.order_id))]
     query = query.in('id', orderIds)
   }
+  if (allReady) {
+    // Orders where ALL items are ready: fetch orders that have no non-ready items
+    const { data: notReadyItems } = await supabase
+      .from('order_items')
+      .select('order_id')
+      .neq('status', 'ready')
+    const excludedIds = [...new Set((notReadyItems || []).map(i => i.order_id))]
+
+    const { data: anyReadyItems } = await supabase
+      .from('order_items')
+      .select('order_id')
+      .eq('status', 'ready')
+    const readyOrderIds = [...new Set((anyReadyItems || []).map(i => i.order_id))]
+      .filter(id => !excludedIds.includes(id))
+
+    if (readyOrderIds.length === 0) {
+      return NextResponse.json({ data: [], count: 0, page, pageSize })
+    }
+    query = query.in('id', readyOrderIds)
+  }
+
   if (delivery !== 'all') query = query.eq('delivery_type', delivery)
 
   if (search) {
