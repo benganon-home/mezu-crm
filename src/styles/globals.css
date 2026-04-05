@@ -61,7 +61,7 @@ h3 { font-size: 16px; font-weight: 500; }
 /* ─── Utility classes ────────────────────────────────────────── */
 @layer components {
   .surface {
-    @apply bg-white dark:bg-navy-dark border border-cream-dark dark:border-navy-light rounded-lg;
+    @apply bg-white/85 dark:bg-navy-dark/90 border border-cream-dark dark:border-navy-light rounded-lg backdrop-blur-sm;
   }
 
   .surface-hover {

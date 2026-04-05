@@ -122,17 +122,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 overflow-auto bg-cream dark:bg-navy-deeper min-w-0">
+      <main className="flex-1 overflow-auto min-w-0 transition-all duration-250">
 
         {/* Mobile header */}
-        <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white dark:bg-navy-deeper border-b border-cream-dark dark:border-navy-light">
+        <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white/80 dark:bg-navy-deeper border-b border-cream-dark dark:border-navy-light backdrop-blur-sm">
           <img src="/logo svg.svg" alt="MEZU" className="h-5 w-auto dark:brightness-0 dark:invert" />
           <button onClick={() => setMobileOpen(true)} className="text-navy dark:text-cream">
             <Menu size={20} />
           </button>
         </div>
 
-        <div className="p-5 md:p-7 max-w-[1400px]">
+        <div className="p-5 md:p-7 w-full">
           {children}
         </div>
       </main>
