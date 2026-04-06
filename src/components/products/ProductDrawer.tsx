@@ -121,7 +121,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
             </div>
             <h3 className="text-lg font-semibold mb-1">מחיקת מוצר</h3>
             <p className="text-sm text-muted mb-5">
-              למחוק את <span className="font-medium text-navy dark:text-cream">"{name}"</span>?<br />
+              למחוק את <span className="font-medium text-navy dark:text-cream">&quot;{name}&quot;</span>?<br />
               פעולה זו אינה ניתנת לביטול.
             </p>
             <div className="flex gap-3">
