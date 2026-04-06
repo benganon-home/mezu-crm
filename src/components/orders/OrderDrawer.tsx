@@ -124,7 +124,11 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
 
   const handleDelete = async () => {
     setDeleting(true)
-    await fetch(`/api/orders/${order.id}`, { method: 'DELETE' })
+    const res = await fetch(`/api/orders/${order.id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      setDeleting(false)
+      return
+    }
     onDelete?.(order.id)
     close()
   }
