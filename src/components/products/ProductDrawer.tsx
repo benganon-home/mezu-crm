@@ -30,6 +30,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
   const [newSizeLabel, setNewSizeLabel] = useState('')
   const [newSizePrice, setNewSizePrice] = useState('')
   const [saving, setSaving]           = useState(false)
+  const [saveError, setSaveError]     = useState<string | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [confirmDelete, setConfirmDelete]   = useState(false)
   const [deleting, setDeleting]             = useState(false)
@@ -102,7 +103,8 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
     })
     const saved = await res.json()
     setSaving(false)
-    if (!res.ok) { console.error('Save failed', saved.error); return }
+    if (!res.ok) { setSaveError(saved.error || 'שגיאה בשמירה'); return }
+    setSaveError(null)
     onSave(saved)
     close()
   }
@@ -320,7 +322,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
               <button
                 onClick={addSize}
                 disabled={!newSizeLabel.trim()}
-                className="w-7 h-7 flex items-center justify-center btn-primary rounded-lg disabled:opacity-40"
+                className="w-7 h-7 flex items-center justify-center bg-gold text-white rounded-lg disabled:opacity-40 hover:opacity-90 transition-opacity shrink-0"
               >
                 <Plus size={13} />
               </button>
@@ -341,11 +343,18 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
               )}
             >
               <div className={cn(
-                'w-4.5 h-4.5 rounded-full bg-white shadow absolute top-0.5 transition-all',
-                isActive ? 'right-0.5' : 'right-5.5'
+                'w-5 h-5 rounded-full bg-white shadow absolute top-0.5 transition-all duration-200',
+                isActive ? 'right-0.5' : 'left-0.5'
               )} />
             </button>
           </div>
+
+          {/* Save error */}
+          {saveError && (
+            <div className="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2.5 text-sm text-red-700 dark:text-red-300">
+              {saveError}
+            </div>
+          )}
 
           {/* Save */}
           <button
