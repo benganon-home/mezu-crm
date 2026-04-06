@@ -209,20 +209,31 @@ export default function OrdersPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex flex-wrap gap-3 items-center">
-        {/* Search — no debounce needed, filtering is instant */}
-        <div className="relative flex-1 min-w-[200px]">
-          <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
-          <input
-            className="input pr-9"
-            placeholder="חיפוש לפי שם, טלפון, כתובת..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+      <div className="flex flex-col gap-2">
+        {/* Row 1: search + delivery dropdown */}
+        <div className="flex gap-2 items-center">
+          <div className="relative flex-1">
+            <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
+            <input
+              className="input pr-9 w-full"
+              placeholder="חיפוש לפי שם, טלפון, כתובת..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <select
+            value={deliveryFilter}
+            onChange={e => setDeliveryFilter(e.target.value as typeof deliveryFilter)}
+            className="input text-sm cursor-pointer shrink-0"
+          >
+            <option value="all">סוג משלוח: הכל</option>
+            <option value="delivery">משלוח</option>
+            <option value="pickup">איסוף עצמי</option>
+          </select>
         </div>
 
-        {/* Status chips — multi-select */}
-        <div className="flex gap-1.5 flex-wrap">
+        {/* Row 2: status chips */}
+        <div className="flex gap-1.5 flex-wrap items-center">
           <button
             onClick={() => setSelectedStatuses(ALL_STATUSES)}
             className={cn('chip-btn', allSelected && 'chip-btn-active')}
@@ -248,17 +259,6 @@ export default function OrdersPage() {
             )
           })}
         </div>
-
-        {/* Delivery filter */}
-        <select
-          value={deliveryFilter}
-          onChange={e => setDeliveryFilter(e.target.value as typeof deliveryFilter)}
-          className="input text-sm py-1.5 px-3 cursor-pointer min-w-[140px]"
-        >
-          <option value="all">סוג משלוח: הכל</option>
-          <option value="delivery">משלוח</option>
-          <option value="pickup">איסוף עצמי</option>
-        </select>
       </div>
 
       {/* Bulk action bar */}
