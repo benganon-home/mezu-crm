@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { X, Plus, Trash2, Upload, ImageIcon, AlertTriangle, Check } from 'lucide-react'
-import { Product } from '@/types'
+import { X, Plus, Trash2, Upload, AlertTriangle, Check } from 'lucide-react'
+import { Product, ProductSize } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
@@ -26,8 +26,9 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
   const [category, setCategory]       = useState(product?.category || '')
   const [isActive, setIsActive]       = useState(product?.is_active ?? true)
   const [images, setImages]           = useState<string[]>(product?.images || [])
-  const [sizes, setSizes]             = useState<string[]>(product?.sizes || [])
-  const [newSize, setNewSize]         = useState('')
+  const [sizes, setSizes]             = useState<ProductSize[]>(product?.sizes || [])
+  const [newSizeLabel, setNewSizeLabel] = useState('')
+  const [newSizePrice, setNewSizePrice] = useState('')
   const [saving, setSaving]           = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
   const [confirmDelete, setConfirmDelete]   = useState(false)
@@ -35,12 +36,21 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const addSize = () => {
-    const s = newSize.trim()
-    if (s && !sizes.includes(s)) setSizes(prev => [...prev, s])
-    setNewSize('')
+    const label = newSizeLabel.trim()
+    if (!label) return
+    const price = parseFloat(newSizePrice) || 0
+    setSizes(prev => [...prev, { label, price }])
+    setNewSizeLabel('')
+    setNewSizePrice('')
   }
 
-  const removeSize = (s: string) => setSizes(prev => prev.filter(x => x !== s))
+  const removeSize = (i: number) => setSizes(prev => prev.filter((_, idx) => idx !== i))
+
+  const updateSizePrice = (i: number, price: string) =>
+    setSizes(prev => prev.map((s, idx) => idx === i ? { ...s, price: parseFloat(price) || 0 } : s))
+
+  const updateSizeLabel = (i: number, label: string) =>
+    setSizes(prev => prev.map((s, idx) => idx === i ? { ...s, label } : s))
 
   const uploadImage = async (file: File) => {
     setUploadingImage(true)
@@ -72,10 +82,11 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
   const handleSave = async () => {
     if (!name.trim()) return
     setSaving(true)
+    const minSizePrice = sizes.length > 0 ? Math.min(...sizes.map(s => s.price)) : null
     const payload = {
       name: name.trim(),
       description: description.trim() || null,
-      base_price: parseFloat(basePrice) || 0,
+      base_price: minSizePrice ?? (parseFloat(basePrice) || 0),
       category: category || null,
       is_active: isActive,
       images,
@@ -222,18 +233,20 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
-            <div>
-              <div className="label mb-1.5">מחיר בסיס (₪)</div>
-              <input
-                className="input w-full ltr"
-                placeholder="0"
-                value={basePrice}
-                onChange={e => setBasePrice(e.target.value)}
-                type="number"
-                min="0"
-                dir="ltr"
-              />
-            </div>
+            {sizes.length === 0 && (
+              <div>
+                <div className="label mb-1.5">מחיר בסיס (₪)</div>
+                <input
+                  className="input w-full ltr"
+                  placeholder="0"
+                  value={basePrice}
+                  onChange={e => setBasePrice(e.target.value)}
+                  type="number"
+                  min="0"
+                  dir="ltr"
+                />
+              </div>
+            )}
           </div>
 
           {/* Description */}
@@ -249,26 +262,68 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
 
           {/* Sizes */}
           <div>
-            <div className="label mb-2">מידות</div>
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {sizes.map(s => (
-                <span key={s} className="flex items-center gap-1 px-2.5 py-1 bg-cream dark:bg-navy-deeper border border-cream-dark dark:border-navy-light rounded-full text-xs">
-                  {s}
-                  <button onClick={() => removeSize(s)} className="text-muted hover:text-red-500 transition-colors">
-                    <X size={10} />
-                  </button>
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-2">
+            <div className="label mb-2">מידות ומחירים</div>
+
+            {sizes.length > 0 && (
+              <div className="flex flex-col gap-1.5 mb-3">
+                {/* Header */}
+                <div className="grid grid-cols-[1fr_100px_28px] gap-2 px-1">
+                  <span className="text-[10px] text-muted uppercase tracking-wide">מידה</span>
+                  <span className="text-[10px] text-muted uppercase tracking-wide ltr text-right">מחיר (₪)</span>
+                  <span />
+                </div>
+                {sizes.map((s, i) => (
+                  <div key={i} className="grid grid-cols-[1fr_100px_28px] gap-2 items-center">
+                    <input
+                      className="input text-sm"
+                      value={s.label}
+                      onChange={e => updateSizeLabel(i, e.target.value)}
+                      placeholder="מידה"
+                    />
+                    <input
+                      className="input text-sm ltr text-right"
+                      type="number"
+                      min="0"
+                      value={s.price || ''}
+                      onChange={e => updateSizePrice(i, e.target.value)}
+                      placeholder="0"
+                      dir="ltr"
+                    />
+                    <button
+                      onClick={() => removeSize(i)}
+                      className="w-7 h-7 flex items-center justify-center text-muted hover:text-red-500 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Add new size row */}
+            <div className="grid grid-cols-[1fr_100px_28px] gap-2 items-center">
               <input
-                className="input flex-1 text-sm"
-                placeholder="למשל: 10 ס״מ"
-                value={newSize}
-                onChange={e => setNewSize(e.target.value)}
+                className="input text-sm"
+                placeholder="מידה חדשה"
+                value={newSizeLabel}
+                onChange={e => setNewSizeLabel(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && addSize()}
               />
-              <button onClick={addSize} className="btn-secondary text-xs px-3">
+              <input
+                className="input text-sm ltr text-right"
+                type="number"
+                min="0"
+                placeholder="מחיר"
+                value={newSizePrice}
+                onChange={e => setNewSizePrice(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addSize()}
+                dir="ltr"
+              />
+              <button
+                onClick={addSize}
+                disabled={!newSizeLabel.trim()}
+                className="w-7 h-7 flex items-center justify-center btn-primary rounded-lg disabled:opacity-40"
+              >
                 <Plus size={13} />
               </button>
             </div>

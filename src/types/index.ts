@@ -26,12 +26,17 @@ export interface Customer {
   last_order_at?: string | null
 }
 
+export interface ProductSize {
+  label: string
+  price: number
+}
+
 export interface Product {
   id: string
   name: string
   description?: string | null
   base_price: number
-  sizes: string[]
+  sizes: ProductSize[]
   colors: string[]
   images: string[]
   category?: string | null

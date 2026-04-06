@@ -115,7 +115,7 @@ create table if not exists products (
   name        text not null,
   description text,
   base_price  numeric(10,2) not null default 0,
-  sizes       text[] default '{}',
+  sizes       jsonb default '[]',   -- array of { label: string, price: number }
   colors      text[] default '{}',
   images      text[] default '{}',
   category    text,

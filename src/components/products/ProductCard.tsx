@@ -61,19 +61,21 @@ export function ProductCard({ product, onClick }: Props) {
           <div className="text-xs text-muted mt-0.5 line-clamp-2 leading-relaxed">{product.description}</div>
         )}
 
-        <div className="flex items-center justify-between mt-2">
-          <span className="text-sm font-semibold text-gold ltr">{formatPrice(product.base_price)}</span>
-          {product.sizes?.length > 0 && (
-            <div className="flex gap-1 flex-wrap justify-end">
-              {product.sizes.slice(0, 3).map(s => (
-                <span key={s} className="text-[10px] px-1.5 py-0.5 bg-cream dark:bg-navy-deeper rounded-full text-muted border border-cream-dark dark:border-navy-light">
-                  {s}
-                </span>
+        <div className="mt-2">
+          {product.sizes?.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              {product.sizes.slice(0, 3).map((s, i) => (
+                <div key={i} className="flex items-center justify-between text-xs">
+                  <span className="text-muted">{s.label}</span>
+                  <span className="font-semibold text-gold ltr">{formatPrice(s.price)}</span>
+                </div>
               ))}
               {product.sizes.length > 3 && (
-                <span className="text-[10px] px-1.5 py-0.5 text-muted">+{product.sizes.length - 3}</span>
+                <span className="text-[10px] text-muted">+{product.sizes.length - 3} מידות נוספות</span>
               )}
             </div>
+          ) : (
+            <span className="text-sm font-semibold text-gold ltr">{formatPrice(product.base_price)}</span>
           )}
         </div>
       </div>
