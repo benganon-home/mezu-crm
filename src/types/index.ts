@@ -85,6 +85,21 @@ export interface Order {
   items?: OrderItem[]
 }
 
+export interface SalesRuleCondition {
+  category: string
+  min_qty: number
+}
+
+export interface SalesRule {
+  id: string
+  name: string
+  is_active: boolean
+  conditions: SalesRuleCondition[]
+  discount_type: 'percent' | 'fixed_total'
+  discount_value: number
+  created_at: string
+}
+
 export interface Reminder {
   id: string
   customer_id?: string | null

@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
-  const { customer: customerData, order: orderData, items } = await req.json()
+  const { customer: customerData, order: orderData, items, total_price_override } = await req.json()
 
   // Normalize phone to 0XX format
   const cleanPhone = customerData.phone.replace(/\D/g, '')
@@ -34,8 +34,9 @@ export async function POST(req: NextRequest) {
     customerId = newCustomer.id
   }
 
-  // 2. Total price from items
-  const totalPrice = (items || []).reduce((s: number, i: any) => s + (Number(i.price) || 0), 0)
+  // 2. Total price from items (or override from discount rule)
+  const itemsTotal = (items || []).reduce((s: number, i: any) => s + (Number(i.price) || 0), 0)
+  const totalPrice = total_price_override != null ? Number(total_price_override) : itemsTotal
 
   // 3. Create order
   const { data: order, error: orderErr } = await supabase

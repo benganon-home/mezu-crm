@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { LogOut, MessageCircle, Save } from 'lucide-react'
+import { SalesRulesSection } from '@/components/settings/SalesRulesSection'
 
 const DEFAULT_TEMPLATES = {
   ready:   'שלום {שם}, ההזמנה שלך ממיזו מוכנה! 🎉 נשמח לתאם משלוח / איסוף 🙏',
@@ -62,6 +63,9 @@ export default function SettingsPage() {
           {saved ? 'נשמר ✓' : 'שמור תבניות'}
         </button>
       </div>
+
+      {/* Sales Rules */}
+      <SalesRulesSection />
 
       {/* Account */}
       <div className="surface p-5">

@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { X, Plus, Trash2, Search, CheckCircle2, UserPlus, ChevronRight } from 'lucide-react'
-import { Customer, Product, ProductSize, ITEM_COLOR_MAP, FONTS } from '@/types'
+import { Customer, Product, ProductSize, SalesRule, ITEM_COLOR_MAP, FONTS } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
 import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
 
@@ -47,9 +47,11 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
   // Products catalog
   const [catalog, setCatalog]           = useState<Product[]>([])
   const [pickingSize, setPickingSize]   = useState<Product | null>(null)
+  const [salesRules, setSalesRules]     = useState<SalesRule[]>([])
 
   useEffect(() => {
     fetch('/api/products').then(r => r.json()).then(d => setCatalog(Array.isArray(d) ? d.filter(p => p.is_active) : []))
+    fetch('/api/sales-rules').then(r => r.json()).then(d => setSalesRules(Array.isArray(d) ? d.filter((r: SalesRule) => r.is_active) : []))
   }, [])
 
   // Order state
@@ -60,6 +62,22 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
   const [error, setError]               = useState<string | null>(null)
 
   const autoTotal = items.reduce((s, i) => s + (parseFloat(i.price) || 0), 0)
+
+  const matchingRule = useMemo(() => {
+    if (items.length === 0) return null
+    return salesRules.find(rule =>
+      rule.conditions.every(cond => {
+        const count = items.filter(i => i.model === cond.category).length
+        return count >= cond.min_qty
+      })
+    ) ?? null
+  }, [items, salesRules])
+
+  const finalTotal = useMemo(() => {
+    if (!matchingRule) return autoTotal
+    if (matchingRule.discount_type === 'fixed_total') return matchingRule.discount_value
+    return autoTotal * (1 - matchingRule.discount_value / 100)
+  }, [matchingRule, autoTotal])
 
   // Phone lookup with debounce
   const searchCustomer = useCallback(async (raw: string) => {
@@ -148,6 +166,7 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
           customer: { phone, name: customerName, address: address || null },
           order:    { delivery_type: deliveryType, delivery_address: address, notes },
           items:    items.map(({ _id, ...rest }) => ({ ...rest, price: parseFloat(rest.price) || 0 })),
+          total_price_override: matchingRule ? finalTotal : null,
         }),
       })
       const data = await res.json()
@@ -356,9 +375,28 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
 
           {/* ── Total summary ── */}
           {items.length > 0 && (
-            <div className="flex items-center justify-between bg-navy/5 dark:bg-cream/5 rounded-lg px-4 py-3 border border-navy/10 dark:border-cream/10">
-              <span className="text-sm text-muted">סה״כ לתשלום</span>
-              <span className="text-2xl font-semibold text-gold ltr">{formatPrice(autoTotal)}</span>
+            <div className="flex flex-col gap-2">
+              {matchingRule && (
+                <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-4 py-2.5">
+                  <div>
+                    <div className="text-xs font-medium text-emerald-700 dark:text-emerald-400">מבצע פעיל: {matchingRule.name}</div>
+                    <div className="text-xs text-emerald-600 mt-0.5">
+                      {matchingRule.discount_type === 'percent'
+                        ? `הנחה של ${matchingRule.discount_value}% · חיסכון של ${formatPrice(autoTotal - finalTotal)}`
+                        : `מחיר חבילה קבוע`
+                      }
+                    </div>
+                  </div>
+                  <div className="text-right ltr">
+                    <div className="text-xs text-muted line-through">{formatPrice(autoTotal)}</div>
+                    <div className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">{formatPrice(finalTotal)}</div>
+                  </div>
+                </div>
+              )}
+              <div className="flex items-center justify-between bg-navy/5 dark:bg-cream/5 rounded-lg px-4 py-3 border border-navy/10 dark:border-cream/10">
+                <span className="text-sm text-muted">סה״כ לתשלום</span>
+                <span className="text-2xl font-semibold text-gold ltr">{formatPrice(finalTotal)}</span>
+              </div>
             </div>
           )}
 
