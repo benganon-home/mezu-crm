@@ -304,17 +304,19 @@ export default function OrdersPage() {
           <div className="text-center py-12 text-muted text-sm">לא נמצאו הזמנות</div>
         )}
 
-        {paginatedOrders.map(order => (
-          <OrderRow
-            key={order.id}
-            order={order}
-            selectedItemIds={selectedItemIds}
-            onToggleItem={toggleItemSelect}
-            onItemStatusChange={onItemStatusChange}
-            onDeleteItem={onDeleteItem}
-            onClick={() => setActiveOrder(order)}
-          />
-        ))}
+        <div className="flex flex-col gap-2 p-2">
+          {paginatedOrders.map(order => (
+            <OrderRow
+              key={order.id}
+              order={order}
+              selectedItemIds={selectedItemIds}
+              onToggleItem={toggleItemSelect}
+              onItemStatusChange={onItemStatusChange}
+              onDeleteItem={onDeleteItem}
+              onClick={() => setActiveOrder(order)}
+            />
+          ))}
+        </div>
 
         {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-2.5 border-t border-cream-dark dark:border-navy-light text-xs text-muted">

@@ -35,7 +35,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
   }
 
   return (
-    <div className="flex min-h-[80px] border-b border-cream-dark dark:border-navy-light/60 last:border-b-0">
+    <div className="flex min-h-[80px] rounded-lg border border-cream-dark dark:border-navy-light/60 overflow-hidden">
 
       {/* ── Right panel: order info ───────────────────────── */}
       <div
@@ -109,7 +109,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
               key={item.id}
               onClick={e => onToggleItem(item.id, e)}
               className={cn(
-                'flex items-center gap-0 text-xs border-b border-cream-dark/60 dark:border-navy-light/30 last:border-b-0',
+                'flex items-center gap-0 text-xs border-b border-cream-dark/50 dark:border-navy-light/20 last:border-b-0',
                 'hover:bg-gold/5 dark:hover:bg-white/3 transition-colors cursor-pointer',
                 isSelected && 'bg-gold/10 dark:bg-gold/10',
                 idx === 0 && 'rounded-tr-lg'
