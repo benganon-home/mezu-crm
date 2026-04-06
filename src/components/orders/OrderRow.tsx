@@ -3,7 +3,7 @@ import { Order, OrderItem, OrderStatus, ITEM_COLOR_MAP } from '@/types'
 import { formatDateShort, formatPrice, cn } from '@/lib/utils'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { ItemStatusDropdown } from '@/components/orders/ItemStatusDropdown'
-import { Truck, Home, Pin, StickyNote, Trash2, ImageIcon } from 'lucide-react'
+import { Truck, Home, Pin, StickyNote, Trash2, ImageIcon, ZoomIn, X } from 'lucide-react'
 
 interface Props {
   order: Order
@@ -24,7 +24,8 @@ function getInitials(name: string): string {
 export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusChange, onDeleteItem, onClick }: Props) {
   const customer = order.customer
   const items    = order.items || []
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId]   = useState<string | null>(null)
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null)
 
   const handleDeleteItem = (item: OrderItem, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -34,6 +35,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
   }
 
   return (
+    <>
     <div className="flex min-h-[80px] rounded-lg border border-cream-dark dark:border-navy-light/60 overflow-hidden bg-white dark:bg-navy-dark">
 
       {/* ── Right panel: order info ───────────────────────── */}
@@ -125,12 +127,24 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
               </div>
 
               {/* Image */}
-              <div className="w-[52px] shrink-0 px-2 py-2.5">
-                <div className="w-9 h-9 rounded-lg bg-cream-dark/60 dark:bg-navy-light/30 flex items-center justify-center overflow-hidden">
-                  {item.product?.images?.[0]
-                    ? <img src={item.product.images[0]} alt={item.item_name} className="w-full h-full object-cover" />
-                    : <ImageIcon size={15} className="text-muted/30" strokeWidth={1.5} />
-                  }
+              <div className="w-[52px] shrink-0 px-2 py-2.5" onClick={e => e.stopPropagation()}>
+                <div
+                  className={cn(
+                    'relative w-9 h-9 rounded-lg bg-cream-dark/60 dark:bg-navy-light/30 flex items-center justify-center overflow-hidden',
+                    item.product?.images?.[0] && 'cursor-zoom-in group/img'
+                  )}
+                  onClick={() => item.product?.images?.[0] && setLightboxSrc(item.product.images[0])}
+                >
+                  {item.product?.images?.[0] ? (
+                    <>
+                      <img src={item.product.images[0]} alt={item.item_name} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
+                        <ZoomIn size={14} className="text-white" />
+                      </div>
+                    </>
+                  ) : (
+                    <ImageIcon size={15} className="text-muted/30" strokeWidth={1.5} />
+                  )}
                 </div>
               </div>
 
@@ -157,8 +171,14 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
               </div>
 
               {/* טקסט */}
-              <div className="w-[120px] shrink-0 px-2 py-3.5 text-gold font-medium truncate">
-                {item.sign_text || <span className="text-muted/40 font-normal">—</span>}
+              <div className="w-[120px] shrink-0 px-2 py-3.5 flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                {item.sign_text
+                  ? <>
+                      <span className="text-gold font-medium truncate">{item.sign_text}</span>
+                      <CopyButton text={item.sign_text} />
+                    </>
+                  : <span className="text-muted/40 font-normal">—</span>
+                }
               </div>
 
               {/* פונט */}
@@ -195,5 +215,28 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
         })}
       </div>
     </div>
+
+    {/* Lightbox */}
+
+    {lightboxSrc && (
+      <div
+        className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center"
+        onClick={() => setLightboxSrc(null)}
+      >
+        <button
+          className="absolute top-4 left-4 text-white/70 hover:text-white bg-black/40 rounded-full p-2 transition-colors"
+          onClick={() => setLightboxSrc(null)}
+        >
+          <X size={20} />
+        </button>
+        <img
+          src={lightboxSrc}
+          alt=""
+          className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl"
+          onClick={e => e.stopPropagation()}
+        />
+      </div>
+    )}
+    </>
   )
 }
