@@ -313,7 +313,7 @@ export default function OrdersPage() {
                 <th className="w-28 text-left">תאריך</th>
                 <th>לקוח</th>
                 <th>כתובת</th>
-                <th>סטטוס</th>
+                <th className="w-10"></th>
                 <th className="w-10">משלוח</th>
                 <th className="text-left w-24">מחיר</th>
               </tr>
