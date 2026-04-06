@@ -136,10 +136,11 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
 
               {/* פריטים */}
               <div className="flex-1 min-w-0 px-2 py-3.5">
-                <div className="font-medium text-navy dark:text-cream/90 truncate">{item.item_name}</div>
-                {item.model && (
-                  <div className="text-[11px] text-muted truncate mt-0.5">{item.model}{item.size ? ` · ${item.size}` : ''}</div>
-                )}
+                <div className="font-medium text-navy dark:text-cream/90 truncate">
+                  {item.item_name}
+                  {item.size && <span className="font-normal text-muted"> - {item.size} ס״מ</span>}
+                  {item.model && <span className="font-normal text-muted"> | {item.model}</span>}
+                </div>
               </div>
 
               {/* צבע */}
