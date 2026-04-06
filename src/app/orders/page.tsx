@@ -101,12 +101,7 @@ export default function OrdersPage() {
     [filteredOrders, page]
   )
 
-  const allItemIds = useMemo(
-    () => paginatedOrders.flatMap(o => (o.items || []).map(i => i.id)),
-    [paginatedOrders]
-  )
-
-  // ── Stats from filtered set ───────────────────────────────────
+// ── Stats from filtered set ───────────────────────────────────
   const stats = useMemo(() => ({
     total:     filteredOrders.length,
     preparing: filteredOrders.flatMap(o => o.items || []).filter(i => i.status === 'preparing').length,
@@ -126,24 +121,12 @@ export default function OrdersPage() {
     })
   }
 
-  const toggleOrderItems = (order: Order, e: React.MouseEvent) => {
-    e.stopPropagation()
-    const itemIds = (order.items || []).map(i => i.id)
-    setSelectedItemIds(prev => {
-      const next = new Set(prev)
-      const allSel = itemIds.every(id => next.has(id))
-      if (allSel) { itemIds.forEach(id => next.delete(id)) }
-      else        { itemIds.forEach(id => next.add(id)) }
-      return next
-    })
-  }
-
-  const toggleSelectAll = () => {
-    if (selectedItemIds.size === allItemIds.length && allItemIds.length > 0) {
-      setSelectedItemIds(new Set())
-    } else {
-      setSelectedItemIds(new Set(allItemIds))
-    }
+  const onDeleteItem = (itemId: string, orderId: string) => {
+    setAllOrders(prev => prev
+      .map(o => o.id !== orderId ? o : { ...o, items: (o.items || []).filter(i => i.id !== itemId) })
+      .filter(o => (o.items || []).length > 0)
+    )
+    setSelectedItemIds(prev => { const next = new Set(prev); next.delete(itemId); return next })
   }
 
   // ── Mutations ─────────────────────────────────────────────────
@@ -296,49 +279,41 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Orders */}
       <div className="surface overflow-hidden">
-        <div className="overflow-x-clip">
-          <table className="crm-table">
-            <thead>
-              <tr>
-                <th className="w-10">
-                  <input
-                    type="checkbox"
-                    checked={selectedItemIds.size === allItemIds.length && allItemIds.length > 0}
-                    onChange={toggleSelectAll}
-                    className="accent-gold"
-                  />
-                </th>
-                <th className="w-28 text-left">תאריך</th>
-                <th>לקוח</th>
-                <th>כתובת</th>
-                <th className="w-10"></th>
-                <th className="w-10">משלוח</th>
-                <th className="text-left w-24">מחיר</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && (
-                <tr><td colSpan={7} className="text-center py-12 text-muted">טוען...</td></tr>
-              )}
-              {!loading && paginatedOrders.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-12 text-muted">לא נמצאו הזמנות</td></tr>
-              )}
-              {paginatedOrders.map(order => (
-                <OrderRow
-                  key={order.id}
-                  order={order}
-                  selectedItemIds={selectedItemIds}
-                  onToggleItem={toggleItemSelect}
-                  onToggleOrderItems={toggleOrderItems}
-                  onItemStatusChange={onItemStatusChange}
-                  onClick={() => setActiveOrder(order)}
-                />
-              ))}
-            </tbody>
-          </table>
+
+        {/* Sticky column headers */}
+        <div className="flex sticky top-0 z-10 text-[11px] font-medium text-muted border-b border-cream-dark dark:border-navy-light bg-cream dark:bg-navy-dark">
+          <div className="w-[260px] shrink-0 px-4 py-2.5 border-l border-cream-dark dark:border-navy-light">
+            פרטי ההזמנה
+          </div>
+          <div className="flex-1 flex">
+            <div className="flex-1 px-4 py-2.5">פריטים</div>
+            <div className="w-[110px] shrink-0 px-2 py-2.5">צבע</div>
+            <div className="w-[90px] shrink-0 px-2 py-2.5">טקסט</div>
+            <div className="w-[80px] shrink-0 px-2 py-2.5">פונט</div>
+            <div className="w-[70px] shrink-0 px-2 py-2.5">מחיר</div>
+            <div className="w-[110px] shrink-0 px-2 py-2.5">סטטוס</div>
+            <div className="w-[40px] shrink-0" />
+          </div>
         </div>
+
+        {loading && <div className="text-center py-12 text-muted text-sm">טוען...</div>}
+        {!loading && paginatedOrders.length === 0 && (
+          <div className="text-center py-12 text-muted text-sm">לא נמצאו הזמנות</div>
+        )}
+
+        {paginatedOrders.map(order => (
+          <OrderRow
+            key={order.id}
+            order={order}
+            selectedItemIds={selectedItemIds}
+            onToggleItem={toggleItemSelect}
+            onItemStatusChange={onItemStatusChange}
+            onDeleteItem={onDeleteItem}
+            onClick={() => setActiveOrder(order)}
+          />
+        ))}
 
         {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-2.5 border-t border-cream-dark dark:border-navy-light text-xs text-muted">
