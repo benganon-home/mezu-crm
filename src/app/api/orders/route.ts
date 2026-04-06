@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
     .select(`
       *,
       customer:customers(id, name, phone, email, address),
-      items:order_items(*)
+      items:order_items(*, product:products(images))
     `, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to)

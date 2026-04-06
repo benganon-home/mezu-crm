@@ -48,6 +48,7 @@ export interface Product {
 export interface OrderItem {
   id: string
   order_id: string
+  product_id?: string | null
   item_name: string
   model?: string | null
   color?: string | null
@@ -58,6 +59,8 @@ export interface OrderItem {
   price: number
   status: OrderStatus
   created_at: string
+  // joined
+  product?: { images?: string[] } | null
 }
 
 export interface Order {

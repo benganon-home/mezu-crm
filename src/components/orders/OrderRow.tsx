@@ -124,16 +124,22 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                 />
               </div>
 
-              {/* Image placeholder */}
+              {/* Image */}
               <div className="w-[52px] shrink-0 px-2 py-2.5">
-                <div className="w-9 h-9 rounded-lg bg-cream-dark/60 dark:bg-navy-light/30 flex items-center justify-center">
-                  <ImageIcon size={15} className="text-muted/30" strokeWidth={1.5} />
+                <div className="w-9 h-9 rounded-lg bg-cream-dark/60 dark:bg-navy-light/30 flex items-center justify-center overflow-hidden">
+                  {item.product?.images?.[0]
+                    ? <img src={item.product.images[0]} alt={item.item_name} className="w-full h-full object-cover" />
+                    : <ImageIcon size={15} className="text-muted/30" strokeWidth={1.5} />
+                  }
                 </div>
               </div>
 
               {/* פריטים */}
-              <div className="flex-1 min-w-0 px-2 py-3.5 font-medium text-navy dark:text-cream/90 truncate">
-                {item.item_name}
+              <div className="flex-1 min-w-0 px-2 py-3.5">
+                <div className="font-medium text-navy dark:text-cream/90 truncate">{item.item_name}</div>
+                {item.model && (
+                  <div className="text-[11px] text-muted truncate mt-0.5">{item.model}{item.size ? ` · ${item.size}` : ''}</div>
+                )}
               </div>
 
               {/* צבע */}

@@ -10,6 +10,7 @@ import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
 
 interface NewItem {
   _id: string
+  product_id?: string
   item_name: string
   model: string
   color: string
@@ -103,12 +104,15 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
 
   // Items
   const addItemFromProduct = (product: Product, size?: ProductSize) => {
-    const item = makeItem(
-      product.name,
-      product.category || '',
-      size?.label || '',
-      size ? size.price.toString() : product.base_price.toString(),
-    )
+    const item = {
+      ...makeItem(
+        product.name,
+        product.category || '',
+        size?.label || '',
+        size ? size.price.toString() : product.base_price.toString(),
+      ),
+      product_id: product.id,
+    }
     setItems(p => [...p, item])
     setPickingSize(null)
   }

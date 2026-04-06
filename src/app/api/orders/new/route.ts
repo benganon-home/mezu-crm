@@ -60,15 +60,16 @@ export async function POST(req: NextRequest) {
       .from('order_items')
       .insert(
         items.map((i: any) => ({
-          order_id:  order.id,
-          item_name: i.item_name || 'פריט',
-          model:     i.model    || null,
-          color:     i.color    || null,
-          sign_text: i.sign_text || null,
-          font:      i.font     || null,
-          size:      i.size     || null,
-          price:     Number(i.price) || 0,
-          status:    'received',
+          order_id:   order.id,
+          product_id: i.product_id || null,
+          item_name:  i.item_name || 'פריט',
+          model:      i.model    || null,
+          color:      i.color    || null,
+          sign_text:  i.sign_text || null,
+          font:       i.font     || null,
+          size:       i.size     || null,
+          price:      Number(i.price) || 0,
+          status:     'received',
         }))
       )
     if (itemsErr) return NextResponse.json({ error: itemsErr.message }, { status: 400 })
@@ -77,7 +78,7 @@ export async function POST(req: NextRequest) {
   // 5. Return full order
   const { data: fullOrder, error: fetchErr } = await supabase
     .from('orders')
-    .select('*, customer:customers(*), items:order_items(*)')
+    .select('*, customer:customers(*), items:order_items(*, product:products(images))')
     .eq('id', order.id)
     .single()
 
