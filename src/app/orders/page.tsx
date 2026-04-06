@@ -283,19 +283,21 @@ export default function OrdersPage() {
       <div className="surface overflow-hidden">
 
         {/* Sticky column headers */}
-        <div className="flex sticky top-0 z-10 text-[11px] font-medium text-muted border-b border-cream-dark dark:border-navy-light bg-cream dark:bg-navy-dark">
-          <div className="w-[260px] shrink-0 px-4 py-2.5 border-l border-cream-dark dark:border-navy-light">
-            פרטי ההזמנה
-          </div>
-          <div className="flex-1 flex">
-            <div className="w-[52px] shrink-0" />
-            <div className="flex-1 px-2 py-2.5">פריטים</div>
-            <div className="w-[110px] shrink-0 px-2 py-2.5">צבע</div>
-            <div className="w-[120px] shrink-0 px-2 py-2.5">טקסט</div>
-            <div className="w-[110px] shrink-0 px-2 py-2.5">פונט</div>
-            <div className="w-[70px] shrink-0 px-2 py-2.5 ltr">מחיר</div>
-            <div className="w-[110px] shrink-0 px-2 py-2.5">סטטוס</div>
-            <div className="w-[40px] shrink-0" />
+        <div className="sticky top-0 z-10 text-[11px] font-medium text-muted border-b border-cream-dark dark:border-navy-light bg-cream dark:bg-navy-dark">
+          <div className="flex mx-2">
+            <div className="w-[260px] shrink-0 px-4 py-2.5 border-l border-cream-dark dark:border-navy-light">
+              פרטי ההזמנה
+            </div>
+            <div className="flex-1 flex">
+              <div className="w-[52px] shrink-0" />
+              <div className="flex-1 px-2 py-2.5">פריטים</div>
+              <div className="w-[110px] shrink-0 px-2 py-2.5">צבע</div>
+              <div className="w-[120px] shrink-0 px-2 py-2.5">טקסט</div>
+              <div className="w-[110px] shrink-0 px-2 py-2.5">פונט</div>
+              <div className="w-[70px] shrink-0 px-2 py-2.5 ltr">מחיר</div>
+              <div className="w-[110px] shrink-0 px-2 py-2.5">סטטוס</div>
+              <div className="w-[40px] shrink-0" />
+            </div>
           </div>
         </div>
 
@@ -304,7 +306,7 @@ export default function OrdersPage() {
           <div className="text-center py-12 text-muted text-sm">לא נמצאו הזמנות</div>
         )}
 
-        <div className="flex flex-col gap-2 p-2 bg-cream-dark/40 dark:bg-navy-deeper/40">
+        <div className="flex flex-col gap-2 p-2 bg-[#EEEDF5] dark:bg-navy-deeper">
           {paginatedOrders.map(order => (
             <OrderRow
               key={order.id}
