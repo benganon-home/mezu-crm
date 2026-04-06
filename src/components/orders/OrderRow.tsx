@@ -187,8 +187,15 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderIt
                     </>
                   )}
 
-                  {/* Status dropdown pushed to far left (end in RTL) */}
-                  <div className="mr-auto" onClick={e => e.stopPropagation()}>
+                  {/* Price */}
+                  {item.price > 0 && (
+                    <span className="ltr text-xs font-medium text-navy dark:text-cream/80 tabular-nums mr-auto shrink-0">
+                      {formatPrice(item.price)}
+                    </span>
+                  )}
+
+                  {/* Status dropdown */}
+                  <div className={cn('shrink-0', !item.price && 'mr-auto')} onClick={e => e.stopPropagation()}>
                     <ItemStatusDropdown
                       itemId={item.id}
                       status={item.status}
