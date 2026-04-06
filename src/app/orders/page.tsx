@@ -291,9 +291,9 @@ export default function OrdersPage() {
             <div className="w-[52px] shrink-0" />
             <div className="flex-1 px-2 py-2.5">פריטים</div>
             <div className="w-[110px] shrink-0 px-2 py-2.5">צבע</div>
-            <div className="w-[90px] shrink-0 px-2 py-2.5">טקסט</div>
-            <div className="w-[80px] shrink-0 px-2 py-2.5">פונט</div>
-            <div className="w-[70px] shrink-0 px-2 py-2.5">מחיר</div>
+            <div className="w-[120px] shrink-0 px-2 py-2.5">טקסט</div>
+            <div className="w-[110px] shrink-0 px-2 py-2.5">פונט</div>
+            <div className="w-[70px] shrink-0 px-2 py-2.5 ltr">מחיר</div>
             <div className="w-[110px] shrink-0 px-2 py-2.5">סטטוס</div>
             <div className="w-[40px] shrink-0" />
           </div>
@@ -304,7 +304,7 @@ export default function OrdersPage() {
           <div className="text-center py-12 text-muted text-sm">לא נמצאו הזמנות</div>
         )}
 
-        <div className="flex flex-col gap-2 p-2">
+        <div className="flex flex-col gap-2 p-2 bg-cream-dark/40 dark:bg-navy-deeper/40">
           {paginatedOrders.map(order => (
             <OrderRow
               key={order.id}

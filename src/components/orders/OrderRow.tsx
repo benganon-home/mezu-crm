@@ -151,12 +151,12 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
               </div>
 
               {/* טקסט */}
-              <div className="w-[90px] shrink-0 px-2 py-3.5 text-gold font-medium truncate">
+              <div className="w-[120px] shrink-0 px-2 py-3.5 text-gold font-medium truncate">
                 {item.sign_text || <span className="text-muted/40 font-normal">—</span>}
               </div>
 
               {/* פונט */}
-              <div className="w-[80px] shrink-0 px-2 py-3.5 text-muted truncate">
+              <div className="w-[110px] shrink-0 px-2 py-3.5 text-muted truncate">
                 {item.font || '—'}
               </div>
 
