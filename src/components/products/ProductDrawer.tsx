@@ -62,10 +62,10 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
       const ext = file.name.split('.').pop()
       const path = `products/${Date.now()}.${ext}`
       const { error: err } = await supabase.storage
-        .from('product images')
+        .from('product-images')
         .upload(path, file, { upsert: true })
       if (err) throw err
-      const { data } = supabase.storage.from('product images').getPublicUrl(path)
+      const { data } = supabase.storage.from('product-images').getPublicUrl(path)
       setImages(prev => [...prev, data.publicUrl])
     } catch (e: any) {
       setUploadError(e?.message || 'שגיאה בהעלאת תמונה')
