@@ -208,35 +208,24 @@ export default function OrdersPage() {
         <StatCard label="הכנסות (תצוגה)" value={formatPrice(stats.revenue)} valueClass="text-gold" />
       </div>
 
-      {/* Toolbar */}
-      <div className="flex flex-col gap-2">
-        {/* Search */}
-        <div className="relative">
+      {/* Toolbar — single row */}
+      <div className="flex gap-2 items-center">
+        <div className="relative w-56 shrink-0">
           <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
             className="input pr-9 w-full"
-            placeholder="חיפוש לפי שם, טלפון, כתובת..."
+            placeholder="חיפוש..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-
-        {/* Chips + delivery dropdown on the same row */}
-        <div className="flex gap-1.5 flex-wrap items-center">
-          <button
-            onClick={() => setSelectedStatuses(ALL_STATUSES)}
-            className={cn('chip-btn', allSelected && 'chip-btn-active')}
-          >
-            הכל
-          </button>
+        <div className="flex gap-1.5 items-center flex-1 flex-wrap">
+          <button onClick={() => setSelectedStatuses(ALL_STATUSES)} className={cn('chip-btn', allSelected && 'chip-btn-active')}>הכל</button>
           {ALL_STATUSES.map(s => {
             const active = selectedStatuses.includes(s)
             return (
-              <button
-                key={s}
-                onClick={() => toggleStatus(s)}
-                className={cn(
-                  'badge cursor-pointer transition-all',
+              <button key={s} onClick={() => toggleStatus(s)}
+                className={cn('badge cursor-pointer transition-all',
                   active
                     ? cn(STATUS_CONFIG[s].activeBg, STATUS_CONFIG[s].activeText, 'border-transparent font-semibold')
                     : cn(STATUS_CONFIG[s].bg, STATUS_CONFIG[s].text, STATUS_CONFIG[s].border, 'opacity-50 hover:opacity-80')
@@ -247,16 +236,16 @@ export default function OrdersPage() {
               </button>
             )
           })}
-          <select
-            value={deliveryFilter}
-            onChange={e => setDeliveryFilter(e.target.value as typeof deliveryFilter)}
-            className="input text-sm cursor-pointer shrink-0 mr-1"
-          >
-            <option value="all">סוג משלוח: הכל</option>
-            <option value="delivery">משלוח</option>
-            <option value="pickup">איסוף עצמי</option>
-          </select>
         </div>
+        <select
+          value={deliveryFilter}
+          onChange={e => setDeliveryFilter(e.target.value as typeof deliveryFilter)}
+          className="input text-sm cursor-pointer shrink-0"
+        >
+          <option value="all">סוג משלוח: הכל</option>
+          <option value="delivery">משלוח</option>
+          <option value="pickup">איסוף עצמי</option>
+        </select>
       </div>
 
       {/* Bulk action bar */}
