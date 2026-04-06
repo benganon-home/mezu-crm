@@ -7,17 +7,18 @@ interface Props {
   valueClass?: string
   onClick?: () => void
   active?: boolean
+  showFilter?: boolean
 }
 
-export function StatCard({ label, value, sub, valueClass, onClick, active }: Props) {
+export function StatCard({ label, value, sub, valueClass, onClick, active, showFilter }: Props) {
   return (
     <div
       onClick={onClick}
       className={cn(
-        'bg-white dark:bg-navy-dark border rounded-lg px-4 py-3 transition-all',
+        'bg-white dark:bg-navy-dark border rounded-lg px-4 py-3 transition-all flex flex-col',
         onClick && 'cursor-pointer hover:shadow-md hover:-translate-y-px',
         active
-          ? 'border-emerald-400 ring-2 ring-emerald-200 dark:ring-emerald-800'
+          ? 'border-gold ring-2 ring-gold/20 dark:ring-gold/30'
           : 'border-cream-dark dark:border-navy-light'
       )}
     >
@@ -26,6 +27,14 @@ export function StatCard({ label, value, sub, valueClass, onClick, active }: Pro
         {value}
       </div>
       {sub && <div className="text-xs text-muted mt-1">{sub}</div>}
+      {showFilter && (
+        <div className={cn(
+          'text-xs mt-2 font-medium transition-colors',
+          active ? 'text-gold' : 'text-muted hover:text-gold'
+        )}>
+          {active ? 'מסונן ✓' : 'הצג'}
+        </div>
+      )}
     </div>
   )
 }

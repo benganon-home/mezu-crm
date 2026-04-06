@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Plus, Search, Truck } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
 import { Order, OrderStatus, ALL_STATUSES, STATUS_CONFIG } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
 import { StatCard } from '@/components/ui/StatCard'
@@ -20,6 +20,8 @@ export default function OrdersPage() {
   const [search, setSearch]           = useState('')
   const [selectedStatuses, setSelectedStatuses] = useState<OrderStatus[]>(DEFAULT_STATUSES)
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'delivery' | 'pickup'>('all')
+  const [preparingActive, setPreparingActive] = useState(false)
+  const [readyActive, setReadyActive]         = useState(false)
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
   const [activeOrder, setActiveOrder] = useState<Order | null>(null)
   const [showNewOrder, setShowNewOrder] = useState(false)
@@ -55,6 +57,18 @@ export default function OrdersPage() {
       )
     }
 
+    // Stat card shortcuts
+    if (preparingActive) {
+      result = result.filter(o =>
+        (o.items || []).some(i => i.status === 'preparing')
+      )
+    }
+    if (readyActive) {
+      result = result.filter(o =>
+        (o.items || []).length > 0 && (o.items || []).every(i => i.status === 'ready')
+      )
+    }
+
     if (deliveryFilter !== 'all') {
       result = result.filter(o => o.delivery_type === deliveryFilter)
     }
@@ -69,10 +83,10 @@ export default function OrdersPage() {
     }
 
     return result
-  }, [allOrders, selectedStatuses, deliveryFilter, search])
+  }, [allOrders, selectedStatuses, preparingActive, readyActive, deliveryFilter, search])
 
   // Reset to page 1 when filters change
-  useEffect(() => { setPage(1) }, [search, selectedStatuses, deliveryFilter])
+  useEffect(() => { setPage(1) }, [search, selectedStatuses, deliveryFilter, preparingActive, readyActive])
 
   // ── Client-side pagination ────────────────────────────────────
   const paginatedOrders = useMemo(
@@ -183,8 +197,14 @@ export default function OrdersPage() {
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard label="סה״כ הזמנות"    value={stats.total}               sub="בסינון הנוכחי" />
-        <StatCard label="בהכנה"          value={stats.preparing}            valueClass="text-orange-500" />
-        <StatCard label="מוכן לשליחה"    value={stats.ready}                valueClass="text-emerald-600" />
+        <StatCard label="בהכנה"          value={stats.preparing}            valueClass="text-orange-500"
+          showFilter active={preparingActive}
+          onClick={() => setPreparingActive(v => !v)}
+        />
+        <StatCard label="מוכן לשליחה"    value={stats.ready}                valueClass="text-emerald-600"
+          showFilter active={readyActive}
+          onClick={() => setReadyActive(v => !v)}
+        />
         <StatCard label="הכנסות (תצוגה)" value={formatPrice(stats.revenue)} valueClass="text-gold" />
       </div>
 
@@ -230,13 +250,15 @@ export default function OrdersPage() {
         </div>
 
         {/* Delivery filter */}
-        <button
-          onClick={() => setDeliveryFilter(d => d === 'delivery' ? 'all' : 'delivery')}
-          className={cn('btn-ghost flex items-center gap-1.5', deliveryFilter === 'delivery' && 'text-gold')}
+        <select
+          value={deliveryFilter}
+          onChange={e => setDeliveryFilter(e.target.value as typeof deliveryFilter)}
+          className="input text-sm py-1.5 px-3 cursor-pointer min-w-[140px]"
         >
-          <Truck size={13} strokeWidth={1.5} />
-          משלוח בלבד
-        </button>
+          <option value="all">סוג משלוח: הכל</option>
+          <option value="delivery">משלוח</option>
+          <option value="pickup">איסוף עצמי</option>
+        </select>
       </div>
 
       {/* Bulk action bar */}
