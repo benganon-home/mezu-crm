@@ -127,7 +127,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
       description: product.description,
       base_price: product.base_price,
       category: product.category,
-      is_active: false,
+      is_active: true,
       images: product.images,
       sizes: product.sizes,
       colors: product.colors,

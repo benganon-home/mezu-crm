@@ -72,7 +72,7 @@ export default function ProductsPage() {
       description: p.description,
       base_price: p.base_price,
       category: p.category,
-      is_active: false,
+      is_active: true,
       images: p.images,
       sizes: p.sizes,
       colors: p.colors,
@@ -162,7 +162,12 @@ export default function ProductsPage() {
       {!loading && filtered.length > 0 && view === 'grid' && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {filtered.map(p => (
-            <ProductCard key={p.id} product={p} onClick={() => openEdit(p)} />
+            <ProductCard
+              key={p.id}
+              product={p}
+              onClick={() => openEdit(p)}
+              onDuplicate={e => { e.stopPropagation(); duplicateProduct(p) }}
+            />
           ))}
         </div>
       )}
