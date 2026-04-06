@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import { Plus, Search, Package, LayoutGrid, List } from 'lucide-react'
+
+const CATEGORY_ORDER = ['מזוזות', 'שלטי בית', 'ברכות', 'אחר']
 import { Product } from '@/types'
 import { cn } from '@/lib/utils'
 import { ProductCard } from '@/components/products/ProductCard'
 import { ProductListRow } from '@/components/products/ProductListRow'
 import { ProductDrawer } from '@/components/products/ProductDrawer'
 
-const CATEGORIES = ['הכל', 'מזוזות', 'שלטי בית', 'ברכות', 'מתנות', 'אחר']
+const CATEGORIES = ['הכל', 'מזוזות', 'שלטי בית', 'ברכות', 'אחר']
 
 export default function ProductsPage() {
   const [products, setProducts]         = useState<Product[]>([])
@@ -159,18 +161,41 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {!loading && filtered.length > 0 && view === 'grid' && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-          {filtered.map(p => (
-            <ProductCard
-              key={p.id}
-              product={p}
-              onClick={() => openEdit(p)}
-              onDuplicate={e => { e.stopPropagation(); duplicateProduct(p) }}
-            />
-          ))}
-        </div>
-      )}
+      {!loading && filtered.length > 0 && view === 'grid' && (() => {
+        const grouped = CATEGORY_ORDER.map(cat => ({
+          cat,
+          items: filtered.filter(p => (p.category || 'אחר') === cat),
+        })).filter(g => g.items.length > 0)
+
+        // also catch products with categories not in CATEGORY_ORDER
+        const knownCats = new Set(CATEGORY_ORDER)
+        const others = filtered.filter(p => p.category && !knownCats.has(p.category))
+        if (others.length > 0) grouped.push({ cat: 'אחר', items: others })
+
+        return (
+          <div className="flex flex-col gap-8">
+            {grouped.map(({ cat, items }) => (
+              <div key={cat}>
+                <div className="flex items-center gap-3 mb-3">
+                  <h2 className="text-sm font-semibold text-navy dark:text-cream">{cat}</h2>
+                  <div className="flex-1 h-px bg-cream-dark dark:bg-navy-light" />
+                  <span className="text-xs text-muted">{items.length} מוצרים</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {items.map(p => (
+                    <ProductCard
+                      key={p.id}
+                      product={p}
+                      onClick={() => openEdit(p)}
+                      onDuplicate={e => { e.stopPropagation(); duplicateProduct(p) }}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
 
       {!loading && filtered.length > 0 && view === 'list' && (
         <div className="surface overflow-hidden">
