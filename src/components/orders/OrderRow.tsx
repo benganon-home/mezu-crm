@@ -35,7 +35,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
   }
 
   return (
-    <div className="flex min-h-[80px] rounded-lg border border-cream-dark dark:border-navy-light/60 overflow-hidden">
+    <div className="flex min-h-[80px] rounded-lg border border-cream-dark dark:border-navy-light/60 overflow-hidden bg-white dark:bg-navy-dark">
 
       {/* ── Right panel: order info ───────────────────────── */}
       <div
