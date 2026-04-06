@@ -32,6 +32,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
   const [saving, setSaving]           = useState(false)
   const [saveError, setSaveError]     = useState<string | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete]   = useState(false)
   const [deleting, setDeleting]             = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -55,18 +56,19 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
 
   const uploadImage = async (file: File) => {
     setUploadingImage(true)
+    setUploadError(null)
     try {
       const supabase = createClient()
       const ext = file.name.split('.').pop()
       const path = `products/${Date.now()}.${ext}`
-      const { error: uploadError } = await supabase.storage
+      const { error: err } = await supabase.storage
         .from('product-images')
         .upload(path, file, { upsert: true })
-      if (uploadError) throw uploadError
+      if (err) throw err
       const { data } = supabase.storage.from('product-images').getPublicUrl(path)
       setImages(prev => [...prev, data.publicUrl])
-    } catch (e) {
-      console.error('Image upload failed', e)
+    } catch (e: any) {
+      setUploadError(e?.message || 'שגיאה בהעלאת תמונה')
     } finally {
       setUploadingImage(false)
     }
@@ -205,8 +207,11 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
               className="hidden"
               onChange={handleFileChange}
             />
-            {images.length === 0 && (
+            {images.length === 0 && !uploadError && (
               <p className="text-xs text-muted/60 mt-1.5">הוסף תמונה ראשונה — תופיע בקארד המוצר</p>
+            )}
+            {uploadError && (
+              <p className="text-xs text-red-600 dark:text-red-400 mt-1.5">{uploadError}</p>
             )}
           </div>
 
