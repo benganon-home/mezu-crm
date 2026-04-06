@@ -288,7 +288,8 @@ export default function OrdersPage() {
             פרטי ההזמנה
           </div>
           <div className="flex-1 flex">
-            <div className="flex-1 px-4 py-2.5">פריטים</div>
+            <div className="w-[52px] shrink-0" />
+            <div className="flex-1 px-2 py-2.5">פריטים</div>
             <div className="w-[110px] shrink-0 px-2 py-2.5">צבע</div>
             <div className="w-[90px] shrink-0 px-2 py-2.5">טקסט</div>
             <div className="w-[80px] shrink-0 px-2 py-2.5">פונט</div>

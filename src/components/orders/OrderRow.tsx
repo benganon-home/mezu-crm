@@ -3,7 +3,7 @@ import { Order, OrderStatus, ITEM_COLOR_MAP } from '@/types'
 import { formatDateShort, formatPrice, cn } from '@/lib/utils'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { ItemStatusDropdown } from '@/components/orders/ItemStatusDropdown'
-import { Truck, Home, Pin, StickyNote, Trash2 } from 'lucide-react'
+import { Truck, Home, Pin, StickyNote, Trash2, ImageIcon } from 'lucide-react'
 
 interface Props {
   order: Order
@@ -123,6 +123,13 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                   onChange={() => {}}
                   className="accent-gold pointer-events-none"
                 />
+              </div>
+
+              {/* Image placeholder */}
+              <div className="w-[52px] shrink-0 px-2 py-2.5">
+                <div className="w-9 h-9 rounded-lg bg-cream-dark/60 dark:bg-navy-light/30 flex items-center justify-center">
+                  <ImageIcon size={15} className="text-muted/30" strokeWidth={1.5} />
+                </div>
               </div>
 
               {/* פריטים */}
