@@ -62,21 +62,20 @@ export function ProductCard({ product, onClick }: Props) {
         )}
 
         <div className="mt-2">
-          {product.sizes?.length > 0 ? (
-            <div className="flex flex-col gap-1">
-              {product.sizes.slice(0, 3).map((s, i) => (
-                <div key={i} className="flex items-center justify-between text-xs">
-                  <span className="text-muted">{s.label}</span>
-                  <span className="font-semibold text-gold ltr">{formatPrice(s.price)}</span>
-                </div>
-              ))}
-              {product.sizes.length > 3 && (
-                <span className="text-[10px] text-muted">+{product.sizes.length - 3} מידות נוספות</span>
-              )}
-            </div>
-          ) : (
-            <span className="text-sm font-semibold text-gold ltr">{formatPrice(product.base_price)}</span>
-          )}
+          <div className="flex flex-col gap-1">
+            {product.sizes.slice(0, 3).map((s, i) => (
+              <div key={i} className="flex items-center justify-between text-xs">
+                <span className="text-muted">{s.label}</span>
+                <span className="font-semibold text-gold ltr">{formatPrice(s.price)}</span>
+              </div>
+            ))}
+            {product.sizes.length > 3 && (
+              <span className="text-[10px] text-muted">+{product.sizes.length - 3} מידות נוספות</span>
+            )}
+            {product.sizes.length === 0 && (
+              <span className="text-xs text-muted/50">אין מידות</span>
+            )}
+          </div>
         </div>
       </div>
     </div>

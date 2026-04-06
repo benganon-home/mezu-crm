@@ -22,7 +22,6 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
 
   const [name, setName]               = useState(product?.name || '')
   const [description, setDescription] = useState(product?.description || '')
-  const [basePrice, setBasePrice]     = useState(product?.base_price?.toString() || '')
   const [category, setCategory]       = useState(product?.category || '')
   const [isActive, setIsActive]       = useState(product?.is_active ?? true)
   const [images, setImages]           = useState<string[]>(product?.images || [])
@@ -82,11 +81,9 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
   const handleSave = async () => {
     if (!name.trim()) return
     setSaving(true)
-    const minSizePrice = sizes.length > 0 ? Math.min(...sizes.map(s => s.price)) : null
     const payload = {
       name: name.trim(),
       description: description.trim() || null,
-      base_price: minSizePrice ?? (parseFloat(basePrice) || 0),
       category: category || null,
       is_active: isActive,
       images,
@@ -221,32 +218,16 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
           </div>
 
           {/* Category + Price */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="label mb-1.5">קטגוריה</div>
-              <select
-                className="input w-full"
-                value={category}
-                onChange={e => setCategory(e.target.value)}
-              >
-                <option value="">— בחר —</option>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-            {sizes.length === 0 && (
-              <div>
-                <div className="label mb-1.5">מחיר בסיס (₪)</div>
-                <input
-                  className="input w-full ltr"
-                  placeholder="0"
-                  value={basePrice}
-                  onChange={e => setBasePrice(e.target.value)}
-                  type="number"
-                  min="0"
-                  dir="ltr"
-                />
-              </div>
-            )}
+          <div>
+            <div className="label mb-1.5">קטגוריה</div>
+            <select
+              className="input w-full"
+              value={category}
+              onChange={e => setCategory(e.target.value)}
+            >
+              <option value="">— בחר —</option>
+              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
           </div>
 
           {/* Description */}
