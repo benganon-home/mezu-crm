@@ -208,9 +208,10 @@ export default function OrdersPage() {
         <StatCard label="הכנסות (תצוגה)" value={formatPrice(stats.revenue)} valueClass="text-gold" />
       </div>
 
-      {/* Toolbar — one row: search | chips | delivery */}
-      <div className="flex gap-2 items-center flex-wrap">
-        <div className="relative flex-1 min-w-[180px]">
+      {/* Toolbar */}
+      <div className="flex flex-col gap-2">
+        {/* Search */}
+        <div className="relative">
           <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
             className="input pr-9 w-full"
@@ -220,6 +221,7 @@ export default function OrdersPage() {
           />
         </div>
 
+        {/* Chips + delivery dropdown on the same row */}
         <div className="flex gap-1.5 flex-wrap items-center">
           <button
             onClick={() => setSelectedStatuses(ALL_STATUSES)}
@@ -245,17 +247,16 @@ export default function OrdersPage() {
               </button>
             )
           })}
+          <select
+            value={deliveryFilter}
+            onChange={e => setDeliveryFilter(e.target.value as typeof deliveryFilter)}
+            className="input text-sm cursor-pointer shrink-0 mr-1"
+          >
+            <option value="all">סוג משלוח: הכל</option>
+            <option value="delivery">משלוח</option>
+            <option value="pickup">איסוף עצמי</option>
+          </select>
         </div>
-
-        <select
-          value={deliveryFilter}
-          onChange={e => setDeliveryFilter(e.target.value as typeof deliveryFilter)}
-          className="input text-sm cursor-pointer shrink-0"
-        >
-          <option value="all">סוג משלוח: הכל</option>
-          <option value="delivery">משלוח</option>
-          <option value="pickup">איסוף עצמי</option>
-        </select>
       </div>
 
       {/* Bulk action bar */}
