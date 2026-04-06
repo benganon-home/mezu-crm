@@ -109,6 +109,34 @@ create policy "auth_only" on orders     for all using (auth.role() = 'authentica
 create policy "auth_only" on order_items for all using (auth.role() = 'authenticated');
 create policy "auth_only" on reminders  for all using (auth.role() = 'authenticated');
 
+-- ─── PRODUCTS ────────────────────────────────────────────────
+create table if not exists products (
+  id          uuid primary key default uuid_generate_v4(),
+  name        text not null,
+  description text,
+  base_price  numeric(10,2) not null default 0,
+  sizes       text[] default '{}',
+  colors      text[] default '{}',
+  images      text[] default '{}',
+  category    text,
+  is_active   boolean default true,
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now()
+);
+
+create index if not exists products_category_idx on products (category);
+create index if not exists products_active_idx   on products (is_active);
+
+create trigger products_updated_at before update on products for each row execute function update_updated_at();
+
+alter table products enable row level security;
+create policy "auth_only" on products for all using (auth.role() = 'authenticated');
+
+-- Storage bucket for product images (run separately in Supabase dashboard):
+-- insert into storage.buckets (id, name, public) values ('product-images', 'product-images', true);
+-- create policy "auth_upload" on storage.objects for insert with check (bucket_id = 'product-images' and auth.role() = 'authenticated');
+-- create policy "public_read"  on storage.objects for select using (bucket_id = 'product-images');
+
 -- ─── HELPER VIEW: orders with customer + item count ──────────
 create or replace view orders_with_customer as
 select

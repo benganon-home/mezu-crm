@@ -26,6 +26,20 @@ export interface Customer {
   last_order_at?: string | null
 }
 
+export interface Product {
+  id: string
+  name: string
+  description?: string | null
+  base_price: number
+  sizes: string[]
+  colors: string[]
+  images: string[]
+  category?: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface OrderItem {
   id: string
   order_id: string

@@ -5,3 +5,4 @@ node_modules/
 scripts/dist/
 *.tsbuildinfo
 .DS_Store
+.vercel
