@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
   // 5. Return full order
   const { data: fullOrder, error: fetchErr } = await supabase
     .from('orders')
-    .select('*, customer:customers(*), items:order_items(*)')
+    .select('*, customer:customers(*), items:order_items(*, product:products(images))')
     .eq('id', order.id)
     .single()
 
