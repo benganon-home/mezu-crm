@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Plus, Search } from 'lucide-react'
+import { Plus, Search, ChevronDown } from 'lucide-react'
 import { Order, OrderStatus, ALL_STATUSES, STATUS_CONFIG } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
 import { StatCard } from '@/components/ui/StatCard'
@@ -237,15 +237,18 @@ export default function OrdersPage() {
             )
           })}
         </div>
-        <select
-          value={deliveryFilter}
-          onChange={e => setDeliveryFilter(e.target.value as typeof deliveryFilter)}
-          className="input text-sm cursor-pointer w-[200px] shrink-0"
-        >
-          <option value="all">סוג משלוח: הכל</option>
-          <option value="delivery">משלוח</option>
-          <option value="pickup">איסוף עצמי</option>
-        </select>
+        <div className="relative w-[200px] shrink-0">
+          <select
+            value={deliveryFilter}
+            onChange={e => setDeliveryFilter(e.target.value as typeof deliveryFilter)}
+            className="input text-sm cursor-pointer w-full appearance-none pr-3 pl-8"
+          >
+            <option value="all">סוג משלוח: הכל</option>
+            <option value="delivery">משלוח</option>
+            <option value="pickup">איסוף עצמי</option>
+          </select>
+          <ChevronDown size={13} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+        </div>
       </div>
 
       {/* Bulk action bar */}
