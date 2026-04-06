@@ -26,6 +26,7 @@ export default function OrdersPage() {
   const [activeOrder, setActiveOrder] = useState<Order | null>(null)
   const [showNewOrder, setShowNewOrder] = useState(false)
   const [page, setPage]               = useState(1)
+  const [yearFilter, setYearFilter]   = useState<number>(new Date().getFullYear())
 
   // ── Fetch all orders once (no server-side filtering) ──────────
   const fetchOrders = useCallback(async () => {
@@ -46,9 +47,15 @@ export default function OrdersPage() {
 
   useEffect(() => { fetchOrders() }, [fetchOrders])
 
+  // Available years from data
+  const availableYears = useMemo(() => {
+    const years = new Set(allOrders.map(o => new Date(o.created_at).getFullYear()))
+    return Array.from(years).sort((a, b) => b - a)
+  }, [allOrders])
+
   // ── Client-side filtering (instant, no network) ───────────────
   const filteredOrders = useMemo(() => {
-    let result = allOrders
+    let result = allOrders.filter(o => new Date(o.created_at).getFullYear() === yearFilter)
 
     // Status: show orders with at least one item matching a selected status
     if (selectedStatuses.length < ALL_STATUSES.length) {
@@ -86,7 +93,7 @@ export default function OrdersPage() {
   }, [allOrders, selectedStatuses, preparingActive, readyActive, deliveryFilter, search])
 
   // Reset to page 1 when filters change
-  useEffect(() => { setPage(1) }, [search, selectedStatuses, deliveryFilter, preparingActive, readyActive])
+  useEffect(() => { setPage(1) }, [search, selectedStatuses, deliveryFilter, preparingActive, readyActive, yearFilter])
 
   // ── Client-side pagination ────────────────────────────────────
   const paginatedOrders = useMemo(
@@ -181,9 +188,25 @@ export default function OrdersPage() {
 
       {/* Page header */}
       <div className="page-header">
-        <div>
-          <h1>הזמנות</h1>
-          <p className="text-xs text-muted mt-0.5">{stats.total} הזמנות</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1>הזמנות</h1>
+            <p className="text-xs text-muted mt-0.5">{stats.total} הזמנות</p>
+          </div>
+          {availableYears.length > 0 && (
+            <div className="relative">
+              <select
+                value={yearFilter}
+                onChange={e => setYearFilter(Number(e.target.value))}
+                className="input text-sm cursor-pointer appearance-none pr-3 pl-7 py-1.5 font-medium"
+              >
+                {availableYears.map(y => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+              <ChevronDown size={12} className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-muted" />
+            </div>
+          )}
         </div>
         <button
           onClick={() => setShowNewOrder(true)}
