@@ -193,7 +193,7 @@ export default function OrdersPage() {
             <h1>הזמנות</h1>
             <p className="text-xs text-muted mt-0.5">{stats.total} הזמנות</p>
           </div>
-          {availableYears.length > 0 && (
+          {availableYears.length > 1 && (
             <div className="relative">
               <select
                 value={yearFilter}
