@@ -66,7 +66,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onToggleOrderIt
 
         <td>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-full bg-navy/10 dark:bg-cream/10 flex items-center justify-center flex-shrink-0 text-xs font-semibold text-navy dark:text-cream select-none">
+            <div className="w-10 h-10 rounded-full bg-navy/10 dark:bg-cream/10 flex items-center justify-center flex-shrink-0 text-sm font-semibold text-navy dark:text-cream select-none">
               {getInitials(customer?.name || '')}
             </div>
             <div>
