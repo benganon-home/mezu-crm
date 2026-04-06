@@ -20,7 +20,11 @@ export function formatRelative(date: string | Date): string {
 }
 
 export function formatPrice(price: number): string {
-  return `₪${price.toLocaleString('he-IL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
+  const hasDecimals = price % 1 !== 0
+  return `₪${price.toLocaleString('he-IL', {
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  })}`
 }
 
 export function formatPhone(phone: string): string {
