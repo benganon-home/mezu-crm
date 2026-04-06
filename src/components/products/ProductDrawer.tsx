@@ -7,7 +7,7 @@ import { formatPrice, cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
 
-const CATEGORIES = ['מזוזות', 'שלטי בית', 'מתנות', 'אחר']
+const CATEGORIES = ['מזוזות', 'שלטי בית', 'ברכות', 'מתנות', 'אחר']
 
 interface Props {
   product?: Product | null

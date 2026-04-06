@@ -8,7 +8,7 @@ import { ProductCard } from '@/components/products/ProductCard'
 import { ProductListRow } from '@/components/products/ProductListRow'
 import { ProductDrawer } from '@/components/products/ProductDrawer'
 
-const CATEGORIES = ['הכל', 'מזוזות', 'שלטי בית', 'מתנות', 'אחר']
+const CATEGORIES = ['הכל', 'מזוזות', 'שלטי בית', 'ברכות', 'מתנות', 'אחר']
 
 export default function ProductsPage() {
   const [products, setProducts]         = useState<Product[]>([])
