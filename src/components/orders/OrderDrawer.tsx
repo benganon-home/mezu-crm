@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { X, MessageCircle, Edit2, Plus, Trash2, Package, AlertTriangle, Check, ChevronDown } from 'lucide-react'
-import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG, ITEM_COLOR_MAP } from '@/types'
+import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG, ITEM_COLOR_MAP, FONTS } from '@/types'
 import { formatDate, formatPrice, cn } from '@/lib/utils'
 import { getWaLink, getInvoiceWaLink } from '@/lib/whatsapp'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -325,12 +325,16 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
                   onChange={e => setNewItem(p => ({ ...p, sign_text: e.target.value }))}
                 />
 
-                <input
+                <select
                   className="input text-sm"
-                  placeholder="פונט"
                   value={newItem.font}
                   onChange={e => setNewItem(p => ({ ...p, font: e.target.value }))}
-                />
+                >
+                  <option value="">פונט —</option>
+                  {FONTS.map(f => (
+                    <option key={f} value={f}>{f}</option>
+                  ))}
+                </select>
 
                 <input
                   className="input text-sm ltr"

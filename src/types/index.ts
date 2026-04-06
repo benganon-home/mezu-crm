@@ -117,6 +117,21 @@ export const STATUS_CONFIG: Record<OrderStatus, StatusConfig> = {
 
 export const ALL_STATUSES: OrderStatus[] = ['received', 'preparing', 'ready', 'shipped', 'cancelled']
 
+// ─── Fonts ───────────────────────────────────────────────────────────────────
+
+export const FONTS = [
+  'Heebo',
+  'Rubik',
+  'Bona Nova',
+  'Frank Ruhl Libre',
+  'Alef',
+  'Karantina',
+  'Oswald',
+  'Saira Condensed',
+  'Barlow Condensed',
+  'Bebas Neue',
+] as const
+
 // ─── Item color map ──────────────────────────────────────────────────────────
 
 export const ITEM_COLOR_MAP: Record<string, { hex: string; border?: boolean }> = {

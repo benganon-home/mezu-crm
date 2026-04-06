@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { X, Plus, Trash2, Search, CheckCircle2, UserPlus } from 'lucide-react'
-import { Customer, ITEM_COLOR_MAP } from '@/types'
+import { Customer, ITEM_COLOR_MAP, FONTS } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
 import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
 
@@ -431,17 +431,21 @@ function ItemCard({
       {/* Row 4: Size + Font */}
       <div className="flex gap-2">
         <input
-          className="input text-sm"
+          className="input text-sm flex-1"
           placeholder="גודל"
           value={item.size}
           onChange={e => onChange('size', e.target.value)}
         />
-        <input
-          className="input text-sm"
-          placeholder="פונט"
+        <select
+          className="input text-sm flex-1"
           value={item.font}
           onChange={e => onChange('font', e.target.value)}
-        />
+        >
+          <option value="">פונט —</option>
+          {FONTS.map(f => (
+            <option key={f} value={f}>{f}</option>
+          ))}
+        </select>
       </div>
 
     </div>
