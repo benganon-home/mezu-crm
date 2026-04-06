@@ -7,6 +7,7 @@ import { formatDate, formatPrice, cn } from '@/lib/utils'
 import { getWaLink, getInvoiceWaLink } from '@/lib/whatsapp'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { CopyButton } from '@/components/ui/CopyButton'
+import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
 
 interface Props {
   order: Order
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
+  const { visible, close } = useDrawerAnimation(onClose)
   const [saving, setSaving]         = useState(false)
   const [status, setStatus]         = useState<OrderStatus>(order.status)
   const [notes, setNotes]           = useState(order.notes || '')
@@ -46,7 +48,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
     setDeleting(true)
     await fetch(`/api/orders/${order.id}`, { method: 'DELETE' })
     onDelete?.(order.id)
-    onClose()
+    close()
   }
 
   const totalPrice = (order.items || []).reduce((sum, i) => sum + (i.price || 0), 0) || order.total_price
@@ -57,7 +59,11 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   return (
     <>
       {/* Overlay */}
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div
+        className="fixed inset-0 bg-black/30 z-40 transition-opacity duration-300"
+        style={{ opacity: visible ? 1 : 0 }}
+        onClick={close}
+      />
 
       {/* ── Delete confirmation dialog ── */}
       {confirmDelete && (
@@ -92,7 +98,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
       )}
 
       {/* Drawer */}
-      <div className="drawer open">
+      <div className={cn('drawer', visible && 'open')}>
 
         {/* Header */}
         <div className="sticky top-0 z-10 bg-white dark:bg-navy-dark border-b border-cream-dark dark:border-navy-light px-5 py-4">

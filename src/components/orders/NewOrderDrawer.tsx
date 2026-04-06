@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { X, Plus, Trash2, Search, CheckCircle2, UserPlus } from 'lucide-react'
 import { Customer, ITEM_COLOR_MAP } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
+import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -55,6 +56,7 @@ function makeItem(item_name = '', model = ''): NewItem {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function NewOrderDrawer({ onClose, onCreated }: Props) {
+  const { visible, close } = useDrawerAnimation(onClose)
   // Customer state
   const [phone, setPhone]               = useState('')
   const [customerName, setCustomerName] = useState('')
@@ -152,14 +154,18 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      <div
+        className="fixed inset-0 bg-black/30 z-40 transition-opacity duration-300"
+        style={{ opacity: visible ? 1 : 0 }}
+        onClick={close}
+      />
 
-      <div className="drawer open flex flex-col" style={{ width: 500, right: 0 }}>
+      <div className={cn('drawer flex flex-col', visible && 'open')} style={{ width: 500 }}>
 
         {/* ── Header ── */}
         <div className="flex-shrink-0 bg-white dark:bg-navy-dark border-b border-cream-dark dark:border-navy-light px-5 py-4 flex items-center justify-between">
           <h2>הזמנה חדשה</h2>
-          <button onClick={onClose} className="text-muted hover:text-navy dark:hover:text-cream p-1 rounded">
+          <button onClick={close} className="text-muted hover:text-navy dark:hover:text-cream p-1 rounded">
             <X size={18} />
           </button>
         </div>
@@ -332,7 +338,7 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
           >
             {saving ? 'שומר...' : 'שמירת הזמנה'}
           </button>
-          <button onClick={onClose} className="btn-secondary px-6">
+          <button onClick={close} className="btn-secondary px-6">
             ביטול
           </button>
         </div>

@@ -218,13 +218,14 @@ h3 { font-size: 16px; font-weight: 500; }
 .drawer {
   position: fixed;
   top: 0;
-  right: -480px;
+  right: -520px;
   width: 460px;
   height: 100%;
   background: white;
   z-index: 50;
   box-shadow: -8px 0 32px rgba(0,0,0,0.12);
-  transition: right 0.26s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.3s ease;
   overflow-y: auto;
   direction: rtl;
 }

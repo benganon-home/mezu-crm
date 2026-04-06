@@ -6,6 +6,7 @@ import { Customer, Order } from '@/types'
 import { formatDate, formatPrice, formatPhone, buildWaLink, cn } from '@/lib/utils'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { CopyButton } from '@/components/ui/CopyButton'
+import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
 
 interface Props {
   customer: Customer
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function CustomerDrawer({ customer, onClose, onUpdate }: Props) {
+  const { visible, close } = useDrawerAnimation(onClose)
   const [orders, setOrders]   = useState<Order[]>([])
   const [loading, setLoading] = useState(true)
   const [notes, setNotes]     = useState(customer.notes || '')
@@ -43,8 +45,12 @@ export function CustomerDrawer({ customer, onClose, onUpdate }: Props) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
-      <div className="drawer open">
+      <div
+        className="fixed inset-0 bg-black/30 z-40 transition-opacity duration-300"
+        style={{ opacity: visible ? 1 : 0 }}
+        onClick={close}
+      />
+      <div className={cn('drawer', visible && 'open')}>
 
         {/* Header */}
         <div className="sticky top-0 z-10 bg-white dark:bg-navy-dark border-b border-cream-dark dark:border-navy-light px-5 py-4">
@@ -61,7 +67,7 @@ export function CustomerDrawer({ customer, onClose, onUpdate }: Props) {
                 </div>
               </div>
             </div>
-            <button onClick={onClose} className="text-muted hover:text-navy dark:hover:text-cream p-1 rounded">
+            <button onClick={close} className="text-muted hover:text-navy dark:hover:text-cream p-1 rounded">
               <X size={18} />
             </button>
           </div>
