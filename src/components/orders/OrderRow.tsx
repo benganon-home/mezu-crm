@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Order, OrderStatus, ITEM_COLOR_MAP } from '@/types'
+import { Order, OrderItem, OrderStatus, ITEM_COLOR_MAP } from '@/types'
 import { formatDateShort, formatPrice, cn } from '@/lib/utils'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { ItemStatusDropdown } from '@/components/orders/ItemStatusDropdown'
@@ -10,7 +10,7 @@ interface Props {
   selectedItemIds: Set<string>
   onToggleItem: (id: string, e: React.MouseEvent) => void
   onItemStatusChange: (itemId: string, status: OrderStatus) => void
-  onDeleteItem: (itemId: string, orderId: string) => void
+  onDeleteItem: (itemId: string, orderId: string, item: OrderItem) => void
   onClick: () => void
 }
 
@@ -26,11 +26,10 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
   const items    = order.items || []
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const handleDeleteItem = async (itemId: string, e: React.MouseEvent) => {
+  const handleDeleteItem = (item: OrderItem, e: React.MouseEvent) => {
     e.stopPropagation()
-    setDeletingId(itemId)
-    await fetch(`/api/order-items/${itemId}`, { method: 'DELETE' })
-    onDeleteItem(itemId, order.id)
+    setDeletingId(item.id)
+    onDeleteItem(item.id, order.id, item)
     setDeletingId(null)
   }
 
@@ -177,7 +176,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
               {/* Delete */}
               <div className="px-3 py-3.5 shrink-0" onClick={e => e.stopPropagation()}>
                 <button
-                  onClick={e => handleDeleteItem(item.id, e)}
+                  onClick={e => handleDeleteItem(item, e)}
                   disabled={deletingId === item.id}
                   className="text-muted/40 hover:text-red-500 transition-colors disabled:opacity-30"
                 >

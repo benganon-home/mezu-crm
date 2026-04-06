@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Plus, Search, ChevronDown } from 'lucide-react'
-import { Order, OrderStatus, ALL_STATUSES, STATUS_CONFIG } from '@/types'
+import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG } from '@/types'
+import { UndoToast } from '@/components/ui/UndoToast'
 import { formatPrice, cn } from '@/lib/utils'
 import { StatCard } from '@/components/ui/StatCard'
 import { OrderDrawer } from '@/components/orders/OrderDrawer'
@@ -27,6 +28,8 @@ export default function OrdersPage() {
   const [showNewOrder, setShowNewOrder] = useState(false)
   const [page, setPage]               = useState(1)
   const [yearFilter, setYearFilter]   = useState<number>(new Date().getFullYear())
+  const [undoPending, setUndoPending] = useState<{ itemId: string; orderId: string; item: OrderItem } | null>(null)
+  const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // ── Fetch all orders once (no server-side filtering) ──────────
   const fetchOrders = useCallback(async () => {
@@ -121,12 +124,43 @@ export default function OrdersPage() {
     })
   }
 
-  const onDeleteItem = (itemId: string, orderId: string) => {
+  const onDeleteItem = (itemId: string, orderId: string, item: OrderItem) => {
+    // Optimistic remove
     setAllOrders(prev => prev
       .map(o => o.id !== orderId ? o : { ...o, items: (o.items || []).filter(i => i.id !== itemId) })
       .filter(o => (o.items || []).length > 0)
     )
     setSelectedItemIds(prev => { const next = new Set(prev); next.delete(itemId); return next })
+
+    // Cancel any previous pending delete
+    if (undoTimerRef.current) clearTimeout(undoTimerRef.current)
+
+    // Show undo toast — actual DELETE fires after 5s
+    setUndoPending({ itemId, orderId, item })
+    undoTimerRef.current = setTimeout(() => {
+      fetch(`/api/order-items/${itemId}`, { method: 'DELETE' })
+      setUndoPending(null)
+      undoTimerRef.current = null
+    }, 5000)
+  }
+
+  const handleUndo = () => {
+    if (!undoPending) return
+    if (undoTimerRef.current) { clearTimeout(undoTimerRef.current); undoTimerRef.current = null }
+    const { item, orderId } = undoPending
+    setAllOrders(prev => {
+      const order = prev.find(o => o.id === orderId)
+      if (order) {
+        return prev.map(o => o.id === orderId ? { ...o, items: [...(o.items || []), item] } : o)
+      }
+      // Order was removed (was the only item) — re-add it from allOrders via a refetch isn't available here,
+      // so just trigger a refetch
+      return prev
+    })
+    setUndoPending(null)
+    // If order was fully removed (last item), refetch to restore it
+    const orderStillExists = allOrders.some(o => o.id === undoPending.orderId)
+    if (!orderStillExists) fetchOrders()
   }
 
   // ── Mutations ─────────────────────────────────────────────────
@@ -357,6 +391,16 @@ export default function OrdersPage() {
         <NewOrderDrawer
           onClose={() => setShowNewOrder(false)}
           onCreated={() => { setShowNewOrder(false); fetchOrders() }}
+        />
+      )}
+
+      {/* Undo toast */}
+      {undoPending && (
+        <UndoToast
+          key={undoPending.itemId}
+          message={`"${undoPending.item.item_name}" נמחק`}
+          onUndo={handleUndo}
+          onDismiss={() => setUndoPending(null)}
         />
       )}
     </div>
