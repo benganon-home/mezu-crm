@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { X, Plus, Trash2, Search, CheckCircle2, UserPlus } from 'lucide-react'
-import { Customer, ITEM_COLOR_MAP, FONTS } from '@/types'
+import { X, Plus, Trash2, Search, CheckCircle2, UserPlus, ChevronRight } from 'lucide-react'
+import { Customer, Product, ProductSize, ITEM_COLOR_MAP, FONTS } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
 import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
 
@@ -24,33 +24,11 @@ interface Props {
   onCreated: (order: any) => void
 }
 
-// ─── Product catalog ─────────────────────────────────────────────────────────
-
-const QUICK_ITEMS: { category: string; products: { label: string; item_name: string; model: string }[] }[] = [
-  {
-    category: 'מזוזות',
-    products: [
-      { label: 'דגם אלפא', item_name: 'מזוזה', model: 'דגם אלפא' },
-      { label: 'דגם בטא',  item_name: 'מזוזה', model: 'דגם בטא'  },
-      { label: 'דגם גמא',  item_name: 'מזוזה', model: 'דגם גמא'  },
-      { label: 'דגם דלתא', item_name: 'מזוזה', model: 'דגם דלתא' },
-    ],
-  },
-  {
-    category: 'שלטים',
-    products: [
-      { label: 'קלאסי', item_name: 'שלט', model: 'קלאסי' },
-      { label: 'מסגרת', item_name: 'שלט', model: 'מסגרת' },
-      { label: 'לב',    item_name: 'שלט', model: 'לב'    },
-    ],
-  },
-]
-
-// Ordered by frequency (most common first)
 const COLORS = Object.entries(ITEM_COLOR_MAP)
+const CATEGORY_ORDER = ['מזוזות', 'שלטי בית', 'ברכות', 'אחר']
 
-function makeItem(item_name = '', model = ''): NewItem {
-  return { _id: crypto.randomUUID(), item_name, model, color: '', sign_text: '', font: '', size: '', price: '' }
+function makeItem(item_name = '', model = '', size = '', price = ''): NewItem {
+  return { _id: crypto.randomUUID(), item_name, model, color: '', sign_text: '', font: '', size, price }
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -64,6 +42,14 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
   const [foundCustomer, setFoundCustomer] = useState<Customer | null>(null)
   const [isNewCustomer, setIsNewCustomer] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
+
+  // Products catalog
+  const [catalog, setCatalog]           = useState<Product[]>([])
+  const [pickingSize, setPickingSize]   = useState<Product | null>(null)
+
+  useEffect(() => {
+    fetch('/api/products').then(r => r.json()).then(d => setCatalog(Array.isArray(d) ? d.filter(p => p.is_active) : []))
+  }, [])
 
   // Order state
   const [items, setItems]               = useState<NewItem[]>([])
@@ -116,6 +102,25 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
   }
 
   // Items
+  const addItemFromProduct = (product: Product, size?: ProductSize) => {
+    const item = makeItem(
+      product.name,
+      product.category || '',
+      size?.label || '',
+      size ? size.price.toString() : product.base_price.toString(),
+    )
+    setItems(p => [...p, item])
+    setPickingSize(null)
+  }
+
+  const handleProductClick = (product: Product) => {
+    if (product.sizes?.length > 1) {
+      setPickingSize(prev => prev?.id === product.id ? null : product)
+    } else {
+      addItemFromProduct(product, product.sizes?.[0])
+    }
+  }
+
   const addItem  = (item_name: string, model: string) => setItems(p => [...p, makeItem(item_name, model)])
   const removeItem   = (id: string) => setItems(p => p.filter(i => i._id !== id))
   const updateItem   = (id: string, field: keyof NewItem, value: string) =>
@@ -224,26 +229,58 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
             )}
           </section>
 
-          {/* ── Quick-add buttons ── */}
+          {/* ── Product picker ── */}
           <section>
             <div className="label mb-2">הוספת פריטים</div>
-            <div className="bg-cream dark:bg-navy-deeper rounded-lg p-3 space-y-2">
-              {QUICK_ITEMS.map(({ category, products }) => (
-                <div key={category} className="flex items-center gap-2 flex-wrap">
-                  <span className="text-xs text-muted w-14 flex-shrink-0 font-medium">{category}:</span>
-                  {products.map(p => (
-                    <button
-                      key={p.label}
-                      onClick={() => addItem(p.item_name, p.model)}
-                      className="text-xs px-3 py-1.5 rounded-lg border border-cream-dark dark:border-navy-light bg-white dark:bg-navy-dark hover:border-gold hover:text-gold transition-all"
-                    >
-                      {p.label}
-                    </button>
-                  ))}
-                </div>
-              ))}
-              <div className="flex items-center gap-2">
-                <span className="w-14" />
+            <div className="bg-cream dark:bg-navy-deeper rounded-xl p-3 flex flex-col gap-2">
+              {CATEGORY_ORDER.map(cat => {
+                const catProducts = catalog.filter(p => (p.category || 'אחר') === cat)
+                if (catProducts.length === 0) return null
+                return (
+                  <div key={cat}>
+                    <div className="flex items-start gap-2">
+                      <span className="text-xs text-muted font-medium pt-1.5 w-16 shrink-0">{cat}:</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {catProducts.map(p => {
+                          const isPicking = pickingSize?.id === p.id
+                          return (
+                            <div key={p.id} className="flex flex-col gap-1">
+                              <button
+                                onClick={() => handleProductClick(p)}
+                                className={cn(
+                                  'text-xs px-3 py-1.5 rounded-lg border transition-all',
+                                  isPicking
+                                    ? 'border-gold bg-gold text-white'
+                                    : 'border-cream-dark dark:border-navy-light bg-white dark:bg-navy-dark hover:border-gold hover:text-gold'
+                                )}
+                              >
+                                {p.name}
+                              </button>
+                              {isPicking && (
+                                <div className="flex gap-1 flex-wrap pr-0.5">
+                                  {p.sizes.map(s => (
+                                    <button
+                                      key={s.label}
+                                      onClick={() => addItemFromProduct(p, s)}
+                                      className="text-[11px] px-2.5 py-1 rounded-lg bg-white dark:bg-navy-dark border border-gold text-gold hover:bg-gold hover:text-white transition-all"
+                                    >
+                                      {s.label} — {formatPrice(s.price)}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* Custom item */}
+              <div className="flex items-center gap-2 pt-1 border-t border-cream-dark/60 dark:border-navy-light/40 mt-1">
+                <span className="w-16" />
                 <button
                   onClick={() => addItem('', '')}
                   className="text-xs px-3 py-1.5 rounded-lg border border-dashed border-cream-dark dark:border-navy-light text-muted hover:border-gold hover:text-gold transition-all flex items-center gap-1"
