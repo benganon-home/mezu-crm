@@ -19,9 +19,9 @@ export async function GET(req: NextRequest) {
     .order('created_at', { ascending: false })
     .range(from, to)
 
-  if (search) {
-    query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%`)
-  }
+  const phone = searchParams.get('phone') || ''
+  if (search) query = query.or(`name.ilike.%${search}%,phone.ilike.%${search}%`)
+  if (phone)  query = query.eq('phone', phone).limit(1)
 
   const { data, error, count } = await query
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

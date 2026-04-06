@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { X, MessageCircle, Edit2, Plus, Trash2, Package, AlertTriangle } from 'lucide-react'
+import { X, MessageCircle, Edit2, Plus, Trash2, Package, AlertTriangle, Check } from 'lucide-react'
 import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG } from '@/types'
 import { formatDate, formatPrice, cn } from '@/lib/utils'
 import { getWaLink, getInvoiceWaLink } from '@/lib/whatsapp'
@@ -18,13 +18,17 @@ interface Props {
 
 export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const { visible, close } = useDrawerAnimation(onClose)
-  const [saving, setSaving]         = useState(false)
-  const [status, setStatus]         = useState<OrderStatus>(order.status)
-  const [notes, setNotes]           = useState(order.notes || '')
-  const [tracking, setTracking]     = useState(order.tracking_number || '')
+  const [saving, setSaving]           = useState(false)
+  const [status, setStatus]           = useState<OrderStatus>(order.status)
+  const [notes, setNotes]             = useState(order.notes || '')
+  const [tracking, setTracking]       = useState(order.tracking_number || '')
   const [editingItems, setEditingItems] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [deleting, setDeleting]     = useState(false)
+  const [deleting, setDeleting]       = useState(false)
+  const [editingCustomer, setEditingCustomer] = useState(false)
+  const [editName, setEditName]       = useState(order.customer?.name || '')
+  const [editPhone, setEditPhone]     = useState(order.customer?.phone || '')
+  const [savingCustomer, setSavingCustomer] = useState(false)
   const customer = order.customer
 
   const save = async (patch: Partial<Order>) => {
@@ -42,6 +46,54 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const onStatusChange = async (s: OrderStatus) => {
     setStatus(s)
     await save({ status: s })
+  }
+
+  const saveCustomer = async () => {
+    setSavingCustomer(true)
+    const normalizedPhone = editPhone.replace(/\D/g, '').replace(/^972/, '0')
+
+    // Look up existing customer by phone
+    const lookupRes = await fetch(`/api/customers?phone=${encodeURIComponent(normalizedPhone)}`)
+    const lookupJson = await lookupRes.json()
+    const existing = (lookupJson.data || [])[0]
+
+    let customerId: string
+
+    if (existing) {
+      // Update their name if changed
+      if (existing.name !== editName) {
+        await fetch(`/api/customers/${existing.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: editName }),
+        })
+      }
+      customerId = existing.id
+    } else {
+      // Create new customer
+      const createRes = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName, phone: normalizedPhone }),
+      })
+      const newCustomer = await createRes.json()
+      customerId = newCustomer.id
+    }
+
+    // Update order with new customer_id
+    const orderRes = await fetch(`/api/orders/${order.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customer_id: customerId }),
+    })
+    const updated = await orderRes.json()
+    onUpdate({
+      ...order,
+      ...updated,
+      customer: { ...(order.customer!), id: customerId, name: editName, phone: normalizedPhone },
+    })
+    setEditingCustomer(false)
+    setSavingCustomer(false)
   }
 
   const handleDelete = async () => {
@@ -102,15 +154,61 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
 
         {/* Header */}
         <div className="sticky top-0 z-10 bg-white dark:bg-navy-dark border-b border-cream-dark dark:border-navy-light px-5 py-4">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="font-semibold text-lg">{customer?.name}</div>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="ltr text-sm text-muted">{customer?.phone}</span>
-                <CopyButton text={customer?.phone || ''} />
-              </div>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              {editingCustomer ? (
+                <div className="flex flex-col gap-2">
+                  <input
+                    className="input text-sm"
+                    placeholder="שם לקוח"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    autoFocus
+                  />
+                  <input
+                    className="input text-sm ltr"
+                    placeholder="טלפון"
+                    value={editPhone}
+                    onChange={e => setEditPhone(e.target.value)}
+                    dir="ltr"
+                  />
+                  <div className="flex gap-2 mt-1">
+                    <button
+                      onClick={saveCustomer}
+                      disabled={savingCustomer || !editName.trim() || !editPhone.trim()}
+                      className="btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
+                    >
+                      <Check size={12} />
+                      {savingCustomer ? 'שומר...' : 'שמור'}
+                    </button>
+                    <button
+                      onClick={() => { setEditingCustomer(false); setEditName(customer?.name || ''); setEditPhone(customer?.phone || '') }}
+                      className="btn-secondary text-xs px-4 py-1.5"
+                    >
+                      ביטול
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-lg">{customer?.name}</span>
+                    <button
+                      onClick={() => setEditingCustomer(true)}
+                      className="text-muted hover:text-gold transition-colors"
+                      title="עריכת פרטי לקוח"
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="ltr text-sm text-muted">{customer?.phone}</span>
+                    <CopyButton text={customer?.phone || ''} />
+                  </div>
+                </div>
+              )}
             </div>
-            <button onClick={onClose} className="text-muted hover:text-navy dark:hover:text-cream p-1 rounded">
+            <button onClick={close} className="text-muted hover:text-navy dark:hover:text-cream p-1 rounded shrink-0">
               <X size={18} />
             </button>
           </div>
