@@ -11,11 +11,12 @@ import { BulkStatusBar } from '@/components/orders/BulkStatusBar'
 import { OrderRow } from '@/components/orders/OrderRow'
 
 const DEFAULT_STATUSES: OrderStatus[] = ['received', 'preparing', 'ready', 'cancelled']
+const PAGE_SIZE = 60
 
 export default function OrdersPage() {
-  const [orders, setOrders]           = useState<Order[]>([])
-  const [count, setCount]             = useState(0)
+  const [allOrders, setAllOrders]     = useState<Order[]>([])
   const [loading, setLoading]         = useState(true)
+  const [loadError, setLoadError]     = useState<string | null>(null)
   const [search, setSearch]           = useState('')
   const [selectedStatuses, setSelectedStatuses] = useState<OrderStatus[]>(DEFAULT_STATUSES)
   const [deliveryFilter, setDeliveryFilter] = useState<'all' | 'delivery' | 'pickup'>('all')
@@ -23,61 +24,78 @@ export default function OrdersPage() {
   const [activeOrder, setActiveOrder] = useState<Order | null>(null)
   const [showNewOrder, setShowNewOrder] = useState(false)
   const [page, setPage]               = useState(1)
-  const [loadError, setLoadError]     = useState<string | null>(null)
 
-  const allItemIds = useMemo(
-    () => orders.flatMap(o => (o.items || []).map(i => i.id)),
-    [orders]
-  )
-
-  const statusesKey = selectedStatuses.slice().sort().join(',')
-
+  // ── Fetch all orders once (no server-side filtering) ──────────
   const fetchOrders = useCallback(async () => {
     setLoading(true)
     setLoadError(null)
-    const params = new URLSearchParams({
-      statuses: statusesKey,
-      delivery: deliveryFilter,
-      search,
-      page:     String(page),
-      pageSize: '60',
-    })
     try {
-      const res = await fetch(`/api/orders?${params}`)
-      let json: { data?: Order[]; count?: number; error?: string } = {}
+      const res = await fetch('/api/orders?pageSize=1000')
+      let json: { data?: Order[]; error?: string } = {}
       try { json = await res.json() } catch { /* HTML error page */ }
-      if (!res.ok) {
-        setLoadError(json.error || `שגיאת שרת (${res.status})`)
-        setOrders([]); setCount(0)
-        return
-      }
-      setOrders(json.data || [])
-      setCount(json.count || 0)
+      if (!res.ok) { setLoadError(json.error || `שגיאת שרת (${res.status})`); return }
+      setAllOrders(json.data || [])
     } catch {
       setLoadError('לא ניתן להתחבר לשרת')
-      setOrders([]); setCount(0)
     } finally {
       setLoading(false)
     }
-  }, [statusesKey, deliveryFilter, search, page])
+  }, [])
 
   useEffect(() => { fetchOrders() }, [fetchOrders])
 
-  // Debounce search
-  useEffect(() => {
-    const t = setTimeout(() => fetchOrders(), 350)
-    return () => clearTimeout(t)
-  }, [search]) // eslint-disable-line
+  // ── Client-side filtering (instant, no network) ───────────────
+  const filteredOrders = useMemo(() => {
+    let result = allOrders
 
-  const toggleStatus = (s: OrderStatus) => {
-    setSelectedStatuses(prev =>
-      prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
-    )
-    setPage(1)
-  }
+    // Status: show orders with at least one item matching a selected status
+    if (selectedStatuses.length < ALL_STATUSES.length) {
+      result = result.filter(o =>
+        (o.items || []).some(i => selectedStatuses.includes(i.status))
+      )
+    }
 
-  const allSelected = selectedStatuses.length === ALL_STATUSES.length
+    if (deliveryFilter !== 'all') {
+      result = result.filter(o => o.delivery_type === deliveryFilter)
+    }
 
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      result = result.filter(o =>
+        o.customer?.name?.toLowerCase().includes(q) ||
+        o.customer?.phone?.includes(q) ||
+        (o.delivery_address || '').toLowerCase().includes(q)
+      )
+    }
+
+    return result
+  }, [allOrders, selectedStatuses, deliveryFilter, search])
+
+  // Reset to page 1 when filters change
+  useEffect(() => { setPage(1) }, [search, selectedStatuses, deliveryFilter])
+
+  // ── Client-side pagination ────────────────────────────────────
+  const paginatedOrders = useMemo(
+    () => filteredOrders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filteredOrders, page]
+  )
+
+  const allItemIds = useMemo(
+    () => paginatedOrders.flatMap(o => (o.items || []).map(i => i.id)),
+    [paginatedOrders]
+  )
+
+  // ── Stats from filtered set ───────────────────────────────────
+  const stats = useMemo(() => ({
+    total:     filteredOrders.length,
+    preparing: filteredOrders.flatMap(o => o.items || []).filter(i => i.status === 'preparing').length,
+    ready:     filteredOrders.filter(o =>
+      (o.items || []).length > 0 && (o.items || []).every(i => i.status === 'ready')
+    ).length,
+    revenue:   filteredOrders.reduce((s, o) => s + (o.total_price || 0), 0),
+  }), [filteredOrders])
+
+  // ── Selection ─────────────────────────────────────────────────
   const toggleItemSelect = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
     setSelectedItemIds(prev => {
@@ -107,6 +125,7 @@ export default function OrdersPage() {
     }
   }
 
+  // ── Mutations ─────────────────────────────────────────────────
   const onBulkStatus = async (status: OrderStatus) => {
     await fetch('/api/order-items/bulk', {
       method: 'POST',
@@ -118,7 +137,7 @@ export default function OrdersPage() {
   }
 
   const onItemStatusChange = (itemId: string, newStatus: OrderStatus) => {
-    setOrders(prev => prev.map(order => {
+    setAllOrders(prev => prev.map(order => {
       const items = order.items?.map(i => i.id === itemId ? { ...i, status: newStatus } : i)
       return items ? { ...order, items } : order
     }))
@@ -131,17 +150,17 @@ export default function OrdersPage() {
   }
 
   const onOrderUpdate = (updated: Order) => {
-    setOrders(prev => prev.map(o => o.id === updated.id ? updated : o))
+    setAllOrders(prev => prev.map(o => o.id === updated.id ? updated : o))
     setActiveOrder(updated)
   }
 
-  // Stats
-  const stats = {
-    total:     count,
-    preparing: orders.flatMap(o => o.items || []).filter(i => i.status === 'preparing').length,
-    ready:     orders.filter(o => (o.items || []).length > 0 && (o.items || []).every(i => i.status === 'ready')).length,
-    revenue:   orders.reduce((s, o) => s + (o.total_price || 0), 0),
+  const toggleStatus = (s: OrderStatus) => {
+    setSelectedStatuses(prev =>
+      prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
+    )
   }
+
+  const allSelected = selectedStatuses.length === ALL_STATUSES.length
 
   return (
     <div className={cn('flex flex-col gap-5', selectedItemIds.size > 0 && 'pb-24')}>
@@ -150,7 +169,7 @@ export default function OrdersPage() {
       <div className="page-header">
         <div>
           <h1>הזמנות</h1>
-          <p className="text-xs text-muted mt-0.5">{count} הזמנות סה״כ</p>
+          <p className="text-xs text-muted mt-0.5">{stats.total} הזמנות</p>
         </div>
         <button
           onClick={() => setShowNewOrder(true)}
@@ -163,29 +182,29 @@ export default function OrdersPage() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatCard label="סה״כ הזמנות"    value={stats.total}              sub="בסינון הנוכחי" />
-        <StatCard label="בהכנה"          value={stats.preparing}           valueClass="text-amber-600" />
-        <StatCard label="מוכן לשליחה"    value={stats.ready}               valueClass="text-emerald-600" />
+        <StatCard label="סה״כ הזמנות"    value={stats.total}               sub="בסינון הנוכחי" />
+        <StatCard label="בהכנה"          value={stats.preparing}            valueClass="text-orange-500" />
+        <StatCard label="מוכן לשליחה"    value={stats.ready}                valueClass="text-emerald-600" />
         <StatCard label="הכנסות (תצוגה)" value={formatPrice(stats.revenue)} valueClass="text-gold" />
       </div>
 
       {/* Toolbar */}
       <div className="flex flex-wrap gap-3 items-center">
-        {/* Search */}
+        {/* Search — no debounce needed, filtering is instant */}
         <div className="relative flex-1 min-w-[200px]">
           <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
             className="input pr-9"
             placeholder="חיפוש לפי שם, טלפון, כתובת..."
             value={search}
-            onChange={e => { setSearch(e.target.value); setPage(1) }}
+            onChange={e => setSearch(e.target.value)}
           />
         </div>
 
         {/* Status chips — multi-select */}
         <div className="flex gap-1.5 flex-wrap">
           <button
-            onClick={() => { setSelectedStatuses(ALL_STATUSES); setPage(1) }}
+            onClick={() => setSelectedStatuses(ALL_STATUSES)}
             className={cn('chip-btn', allSelected && 'chip-btn-active')}
           >
             הכל
@@ -268,10 +287,10 @@ export default function OrdersPage() {
               {loading && (
                 <tr><td colSpan={7} className="text-center py-12 text-muted">טוען...</td></tr>
               )}
-              {!loading && orders.length === 0 && (
+              {!loading && paginatedOrders.length === 0 && (
                 <tr><td colSpan={7} className="text-center py-12 text-muted">לא נמצאו הזמנות</td></tr>
               )}
-              {orders.map(order => (
+              {paginatedOrders.map(order => (
                 <OrderRow
                   key={order.id}
                   order={order}
@@ -288,9 +307,9 @@ export default function OrdersPage() {
 
         {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-2.5 border-t border-cream-dark dark:border-navy-light text-xs text-muted">
-          <span>מציג {orders.length} מתוך {count}</span>
+          <span>מציג {paginatedOrders.length} מתוך {filteredOrders.length}</span>
           <div className="flex gap-1">
-            {Array.from({ length: Math.ceil(count / 60) }, (_, i) => i + 1).slice(0, 7).map(p => (
+            {Array.from({ length: Math.ceil(filteredOrders.length / PAGE_SIZE) }, (_, i) => i + 1).slice(0, 7).map(p => (
               <button
                 key={p}
                 onClick={() => setPage(p)}
@@ -314,7 +333,7 @@ export default function OrdersPage() {
           order={activeOrder}
           onClose={() => setActiveOrder(null)}
           onUpdate={onOrderUpdate}
-          onDelete={id => { setOrders(prev => prev.filter(o => o.id !== id)); setCount(c => c - 1) }}
+          onDelete={id => setAllOrders(prev => prev.filter(o => o.id !== id))}
         />
       )}
 
