@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { X, Plus, Trash2, Upload, AlertTriangle, Check } from 'lucide-react'
+import { X, Plus, Trash2, Upload, AlertTriangle, Check, Copy } from 'lucide-react'
 import { Product, ProductSize } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -14,9 +14,10 @@ interface Props {
   onClose: () => void
   onSave: (product: Product) => void
   onDelete?: (id: string) => void
+  onDuplicate?: (product: Product) => void
 }
 
-export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
+export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate }: Props) {
   const { visible, close } = useDrawerAnimation(onClose)
   const isEdit = !!product
 
@@ -117,6 +118,27 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
     await fetch(`/api/products/${product.id}`, { method: 'DELETE' })
     onDelete?.(product.id)
     close()
+  }
+
+  const handleDuplicate = async () => {
+    if (!product) return
+    const payload = {
+      name: `עותק של ${product.name}`,
+      description: product.description,
+      base_price: product.base_price,
+      category: product.category,
+      is_active: false,
+      images: product.images,
+      sizes: product.sizes,
+      colors: product.colors,
+    }
+    const res = await fetch('/api/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    const cloned = await res.json()
+    if (res.ok) { onDuplicate?.(cloned); close() }
   }
 
   return (
@@ -371,15 +393,24 @@ export function ProductDrawer({ product, onClose, onSave, onDelete }: Props) {
             {saving ? 'שומר...' : isEdit ? 'שמור שינויים' : 'צור מוצר'}
           </button>
 
-          {/* Delete */}
+          {/* Duplicate + Delete */}
           {isEdit && (
-            <button
-              onClick={() => setConfirmDelete(true)}
-              className="w-full flex items-center justify-center gap-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 py-2.5 rounded-full transition-colors"
-            >
-              <Trash2 size={14} />
-              מחיקת מוצר
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={handleDuplicate}
+                className="flex-1 flex items-center justify-center gap-2 text-sm text-muted hover:text-navy dark:hover:text-cream hover:bg-cream-dark dark:hover:bg-navy-light py-2.5 rounded-full transition-colors border border-cream-dark dark:border-navy-light"
+              >
+                <Copy size={14} />
+                שכפל מוצר
+              </button>
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="flex-1 flex items-center justify-center gap-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 py-2.5 rounded-full transition-colors"
+              >
+                <Trash2 size={14} />
+                מחיקה
+              </button>
+            </div>
           )}
         </div>
       </div>
