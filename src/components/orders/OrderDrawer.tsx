@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { X, MessageCircle, Edit2, Plus, Trash2, Package, AlertTriangle, Check } from 'lucide-react'
-import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG } from '@/types'
+import { X, MessageCircle, Edit2, Plus, Trash2, Package, AlertTriangle, Check, ChevronDown } from 'lucide-react'
+import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG, ITEM_COLOR_MAP } from '@/types'
 import { formatDate, formatPrice, cn } from '@/lib/utils'
 import { getWaLink, getInvoiceWaLink } from '@/lib/whatsapp'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -25,6 +25,9 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const [editingItems, setEditingItems] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting]       = useState(false)
+  const [addingItem, setAddingItem]           = useState(false)
+  const [newItem, setNewItem]                 = useState({ item_name: '', color: '', sign_text: '', font: '', price: '' })
+  const [savingItem, setSavingItem]           = useState(false)
   const [editingCustomer, setEditingCustomer] = useState(false)
   const [editName, setEditName]       = useState(order.customer?.name || '')
   const [editPhone, setEditPhone]     = useState(order.customer?.phone || '')
@@ -94,6 +97,29 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
     })
     setEditingCustomer(false)
     setSavingCustomer(false)
+  }
+
+  const addItem = async () => {
+    if (!newItem.item_name.trim()) return
+    setSavingItem(true)
+    const res = await fetch('/api/order-items', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        order_id:  order.id,
+        item_name: newItem.item_name.trim(),
+        color:     newItem.color || null,
+        sign_text: newItem.sign_text || null,
+        font:      newItem.font || null,
+        price:     parseFloat(newItem.price) || 0,
+        status:    'received',
+      }),
+    })
+    const created = await res.json()
+    onUpdate({ ...order, items: [...(order.items || []), created] })
+    setNewItem({ item_name: '', color: '', sign_text: '', font: '', price: '' })
+    setAddingItem(false)
+    setSavingItem(false)
   }
 
   const handleDelete = async () => {
@@ -257,10 +283,82 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
               ))}
             </div>
 
-            {editingItems && (
-              <button className="mt-2 flex items-center gap-1.5 text-xs text-gold hover:underline">
+            {editingItems && !addingItem && (
+              <button
+                onClick={() => setAddingItem(true)}
+                className="mt-2 flex items-center gap-1.5 text-xs text-gold hover:underline"
+              >
                 <Plus size={12} /> הוסף פריט
               </button>
+            )}
+
+            {addingItem && (
+              <div className="mt-3 border border-cream-dark dark:border-navy-light rounded-xl p-3 flex flex-col gap-2.5 bg-cream/50 dark:bg-navy-deeper/50">
+                <div className="label text-xs mb-0">פריט חדש</div>
+
+                <input
+                  className="input text-sm"
+                  placeholder="שם המוצר *"
+                  value={newItem.item_name}
+                  onChange={e => setNewItem(p => ({ ...p, item_name: e.target.value }))}
+                  autoFocus
+                />
+
+                <div className="relative">
+                  <select
+                    className="input text-sm w-full appearance-none pr-3 pl-7 cursor-pointer"
+                    value={newItem.color}
+                    onChange={e => setNewItem(p => ({ ...p, color: e.target.value }))}
+                  >
+                    <option value="">צבע — ללא</option>
+                    {Object.keys(ITEM_COLOR_MAP).map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+                </div>
+
+                <input
+                  className="input text-sm"
+                  placeholder="טקסט על השלט"
+                  value={newItem.sign_text}
+                  onChange={e => setNewItem(p => ({ ...p, sign_text: e.target.value }))}
+                />
+
+                <input
+                  className="input text-sm"
+                  placeholder="פונט"
+                  value={newItem.font}
+                  onChange={e => setNewItem(p => ({ ...p, font: e.target.value }))}
+                />
+
+                <input
+                  className="input text-sm ltr"
+                  placeholder="מחיר (₪)"
+                  value={newItem.price}
+                  onChange={e => setNewItem(p => ({ ...p, price: e.target.value }))}
+                  type="number"
+                  min="0"
+                  dir="ltr"
+                />
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={addItem}
+                    disabled={savingItem || !newItem.item_name.trim()}
+                    className="btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    <Check size={12} />
+                    {savingItem ? 'שומר...' : 'הוסף'}
+                  </button>
+                  <button
+                    onClick={() => { setAddingItem(false); setNewItem({ item_name: '', color: '', sign_text: '', font: '', price: '' }) }}
+                    className="btn-secondary text-xs px-4 py-1.5"
+                  >
+                    ביטול
+                  </button>
+                </div>
+              </div>
             )}
 
             <div className="flex justify-between items-center mt-3 pt-3 border-t border-cream-dark dark:border-navy-light">
