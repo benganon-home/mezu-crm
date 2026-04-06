@@ -210,16 +210,16 @@ export default function OrdersPage() {
 
       {/* Toolbar — single row */}
       <div className="flex gap-2 items-center">
-        <div className="relative w-56 shrink-0">
+        <div className="relative flex-1">
           <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
             className="input pr-9 w-full"
-            placeholder="חיפוש..."
+            placeholder="חיפוש לפי שם, טלפון, כתובת..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-1.5 items-center flex-1 flex-wrap">
+        <div className="flex gap-1.5 items-center shrink-0">
           <button onClick={() => setSelectedStatuses(ALL_STATUSES)} className={cn('chip-btn', allSelected && 'chip-btn-active')}>הכל</button>
           {ALL_STATUSES.map(s => {
             const active = selectedStatuses.includes(s)
@@ -240,7 +240,7 @@ export default function OrdersPage() {
         <select
           value={deliveryFilter}
           onChange={e => setDeliveryFilter(e.target.value as typeof deliveryFilter)}
-          className="input text-sm cursor-pointer shrink-0"
+          className="input text-sm cursor-pointer w-[200px] shrink-0"
         >
           <option value="all">סוג משלוח: הכל</option>
           <option value="delivery">משלוח</option>
