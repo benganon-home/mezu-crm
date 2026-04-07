@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
-import { LogOut, MessageCircle, Save } from 'lucide-react'
+import { LogOut, MessageCircle, Save, Moon, Sun } from 'lucide-react'
 import { SalesRulesSection } from '@/components/settings/SalesRulesSection'
 
 const DEFAULT_TEMPLATES = {
@@ -15,8 +15,20 @@ const DEFAULT_TEMPLATES = {
 export default function SettingsPage() {
   const [templates, setTemplates] = useState(DEFAULT_TEMPLATES)
   const [saved, setSaved]         = useState(false)
+  const [dark, setDark]           = useState(false)
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    setDark(localStorage.getItem('mezu_dark') === 'true')
+  }, [])
+
+  const toggleDark = () => {
+    const next = !dark
+    setDark(next)
+    localStorage.setItem('mezu_dark', String(next))
+    document.documentElement.classList.toggle('dark', next)
+  }
 
   const logout = async () => {
     await supabase.auth.signOut()
@@ -62,6 +74,25 @@ export default function SettingsPage() {
           <Save size={13} strokeWidth={1.5} />
           {saved ? 'נשמר ✓' : 'שמור תבניות'}
         </button>
+      </div>
+
+      {/* Dark mode */}
+      <div className="surface p-5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            {dark ? <Moon size={16} className="text-gold" /> : <Sun size={16} className="text-gold" />}
+            <div>
+              <div className="font-medium text-sm">{dark ? 'מצב לילה' : 'מצב יום'}</div>
+              <div className="text-xs text-muted mt-0.5">{dark ? 'תצוגה כהה' : 'תצוגה בהירה'}</div>
+            </div>
+          </div>
+          <button
+            onClick={toggleDark}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${dark ? 'bg-gold' : 'bg-cream-dark dark:bg-navy-light'}`}
+          >
+            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${dark ? 'translate-x-1.5' : '-translate-x-5'}`} dir="ltr" />
+          </button>
+        </div>
       </div>
 
       {/* Sales Rules */}

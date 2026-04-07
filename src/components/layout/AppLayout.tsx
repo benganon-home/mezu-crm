@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   ShoppingBag, Users, Bell, BarChart2, Settings, Package,
-  Menu, X, Moon, Sun, ChevronsLeft
+  Menu, X, ChevronsLeft
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -24,10 +24,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 
-  const toggleDark = () => {
-    setDark(d => !d)
-    document.documentElement.classList.toggle('dark')
-  }
+  // Sync dark mode from localStorage on mount
+  useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('mezu_dark') === 'true'
+      setDark(saved)
+      if (saved) document.documentElement.classList.add('dark')
+    }
+  })
 
   return (
     <div
@@ -99,26 +103,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Bottom actions */}
-        <div className="px-2 py-4 border-t border-[#D8D4F5] flex flex-col gap-1">
+        <div className="px-2 py-4 border-t border-[#D8D4F5]">
           <button
             onClick={() => setCollapsed(c => !c)}
-            className={cn(
-              'hidden md:flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-[#9490B8] hover:text-navy hover:bg-white/60 transition-all w-full',
-              collapsed && 'justify-center px-0'
-            )}
+            className="hidden md:flex items-center justify-center w-full p-2.5 rounded-xl text-[#9490B8] hover:text-navy hover:bg-white/60 transition-all"
+            title={collapsed ? 'הרחב' : 'כווץ'}
+            dir="ltr"
           >
-            <ChevronsLeft size={14} className={cn('transition-transform', collapsed && 'rotate-180')} />
-            {!collapsed && <span>כווץ</span>}
-          </button>
-          <button
-            onClick={toggleDark}
-            className={cn(
-              'flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-[#9490B8] hover:text-navy hover:bg-white/60 transition-all w-full',
-              collapsed && 'justify-center px-0'
-            )}
-          >
-            {dark ? <Sun size={14} /> : <Moon size={14} />}
-            {!collapsed && <span>{dark ? 'מצב יום' : 'מצב לילה'}</span>}
+            <ChevronsLeft size={16} className={cn('transition-transform duration-250', collapsed && 'rotate-180')} />
           </button>
         </div>
       </aside>
