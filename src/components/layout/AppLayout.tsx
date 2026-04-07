@@ -78,7 +78,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Nav items */}
-        <nav className="flex-1 py-4 px-2 flex flex-col gap-0.5">
+        <nav className="flex-1 py-4 px-2 flex flex-col gap-1">
           {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
             const active = pathname.startsWith(href)
             return (
