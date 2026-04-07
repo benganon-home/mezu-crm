@@ -27,7 +27,7 @@ html {
 }
 
 body {
-  background: linear-gradient(145deg, #EEEEFF 0%, #E8E4FF 40%, #EDE8FF 70%, #F0EEFF 100%);
+  background: linear-gradient(160deg, #F7F6FF 0%, #F0EEFF 50%, #F4F2FF 100%);
   background-attachment: fixed;
   color: var(--navy);
   margin: 0;
