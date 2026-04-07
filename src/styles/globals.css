@@ -27,7 +27,7 @@ html {
 }
 
 body {
-  background: linear-gradient(135deg, #F8F7FC 0%, #EDE8FA 60%, #F5ECF8 100%);
+  background: linear-gradient(145deg, #EEEEFF 0%, #E8E4FF 40%, #EDE8FF 70%, #F0EEFF 100%);
   background-attachment: fixed;
   color: var(--navy);
   margin: 0;
@@ -61,7 +61,7 @@ h3 { font-size: 16px; font-weight: 500; }
 /* ─── Utility classes ────────────────────────────────────────── */
 @layer components {
   .surface {
-    @apply bg-white/85 dark:bg-navy-dark/90 border border-cream-dark dark:border-navy-light rounded-lg backdrop-blur-sm;
+    @apply bg-white dark:bg-navy-dark/90 rounded-2xl shadow-[0_2px_16px_rgba(108,92,231,0.08)] border-0 dark:border dark:border-navy-light;
   }
 
   .surface-hover {
@@ -85,9 +85,10 @@ h3 { font-size: 16px; font-weight: 500; }
   }
 
   .input {
-    @apply w-full bg-white dark:bg-navy-deeper border border-cream-dark dark:border-navy-light
-           rounded-lg px-3 py-2 text-sm text-navy dark:text-cream placeholder:text-muted
-           focus:outline-none focus:ring-1 focus:ring-gold transition-colors;
+    @apply w-full bg-white dark:bg-navy-deeper border border-[#E4E0F5] dark:border-navy-light
+           rounded-xl px-3 py-2 text-sm text-navy dark:text-cream placeholder:text-muted
+           focus:outline-none focus:ring-2 focus:ring-gold/30 focus:border-gold transition-all
+           shadow-[0_1px_4px_rgba(108,92,231,0.06)];
   }
 
   .label {

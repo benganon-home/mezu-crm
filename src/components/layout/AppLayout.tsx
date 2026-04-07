@@ -46,20 +46,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar — right side (RTL) */}
       <aside className={cn(
         'fixed top-0 right-0 h-full z-50 flex flex-col',
-        'bg-white dark:bg-navy-deeper border-l border-cream-dark dark:border-navy-light',
         'transition-all duration-250',
         'md:translate-x-0 md:static md:z-auto',
         collapsed ? 'w-[64px]' : 'w-[220px]',
         mobileOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
-      )}>
+      )}
+      style={{ background: 'linear-gradient(180deg, #9289DC 0%, #7B6FCA 50%, #6E62BC 100%)' }}
+      >
 
         {/* Logo */}
-        <div className={cn('flex items-center justify-between py-5 border-b border-cream-dark dark:border-navy-light', collapsed ? 'px-3' : 'px-5')}>
+        <div className={cn('flex items-center justify-between py-5 border-b border-white/15', collapsed ? 'px-3' : 'px-5')}>
           {!collapsed && (
             <img
               src="/logo svg.svg"
               alt="MEZU"
-              className="h-6 w-auto dark:brightness-0 dark:invert"
+              className="h-6 w-auto brightness-0 invert"
               style={{ maxWidth: 90 }}
             />
           )}
@@ -83,11 +84,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 onClick={() => setMobileOpen(false)}
                 title={collapsed ? label : undefined}
                 className={cn(
-                  'flex items-center gap-3 py-2.5 rounded-lg text-sm transition-colors duration-100',
+                  'flex items-center gap-3 py-2.5 rounded-xl text-sm transition-all duration-150',
                   collapsed ? 'justify-center px-0' : 'px-3',
                   active
-                    ? 'bg-navy/10 text-navy dark:bg-white/10 dark:text-cream font-medium'
-                    : 'text-muted hover:text-navy dark:hover:text-cream hover:bg-cream-dark/50 dark:hover:bg-white/7'
+                    ? 'bg-white/20 text-white font-medium shadow-sm'
+                    : 'text-white/60 hover:text-white hover:bg-white/10'
                 )}
               >
                 <Icon size={16} strokeWidth={active ? 2 : 1.5} />
@@ -98,11 +99,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Bottom actions */}
-        <div className="px-2 py-4 border-t border-cream-dark dark:border-navy-light flex flex-col gap-1">
+        <div className="px-2 py-4 border-t border-white/15 flex flex-col gap-1">
           <button
             onClick={() => setCollapsed(c => !c)}
             className={cn(
-              'hidden md:flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted hover:text-navy dark:hover:text-cream hover:bg-cream-dark/50 dark:hover:bg-white/7 transition-colors w-full',
+              'hidden md:flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-white/60 hover:text-white hover:bg-white/10 transition-all w-full',
               collapsed && 'justify-center px-0'
             )}
           >
@@ -112,7 +113,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <button
             onClick={toggleDark}
             className={cn(
-              'flex items-center gap-2 px-3 py-2 rounded-lg text-xs text-muted hover:text-navy dark:hover:text-cream hover:bg-cream-dark/50 dark:hover:bg-white/7 transition-colors w-full',
+              'flex items-center gap-2 px-3 py-2 rounded-xl text-xs text-white/60 hover:text-white hover:bg-white/10 transition-all w-full',
               collapsed && 'justify-center px-0'
             )}
           >
