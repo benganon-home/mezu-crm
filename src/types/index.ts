@@ -154,14 +154,10 @@ export const FONTS = [
 // ─── Item color map ──────────────────────────────────────────────────────────
 
 export const ITEM_COLOR_MAP: Record<string, { hex: string; border?: boolean }> = {
-  'אפקט אבן שיש':  { hex: '#C0B8A8' },           // warm marble — 665 orders
-  'בטון בהיר':     { hex: '#CDCAC4' },           // light concrete gray — 462 orders
-  'לבן':           { hex: '#F4F2EE', border: true }, // white — 185 orders
-  'בז\'':          { hex: '#D6C4A0' },           // warm beige — 133 orders
-  'בטון אפור':     { hex: '#8E8E8E' },           // medium gray concrete — 46 orders
-  'בטון בז\'':     { hex: '#BEAF98' },           // beige-tinted concrete — 15 orders
-  'בטון שחור':     { hex: '#3A3530' },           // dark charcoal — 4 orders
-  'שחור מאט':      { hex: '#1E1B18' },           // matte black — 1 order
+  'דמוי שיש בהיר':    { hex: '#D8D3C8' },
+  'דמוי שיש אפור חול': { hex: '#B8B0A0' },
+  'דמוי שיש כהה':     { hex: '#6B6560' },
+  'לבן שלג':          { hex: '#F5F3EF', border: true },
 }
 
 // ─── API response types ───────────────────────────────────────────────────────
