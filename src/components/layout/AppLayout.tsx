@@ -50,6 +50,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* Sidebar — right side (RTL) */}
       <aside className={cn(
         'fixed top-0 right-0 h-full z-50 flex flex-col',
+        'border-l border-[#D8D4F5]',
         'transition-all duration-250',
         'md:translate-x-0 md:static md:z-auto',
         collapsed ? 'w-[64px]' : 'w-[220px]',
