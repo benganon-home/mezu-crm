@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Plus, Trash2, ToggleLeft, ToggleRight, X } from 'lucide-react'
-import { SalesRule, SalesRuleCondition } from '@/types'
+import { SalesRule, SalesRuleCondition, Product } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
 
 const CATEGORIES = ['מזוזות', 'שלטי בית', 'ברכות', 'אחר']
@@ -20,12 +20,13 @@ const EMPTY_RULE: {
 }
 
 export function SalesRulesSection() {
-  const [rules, setRules]       = useState<SalesRule[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [form, setForm]         = useState(EMPTY_RULE)
-  const [saving, setSaving]     = useState(false)
-  const [error, setError]       = useState<string | null>(null)
+  const [rules, setRules]         = useState<SalesRule[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [showForm, setShowForm]   = useState(false)
+  const [form, setForm]           = useState(EMPTY_RULE)
+  const [saving, setSaving]       = useState(false)
+  const [error, setError]         = useState<string | null>(null)
+  const [sizesMap, setSizesMap]   = useState<Record<string, string[]>>({})
 
   const fetchRules = async () => {
     const res = await fetch('/api/sales-rules')
@@ -34,7 +35,22 @@ export function SalesRulesSection() {
     setLoading(false)
   }
 
-  useEffect(() => { fetchRules() }, [])
+  const fetchSizes = async () => {
+    const res = await fetch('/api/products')
+    const products: Product[] = await res.json()
+    if (!Array.isArray(products)) return
+    const map: Record<string, Set<string>> = {}
+    for (const p of products) {
+      if (!p.is_active || !p.category) continue
+      if (!map[p.category]) map[p.category] = new Set()
+      for (const s of (p.sizes || [])) {
+        if (s.label) map[p.category].add(s.label)
+      }
+    }
+    setSizesMap(Object.fromEntries(Object.entries(map).map(([k, v]) => [k, Array.from(v).sort()])))
+  }
+
+  useEffect(() => { fetchRules(); fetchSizes() }, [])
 
   const addCondition = () =>
     setForm(f => ({ ...f, conditions: [...f.conditions, { category: 'מזוזות', min_qty: 1 }] }))
@@ -123,32 +139,45 @@ export function SalesRulesSection() {
           <div>
             <div className="label mb-1.5">תנאים — כמות מינימום לפי קטגוריה</div>
             <div className="flex flex-col gap-2">
-              {form.conditions.map((cond, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <select
-                    className="input flex-1"
-                    value={cond.category}
-                    onChange={e => updateCondition(i, 'category', e.target.value)}
-                  >
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <span className="text-xs text-muted">מינ׳</span>
-                    <input
-                      type="number"
-                      min={1}
-                      className="input w-16 text-center"
-                      value={cond.min_qty}
-                      onChange={e => updateCondition(i, 'min_qty', parseInt(e.target.value) || 1)}
-                    />
+              {form.conditions.map((cond, i) => {
+                const availSizes = sizesMap[cond.category] || []
+                return (
+                  <div key={i} className="flex items-center gap-2 flex-wrap">
+                    <select
+                      className="input w-28 shrink-0"
+                      value={cond.category}
+                      onChange={e => { updateCondition(i, 'category', e.target.value); updateCondition(i, 'size', null) }}
+                    >
+                      {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                    {availSizes.length > 0 && (
+                      <select
+                        className="input w-28 shrink-0"
+                        value={cond.size || ''}
+                        onChange={e => updateCondition(i, 'size', e.target.value || null)}
+                      >
+                        <option value="">כל הגדלים</option>
+                        {availSizes.map(s => <option key={s} value={s}>{s} ס״מ</option>)}
+                      </select>
+                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      <span className="text-xs text-muted">כמות מינ׳</span>
+                      <input
+                        type="number"
+                        min={1}
+                        className="input w-14 text-center"
+                        value={cond.min_qty}
+                        onChange={e => updateCondition(i, 'min_qty', parseInt(e.target.value) || 1)}
+                      />
+                    </div>
+                    {form.conditions.length > 1 && (
+                      <button onClick={() => removeCondition(i)} className="text-muted hover:text-red-500 transition-colors">
+                        <X size={14} />
+                      </button>
+                    )}
                   </div>
-                  {form.conditions.length > 1 && (
-                    <button onClick={() => removeCondition(i)} className="text-muted hover:text-red-500 transition-colors">
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
-              ))}
+                )
+              })}
               <button
                 onClick={addCondition}
                 className="text-xs text-gold hover:underline text-right w-fit"
@@ -233,7 +262,7 @@ export function SalesRulesSection() {
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-sm">{rule.name}</div>
                 <div className="text-xs text-muted mt-0.5">
-                  {rule.conditions.map(c => `${c.min_qty}× ${c.category}`).join(' + ')}
+                  {rule.conditions.map(c => `${c.min_qty}× ${c.category}${c.size ? ` ${c.size}ס״מ` : ''}`).join(' + ')}
                   {' → '}
                   {rule.discount_type === 'percent'
                     ? `${rule.discount_value}% הנחה`

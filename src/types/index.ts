@@ -88,6 +88,7 @@ export interface Order {
 export interface SalesRuleCondition {
   category: string
   min_qty: number
+  size?: string | null
 }
 
 export interface SalesRule {

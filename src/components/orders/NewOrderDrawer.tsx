@@ -67,7 +67,10 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
     if (items.length === 0) return null
     return salesRules.find(rule =>
       rule.conditions.every(cond => {
-        const count = items.filter(i => i.model === cond.category).length
+        const count = items.filter(i =>
+          i.model === cond.category &&
+          (!cond.size || i.size === cond.size)
+        ).length
         return count >= cond.min_qty
       })
     ) ?? null
