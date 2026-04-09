@@ -10,6 +10,7 @@ import { OrderDrawer } from '@/components/orders/OrderDrawer'
 import { NewOrderDrawer } from '@/components/orders/NewOrderDrawer'
 import { BulkStatusBar } from '@/components/orders/BulkStatusBar'
 import { OrderRow } from '@/components/orders/OrderRow'
+import { PendingOrdersBanner } from '@/components/orders/PendingOrdersBanner'
 
 const DEFAULT_STATUSES: OrderStatus[] = ['received', 'preparing', 'ready', 'cancelled']
 const PAGE_SIZE = 60
@@ -233,6 +234,9 @@ export default function OrdersPage() {
           הזמנה חדשה
         </button>
       </div>
+
+      {/* Pending orders from DataStore (paid but no phone match) */}
+      <PendingOrdersBanner onOrderAdded={fetchOrders} />
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

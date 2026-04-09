@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createServerClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
+
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  if (key) return createClient(url, key)
+  return createServerClient()
+}
 
 // Map Base44 sign type labels → catalog product names
 const SIGN_MAP: Record<string, string> = {
@@ -23,7 +31,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const supabase = createClient()
+  const supabase = getSupabaseAdmin()
 
   const {
     customer_name,
@@ -93,8 +101,6 @@ export async function POST(req: NextRequest) {
       model:      'מזוזות',
       size:       mezuzah_size || null,
       color,
-      sign_text,
-      font,
       price,
       product_id: productId,
       status:     'received',
@@ -127,8 +133,6 @@ export async function POST(req: NextRequest) {
         model:      'מזוזות',
         size:       '16',
         color,
-        sign_text,
-        font,
         price:      60,
         product_id: productId,
         status:     'received',
