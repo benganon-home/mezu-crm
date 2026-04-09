@@ -1,21 +1,17 @@
 import { NextResponse } from 'next/server'
-
-const MAKE_BASE = 'https://eu1.make.com/api/v2'
-const DS_ID     = '111813'
-const TEAM_ID   = '1416079'
+import { createClient } from '@supabase/supabase-js'
 
 export async function GET() {
-  const token = process.env.MAKE_API_TOKEN
-  if (!token) return NextResponse.json([])
-
-  const res = await fetch(
-    `${MAKE_BASE}/data-store-records?dataStoreId=${DS_ID}&teamId=${TEAM_ID}&pg[limit]=100`,
-    { headers: { Authorization: `Token ${token}` }, cache: 'no-store' }
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
-  if (!res.ok) return NextResponse.json([])
 
-  const json = await res.json()
-  // Make.com API returns either { dataStoreRecords: [...] } or a flat array
-  const records = Array.isArray(json) ? json : (json.dataStoreRecords || [])
-  return NextResponse.json(records)
+  const { data, error } = await supabase
+    .from('pending_orders')
+    .select('*')
+    .order('inserted_at', { ascending: true })
+
+  if (error) return NextResponse.json([])
+  return NextResponse.json(data || [])
 }

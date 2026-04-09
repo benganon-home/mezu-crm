@@ -1,29 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
-const MAKE_BASE = 'https://eu1.make.com/api/v2'
-const DS_ID     = '111813'
-const TEAM_ID   = '1416079'
-
-async function deleteFromStore(key: string) {
-  return fetch(
-    `${MAKE_BASE}/data-store-records/${encodeURIComponent(key)}?dataStoreId=${DS_ID}&teamId=${TEAM_ID}`,
-    {
-      method: 'DELETE',
-      headers: { Authorization: `Token ${process.env.MAKE_API_TOKEN!}` },
-    }
+function getAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 }
 
-// DELETE /api/pending-orders/[key] — remove from DataStore (no payment)
+// DELETE /api/pending-orders/[key] — discard (no real payment)
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: { key: string } }
 ) {
-  await deleteFromStore(params.key)
+  await getAdmin()
+    .from('pending_orders')
+    .delete()
+    .eq('key', params.key)
+
   return NextResponse.json({ ok: true })
 }
 
-// POST /api/pending-orders/[key] — create order in CRM + remove from DataStore
+// POST /api/pending-orders/[key] — approve: create order in CRM + remove pending
 export async function POST(
   req: NextRequest,
   { params }: { params: { key: string } }
@@ -44,7 +42,10 @@ export async function POST(
     return NextResponse.json({ error: err.error || 'Failed to create order' }, { status: 400 })
   }
 
-  await deleteFromStore(params.key)
+  await getAdmin()
+    .from('pending_orders')
+    .delete()
+    .eq('key', params.key)
 
   const order = await webhookRes.json()
   return NextResponse.json(order, { status: 201 })
