@@ -15,5 +15,7 @@ export async function GET() {
   if (!res.ok) return NextResponse.json([])
 
   const json = await res.json()
-  return NextResponse.json(json.dataStoreRecords || [])
+  // Make.com API returns either { dataStoreRecords: [...] } or a flat array
+  const records = Array.isArray(json) ? json : (json.dataStoreRecords || [])
+  return NextResponse.json(records)
 }
