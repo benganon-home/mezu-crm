@@ -348,7 +348,7 @@ export default function OrdersPage() {
               <div className="w-[40px] shrink-0" />
               <div className="w-[52px] shrink-0" />
               <div className="flex-1 px-2 py-2.5">פריטים</div>
-              <div className="w-[110px] shrink-0 px-2 py-2.5">צבע</div>
+              <div className="w-[170px] shrink-0 px-2 py-2.5">צבע</div>
               <div className="w-[120px] shrink-0 px-2 py-2.5">טקסט</div>
               <div className="w-[110px] shrink-0 px-2 py-2.5">פונט</div>
               <div className="w-[70px] shrink-0 px-2 py-2.5 ltr">מחיר</div>
