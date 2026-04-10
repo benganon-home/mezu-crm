@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, MessageCircle, Edit2, Plus, Trash2, Package, AlertTriangle, Check, ChevronDown, FileText, Loader2, ExternalLink } from 'lucide-react'
+import { X, MessageCircle, Edit2, Plus, Trash2, Package, AlertTriangle, Check, ChevronDown, FileText, Loader2, ExternalLink, Search } from 'lucide-react'
 import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG, ITEM_COLOR_MAP, FONTS, Product, ProductSize, SalesRule } from '@/types'
 import { formatDate, formatPrice, cn } from '@/lib/utils'
 import { getWaLink, getInvoiceWaLink } from '@/lib/whatsapp'
@@ -29,11 +29,10 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   // Invoice
   const [invoiceId, setInvoiceId]     = useState(order.invoice_id || null)
   const [invoiceUrl, setInvoiceUrl]   = useState(order.invoice_url || null)
-  const [creatingInvoice, setCreatingInvoice] = useState(false)
-  const [invoiceError, setInvoiceError]       = useState<string | null>(null)
-  const [linkingInvoice, setLinkingInvoice]   = useState(false)
-  const [invoiceUrlInput, setInvoiceUrlInput] = useState('')
-  const [savingInvoiceUrl, setSavingInvoiceUrl] = useState(false)
+  const [invoiceError, setInvoiceError]         = useState<string | null>(null)
+  const [searchingInvoices, setSearchingInvoices] = useState(false)
+  const [morningInvoices, setMorningInvoices]     = useState<any[] | null>(null)
+  const [linkingId, setLinkingId]               = useState<string | null>(null)
 
   // Customer editing
   const [editingCustomer, setEditingCustomer] = useState(false)
@@ -257,39 +256,38 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
     close()
   }
 
-  // ── Link existing invoice URL ─────────────────────────────────
-  const saveInvoiceUrl = async () => {
-    const url = invoiceUrlInput.trim()
-    if (!url) return
-    setSavingInvoiceUrl(true)
-    await fetch(`/api/orders/${order.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ invoice_url: url }),
-    })
-    setInvoiceUrl(url)
-    setLinkingInvoice(false)
-    setInvoiceUrlInput('')
-    onUpdate({ ...order, items, customer, invoice_url: url })
-    setSavingInvoiceUrl(false)
-  }
-
-  // ── Create invoice ────────────────────────────────────────────
-  const createOrderInvoice = async () => {
-    setCreatingInvoice(true)
+  // ── Search Morning for invoices ───────────────────────────────
+  const searchMorningInvoices = async () => {
+    setSearchingInvoices(true)
     setInvoiceError(null)
+    setMorningInvoices(null)
     try {
-      const res  = await fetch(`/api/orders/${order.id}/invoice`, { method: 'POST' })
+      const res  = await fetch(`/api/orders/${order.id}/invoice`)
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'שגיאה ביצירת חשבונית')
-      setInvoiceId(data.invoice_id)
-      setInvoiceUrl(data.invoice_url)
-      onUpdate({ ...order, items, customer, invoice_id: data.invoice_id, invoice_url: data.invoice_url })
+      if (!res.ok) throw new Error(data.error || 'שגיאה בחיפוש חשבוניות')
+      setMorningInvoices(data.invoices || [])
     } catch (err: any) {
       setInvoiceError(err.message)
     } finally {
-      setCreatingInvoice(false)
+      setSearchingInvoices(false)
     }
+  }
+
+  // ── Link chosen Morning invoice ───────────────────────────────
+  const linkInvoice = async (inv: any) => {
+    setLinkingId(inv.id)
+    const invoiceId  = String(inv.id)
+    const invoiceUrl = inv.url || inv.documentUrl || inv.download_url || ''
+    await fetch(`/api/orders/${order.id}/invoice`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invoice_id: invoiceId, invoice_url: invoiceUrl }),
+    })
+    setInvoiceId(invoiceId)
+    setInvoiceUrl(invoiceUrl)
+    setMorningInvoices(null)
+    onUpdate({ ...order, items, customer, invoice_id: invoiceId, invoice_url: invoiceUrl })
+    setLinkingId(null)
   }
 
   const waReady   = customer ? getWaLink(customer, 'order_ready',   { itemSummary: items.map(i => i.item_name).join(', ') }) : '#'
@@ -543,30 +541,29 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
           <div>
             <div className="flex items-center justify-between mb-2">
               <div className="label">חשבונית ירוקה</div>
-              {invoiceUrl && !linkingInvoice && (
-                <button onClick={() => { setLinkingInvoice(true); setInvoiceUrlInput(invoiceUrl || '') }}
-                  className="text-muted hover:text-gold transition-colors" title="עדכן קישור">
-                  <Edit2 size={13} />
-                </button>
+              {invoiceUrl && (
+                <button onClick={() => { setInvoiceId(null); setInvoiceUrl(null); setMorningInvoices(null); searchMorningInvoices() }}
+                  className="text-xs text-muted hover:text-gold transition-colors">החלף</button>
               )}
             </div>
 
-            {/* Has invoice URL — show download + WA */}
-            {invoiceUrl && !linkingInvoice && (
+            {/* Linked invoice */}
+            {invoiceUrl && !morningInvoices && (
               <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-3 py-2.5">
                 <FileText size={16} className="text-emerald-600 flex-shrink-0" />
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-emerald-800 dark:text-emerald-300">חשבונית מצורפת</div>
-                  <div className="text-xs text-emerald-600 truncate">{invoiceUrl}</div>
+                  <div className="text-sm font-medium text-emerald-800 dark:text-emerald-300">
+                    {invoiceId ? `חשבונית #${invoiceId}` : 'חשבונית מצורפת'}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <a href={invoiceUrl} target="_blank" rel="noreferrer"
-                    className="flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-900 bg-emerald-100 dark:bg-emerald-800/40 hover:bg-emerald-200 px-2 py-1 rounded-full transition-colors">
-                    <ExternalLink size={11} /> פתח
+                    className="flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-900 bg-emerald-100 dark:bg-emerald-800/40 hover:bg-emerald-200 px-2.5 py-1 rounded-full transition-colors">
+                    <ExternalLink size={11} /> פתח PDF
                   </a>
                   {waInvoice && (
                     <a href={waInvoice} target="_blank" rel="noreferrer"
-                      className="flex items-center gap-1 text-xs font-medium text-white bg-[#25D366] hover:bg-[#1EB858] px-2 py-1 rounded-full transition-colors">
+                      className="flex items-center gap-1 text-xs font-medium text-white bg-[#25D366] hover:bg-[#1EB858] px-2.5 py-1 rounded-full transition-colors">
                       <MessageCircle size={11} /> שלח
                     </a>
                   )}
@@ -574,43 +571,52 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
               </div>
             )}
 
-            {/* Link / edit invoice URL */}
-            {(!invoiceUrl || linkingInvoice) && !creatingInvoice && (
-              <div className="flex flex-col gap-2">
-                {linkingInvoice ? (
-                  <>
-                    <input
-                      className="input text-sm ltr"
-                      placeholder="הדבק קישור לחשבונית מ-Morning..."
-                      value={invoiceUrlInput}
-                      onChange={e => setInvoiceUrlInput(e.target.value)}
-                      dir="ltr"
-                      autoFocus
-                    />
-                    <div className="flex gap-2">
-                      <button onClick={saveInvoiceUrl} disabled={savingInvoiceUrl || !invoiceUrlInput.trim()}
-                        className="btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5 disabled:opacity-50">
-                        <Check size={12} />{savingInvoiceUrl ? 'שומר...' : 'שמור'}
-                      </button>
-                      <button onClick={() => { setLinkingInvoice(false); setInvoiceUrlInput('') }}
-                        className="btn-secondary text-xs px-4 py-1.5">ביטול</button>
-                    </div>
-                  </>
+            {/* Search results */}
+            {morningInvoices && (
+              <div className="flex flex-col gap-1.5">
+                {morningInvoices.length === 0 ? (
+                  <div className="text-sm text-muted text-center py-3 border border-dashed border-cream-dark dark:border-navy-light rounded-xl">
+                    לא נמצאו חשבוניות ב-Morning עבור לקוח זה
+                  </div>
                 ) : (
-                  <button onClick={() => setLinkingInvoice(true)}
-                    className="flex items-center justify-center gap-2 w-full border border-dashed border-cream-dark dark:border-navy-light hover:border-gold hover:bg-gold/5 rounded-xl px-3 py-2.5 text-sm text-muted hover:text-gold transition-colors">
-                    <FileText size={14} /> קשר חשבונית קיימת מ-Morning
-                  </button>
+                  morningInvoices.map((inv: any) => (
+                    <button key={inv.id} onClick={() => linkInvoice(inv)} disabled={linkingId === inv.id}
+                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-cream-dark dark:border-navy-light hover:border-gold hover:bg-gold/5 transition-colors text-right w-full disabled:opacity-50">
+                      <FileText size={14} className="text-gold flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium">חשבונית #{inv.number || inv.id}</div>
+                        <div className="text-xs text-muted">
+                          {inv.client?.name} · {inv.sum ? `₪${inv.sum}` : ''} · {inv.date ? new Date(inv.date * 1000).toLocaleDateString('he-IL') : ''}
+                        </div>
+                      </div>
+                      {linkingId === inv.id
+                        ? <Loader2 size={13} className="animate-spin text-gold" />
+                        : <Check size={13} className="text-muted" />
+                      }
+                    </button>
+                  ))
                 )}
+                <button onClick={() => setMorningInvoices(null)} className="text-xs text-muted hover:text-navy dark:hover:text-cream text-center py-1">ביטול</button>
               </div>
             )}
 
-            {/* Creating new invoice (API) */}
-            {creatingInvoice && (
-              <div className="flex items-center justify-center gap-2 w-full border border-dashed border-gold/30 rounded-xl px-3 py-2.5 text-sm text-gold">
-                <Loader2 size={14} className="animate-spin" /> יוצר חשבונית...
+            {/* No invoice yet — search button */}
+            {!invoiceUrl && !morningInvoices && (
+              <button onClick={searchMorningInvoices} disabled={searchingInvoices}
+                className="flex items-center justify-center gap-2 w-full border border-dashed border-cream-dark dark:border-navy-light hover:border-gold hover:bg-gold/5 rounded-xl px-3 py-2.5 text-sm text-muted hover:text-gold transition-colors disabled:opacity-50">
+                {searchingInvoices
+                  ? <><Loader2 size={14} className="animate-spin" /> מחפש ב-Morning...</>
+                  : <><FileText size={14} /> חפש חשבונית ב-Morning</>
+                }
+              </button>
+            )}
+
+            {searchingInvoices && !morningInvoices && (
+              <div className="flex items-center justify-center gap-2 py-3 text-sm text-muted">
+                <Loader2 size={14} className="animate-spin" /> מחפש ב-Morning...
               </div>
             )}
+
             {invoiceError && (
               <div className="text-xs text-red-500 text-center mt-1">{invoiceError}</div>
             )}

@@ -1,6 +1,40 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createInvoice } from '@/lib/morning'
+import { createInvoice, searchInvoicesByPhone } from '@/lib/morning'
+
+// GET /api/orders/[id]/invoice — search Morning for invoices matching this order's customer
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  const supabase = createClient()
+  const { data: order, error } = await supabase
+    .from('orders')
+    .select('customer:customers(phone, name)')
+    .eq('id', params.id)
+    .single()
+
+  if (error || !order) return NextResponse.json({ error: 'Order not found' }, { status: 404 })
+
+  const phone = (order.customer as any)?.phone
+  if (!phone) return NextResponse.json({ error: 'Customer has no phone' }, { status: 400 })
+
+  try {
+    const invoices = await searchInvoicesByPhone(phone)
+    return NextResponse.json({ invoices })
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}
+
+// PATCH /api/orders/[id]/invoice — link an existing Morning invoice to this order
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const supabase = createClient()
+  const { invoice_id, invoice_url } = await req.json()
+  const { error } = await supabase
+    .from('orders')
+    .update({ invoice_id: String(invoice_id), invoice_url: invoice_url || '' })
+    .eq('id', params.id)
+  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  return NextResponse.json({ ok: true, invoice_id, invoice_url })
+}
 
 // POST /api/orders/[id]/invoice — create Morning invoice for an order
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {

@@ -88,3 +88,32 @@ export async function getInvoice(invoiceId: string) {
   if (!res.ok) throw new Error(`Morning API error ${res.status}`)
   return res.json()
 }
+
+export async function searchInvoicesByPhone(phone: string) {
+  const token = await getToken()
+  // Normalize: strip leading 0, add 972 prefix for Israeli numbers
+  const normalized = phone.replace(/\D/g, '').replace(/^0/, '972')
+  const params = new URLSearchParams({
+    type:        '320',        // חשבונית מס קבלה
+    pageSize:    '20',
+    page:        '1',
+    'client.phone': normalized,
+  })
+  const res = await fetch(`${BASE}/documents?${params}`, {
+    headers: bearerHeader(token),
+  })
+  if (!res.ok) throw new Error(`Morning API error ${res.status}`)
+  const data = await res.json()
+  // Also try with local format (05x) if normalized returns nothing
+  const items = data.items || data.documents || data.data || []
+  if (items.length === 0 && normalized.startsWith('972')) {
+    const localPhone = '0' + normalized.slice(3)
+    const params2 = new URLSearchParams({ type: '320', pageSize: '20', page: '1', 'client.phone': localPhone })
+    const res2 = await fetch(`${BASE}/documents?${params2}`, { headers: bearerHeader(token) })
+    if (res2.ok) {
+      const data2 = await res2.json()
+      return data2.items || data2.documents || data2.data || []
+    }
+  }
+  return items
+}
