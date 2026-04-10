@@ -115,6 +115,22 @@ export default function OrdersPage() {
     revenue:   filteredOrders.reduce((s, o) => s + (o.total_price || 0), 0),
   }), [filteredOrders])
 
+  // ── Mark all preparing → ready ───────────────────────────────
+  const markAllPreparingReady = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const ids = allOrders
+      .flatMap(o => o.items || [])
+      .filter(i => i.status === 'preparing')
+      .map(i => i.id)
+    if (!ids.length) return
+    await fetch('/api/order-items/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, status: 'ready' }),
+    })
+    fetchOrders()
+  }
+
   // ── Selection ─────────────────────────────────────────────────
   const toggleItemSelect = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -244,6 +260,8 @@ export default function OrdersPage() {
         <StatCard label="בהכנה"          value={stats.preparing}            valueClass="text-orange-500"
           showFilter active={preparingActive}
           onClick={() => setPreparingActive(v => !v)}
+          actionLabel="סמן כמוכן"
+          onAction={markAllPreparingReady}
         />
         <StatCard label="מוכן לשליחה"    value={stats.ready}                valueClass="text-emerald-600"
           showFilter active={readyActive}

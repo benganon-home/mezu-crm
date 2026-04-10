@@ -8,9 +8,11 @@ interface Props {
   onClick?: () => void
   active?: boolean
   showFilter?: boolean
+  actionLabel?: string
+  onAction?: (e: React.MouseEvent) => void
 }
 
-export function StatCard({ label, value, sub, valueClass, onClick, active, showFilter }: Props) {
+export function StatCard({ label, value, sub, valueClass, onClick, active, showFilter, actionLabel, onAction }: Props) {
   return (
     <div
       onClick={onClick}
@@ -27,12 +29,24 @@ export function StatCard({ label, value, sub, valueClass, onClick, active, showF
         {value}
       </div>
       {sub && <div className="text-xs text-muted mt-1">{sub}</div>}
-      {showFilter && (
-        <div className={cn(
-          'text-xs mt-2 font-medium transition-colors',
-          active ? 'text-gold' : 'text-muted hover:text-gold'
-        )}>
-          {active ? 'מסונן ✓' : 'הצג'}
+      {(showFilter || actionLabel) && (
+        <div className="flex items-center justify-between mt-2">
+          {actionLabel && onAction ? (
+            <button
+              onClick={onAction}
+              className="text-xs font-medium text-muted hover:text-emerald-600 transition-colors border border-cream-dark dark:border-navy-light rounded px-2 py-0.5 hover:border-emerald-300"
+            >
+              {actionLabel}
+            </button>
+          ) : <span />}
+          {showFilter && (
+            <div className={cn(
+              'text-xs font-medium transition-colors',
+              active ? 'text-gold' : 'text-muted hover:text-gold'
+            )}>
+              {active ? 'מסונן ✓' : 'הצג'}
+            </div>
+          )}
         </div>
       )}
     </div>
