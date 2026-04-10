@@ -245,7 +245,9 @@ h3 { font-size: 16px; font-weight: 500; }
 /* Status filter chips */
 .chip-btn {
   @apply px-3 py-1.5 rounded-full text-xs font-medium border border-cream-dark dark:border-navy-light
-         text-muted hover:text-navy dark:hover:text-cream transition-colors;
+         text-muted hover:text-navy hover:border-navy/40 hover:bg-navy/5
+         dark:hover:text-cream dark:hover:border-cream/40 dark:hover:bg-cream/5
+         transition-colors cursor-pointer;
 }
 .chip-btn-active {
   @apply bg-navy text-cream border-navy dark:bg-cream dark:text-navy dark:border-cream;
