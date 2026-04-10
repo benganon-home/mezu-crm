@@ -31,14 +31,6 @@ export function StatCard({ label, value, sub, valueClass, onClick, active, showF
       {sub && <div className="text-xs text-muted mt-1">{sub}</div>}
       {(showFilter || actionLabel) && (
         <div className="flex items-center justify-between mt-2">
-          {actionLabel && onAction ? (
-            <button
-              onClick={onAction}
-              className="text-xs font-medium text-muted hover:text-emerald-600 transition-colors border border-cream-dark dark:border-navy-light rounded px-2 py-0.5 hover:border-emerald-300"
-            >
-              {actionLabel}
-            </button>
-          ) : <span />}
           {showFilter && (
             <div className={cn(
               'text-xs font-medium transition-colors',
@@ -47,6 +39,14 @@ export function StatCard({ label, value, sub, valueClass, onClick, active, showF
               {active ? 'מסונן ✓' : 'הצג'}
             </div>
           )}
+          {actionLabel && onAction ? (
+            <button
+              onClick={onAction}
+              className="text-xs font-medium text-muted hover:text-emerald-600 transition-colors border border-cream-dark dark:border-navy-light rounded px-2 py-0.5 hover:border-emerald-300"
+            >
+              {actionLabel}
+            </button>
+          ) : <span />}
         </div>
       )}
     </div>
