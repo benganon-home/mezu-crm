@@ -170,7 +170,11 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
               <div className="w-[120px] shrink-0 px-2 py-3.5 flex items-center gap-1" onClick={e => e.stopPropagation()}>
                 {item.sign_text
                   ? <>
-                      <span className="text-gold font-medium truncate">{item.sign_text}</span>
+                      <span className="text-gold font-medium truncate">
+                        {item.sign_text.includes('\n')
+                          ? item.sign_text.replace('\n', '›')
+                          : item.sign_text}
+                      </span>
                       <CopyButton text={item.sign_text} />
                     </>
                   : <span className="text-muted/40 font-normal">—</span>
