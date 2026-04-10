@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Plus, Search, ChevronDown } from 'lucide-react'
+import { Plus, Search, ChevronDown, Download } from 'lucide-react'
 import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG } from '@/types'
 import { UndoToast } from '@/components/ui/UndoToast'
 import { formatPrice, cn } from '@/lib/utils'
@@ -11,6 +11,7 @@ import { NewOrderDrawer } from '@/components/orders/NewOrderDrawer'
 import { BulkStatusBar } from '@/components/orders/BulkStatusBar'
 import { OrderRow } from '@/components/orders/OrderRow'
 import { PendingOrdersBanner } from '@/components/orders/PendingOrdersBanner'
+import { ExportModal } from '@/components/orders/ExportModal'
 
 const DEFAULT_STATUSES: OrderStatus[] = ['received', 'preparing', 'ready', 'cancelled']
 const PAGE_SIZE = 60
@@ -27,6 +28,7 @@ export default function OrdersPage() {
   const [selectedItemIds, setSelectedItemIds] = useState<Set<string>>(new Set())
   const [activeOrder, setActiveOrder] = useState<Order | null>(null)
   const [showNewOrder, setShowNewOrder] = useState(false)
+  const [showExport, setShowExport]     = useState(false)
   const [page, setPage]               = useState(1)
   const [yearFilter, setYearFilter]   = useState<number>(new Date().getFullYear())
   const [undoPending, setUndoPending] = useState<{ itemId: string; orderId: string; item: OrderItem } | null>(null)
@@ -242,14 +244,25 @@ export default function OrdersPage() {
             </div>
           )}
         </div>
-        <button
-          onClick={() => setShowNewOrder(true)}
-          className="btn-primary flex items-center gap-2"
-        >
-          <Plus size={14} strokeWidth={1.5} />
-          הזמנה חדשה
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowExport(true)}
+            className="btn-secondary flex items-center gap-2 text-sm"
+          >
+            <Download size={14} strokeWidth={1.5} />
+            ייצוא
+          </button>
+          <button
+            onClick={() => setShowNewOrder(true)}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Plus size={14} strokeWidth={1.5} />
+            הזמנה חדשה
+          </button>
+        </div>
       </div>
+
+      {showExport && <ExportModal onClose={() => setShowExport(false)} />}
 
       {/* Pending orders from DataStore (paid but no phone match) */}
       <PendingOrdersBanner onOrderAdded={fetchOrders} />

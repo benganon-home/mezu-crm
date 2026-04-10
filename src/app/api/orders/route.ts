@@ -10,7 +10,10 @@ export async function GET(req: NextRequest) {
   const from     = (page - 1) * pageSize
   const to       = from + pageSize - 1
 
-  const { data, error, count } = await supabase
+  const dateFrom = searchParams.get('dateFrom')
+  const dateTo   = searchParams.get('dateTo')
+
+  let query = supabase
     .from('orders')
     .select(`
       *,
@@ -18,7 +21,13 @@ export async function GET(req: NextRequest) {
       items:order_items(*, product:products(images))
     `, { count: 'exact' })
     .order('created_at', { ascending: false })
-    .range(from, to)
+
+  if (dateFrom) query = query.gte('created_at', dateFrom)
+  if (dateTo)   query = query.lte('created_at', dateTo + 'T23:59:59')
+
+  const { data, error, count } = dateFrom || dateTo
+    ? await query
+    : await query.range(from, to)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ data, count, page, pageSize })
