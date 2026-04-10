@@ -154,7 +154,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
               </div>
 
               {/* צבע */}
-              <div className="w-[110px] shrink-0 px-2 py-3.5">
+              <div className="w-[170px] shrink-0 px-2 py-3.5">
                 {item.color ? (
                   <div className="flex items-center gap-1.5">
                     <div
