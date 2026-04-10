@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, MessageCircle, Edit2, Plus, Trash2, Package, AlertTriangle, Check, ChevronDown } from 'lucide-react'
+import { X, MessageCircle, Edit2, Plus, Trash2, Package, AlertTriangle, Check, ChevronDown, FileText, Loader2, ExternalLink } from 'lucide-react'
 import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG, ITEM_COLOR_MAP, FONTS, Product, ProductSize, SalesRule } from '@/types'
 import { formatDate, formatPrice, cn } from '@/lib/utils'
 import { getWaLink, getInvoiceWaLink } from '@/lib/whatsapp'
@@ -25,6 +25,12 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const [tracking, setTracking]           = useState(order.tracking_number || '')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting]           = useState(false)
+
+  // Invoice
+  const [invoiceId, setInvoiceId]   = useState(order.invoice_id || null)
+  const [invoiceUrl, setInvoiceUrl] = useState(order.invoice_url || null)
+  const [creatingInvoice, setCreatingInvoice] = useState(false)
+  const [invoiceError, setInvoiceError] = useState<string | null>(null)
 
   // Customer editing
   const [editingCustomer, setEditingCustomer] = useState(false)
@@ -248,9 +254,27 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
     close()
   }
 
+  // ── Create invoice ────────────────────────────────────────────
+  const createOrderInvoice = async () => {
+    setCreatingInvoice(true)
+    setInvoiceError(null)
+    try {
+      const res  = await fetch(`/api/orders/${order.id}/invoice`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'שגיאה ביצירת חשבונית')
+      setInvoiceId(data.invoice_id)
+      setInvoiceUrl(data.invoice_url)
+      onUpdate({ ...order, items, customer, invoice_id: data.invoice_id, invoice_url: data.invoice_url })
+    } catch (err: any) {
+      setInvoiceError(err.message)
+    } finally {
+      setCreatingInvoice(false)
+    }
+  }
+
   const waReady   = customer ? getWaLink(customer, 'order_ready',   { itemSummary: items.map(i => i.item_name).join(', ') }) : '#'
-  const waShipped = customer ? getWaLink(customer, 'order_shipped',  { trackingNumber: tracking, invoiceUrl: order.invoice_url || undefined }) : '#'
-  const waInvoice = customer && order.invoice_url ? getInvoiceWaLink(customer, order.invoice_url) : null
+  const waShipped = customer ? getWaLink(customer, 'order_shipped',  { trackingNumber: tracking, invoiceUrl: invoiceUrl || undefined }) : '#'
+  const waInvoice = customer && invoiceUrl ? getInvoiceWaLink(customer, invoiceUrl) : null
 
   return (
     <>
@@ -498,22 +522,43 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
           {/* Invoice */}
           <div>
             <div className="label mb-2">חשבונית ירוקה</div>
-            {order.invoice_id ? (
+            {invoiceId ? (
               <div className="flex items-center gap-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2.5">
                 <div className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
                 <div className="flex-1">
-                  <div className="text-sm font-medium text-emerald-800 dark:text-emerald-300">חשבונית #{order.invoice_id}</div>
+                  <div className="text-sm font-medium text-emerald-800 dark:text-emerald-300">חשבונית #{invoiceId}</div>
                   <div className="text-xs text-emerald-600">{formatPrice(finalTotal)}</div>
                 </div>
-                {waInvoice && (
-                  <a href={waInvoice} target="_blank" rel="noreferrer" className="text-xs text-emerald-700 hover:underline flex items-center gap-1">
-                    <MessageCircle size={12} /> שלח
-                  </a>
-                )}
+                <div className="flex items-center gap-2">
+                  {invoiceUrl && (
+                    <a href={invoiceUrl} target="_blank" rel="noreferrer"
+                      className="text-xs text-emerald-700 hover:underline flex items-center gap-1" title="פתח חשבונית">
+                      <ExternalLink size={12} />
+                    </a>
+                  )}
+                  {waInvoice && (
+                    <a href={waInvoice} target="_blank" rel="noreferrer"
+                      className="text-xs text-emerald-700 hover:underline flex items-center gap-1">
+                      <MessageCircle size={12} /> שלח
+                    </a>
+                  )}
+                </div>
               </div>
             ) : (
-              <div className="border border-dashed border-cream-dark dark:border-navy-light rounded-lg px-3 py-2.5 text-sm text-muted">
-                אין חשבונית — הפקה תתבצע בממשק חשבונית ירוקה
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={createOrderInvoice}
+                  disabled={creatingInvoice || items.length === 0}
+                  className="flex items-center justify-center gap-2 w-full border border-dashed border-gold/40 hover:border-gold hover:bg-gold/5 rounded-lg px-3 py-2.5 text-sm text-gold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {creatingInvoice
+                    ? <><Loader2 size={14} className="animate-spin" /> יוצר חשבונית...</>
+                    : <><FileText size={14} /> צור חשבונית ירוקה</>
+                  }
+                </button>
+                {invoiceError && (
+                  <div className="text-xs text-red-500 text-center">{invoiceError}</div>
+                )}
               </div>
             )}
           </div>
