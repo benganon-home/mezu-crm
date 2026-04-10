@@ -1,27 +1,35 @@
 /**
  * Morning.co (חשבונית ירוקה) API client
- * Auth flow: POST /account/token with Basic auth → get JWT → use as Bearer
+ *
+ * Auth: POST /account/token with JSON body { id, secret } → JWT token
+ * Then: Bearer token on all subsequent requests
+ *
+ * Docs: https://morning.co/developers
  */
 
-const BASE = 'https://api.green-invoice.co.il/v1'
+const BASE = 'https://api.morning.co/v1'
 
-async function getToken(): Promise<string> {
-  const basic = Buffer.from(
-    `${process.env.MORNING_API_KEY}:${process.env.MORNING_API_SECRET}`
-  ).toString('base64')
+export async function getToken(): Promise<string> {
+  const id     = process.env.MORNING_API_KEY
+  const secret = process.env.MORNING_API_SECRET
+
+  if (!id || !secret) throw new Error('MORNING_API_KEY / MORNING_API_SECRET not set')
 
   const res = await fetch(`${BASE}/account/token`, {
     method:  'POST',
-    headers: { Authorization: `Basic ${basic}`, 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json' },
+    body:    JSON.stringify({ id, secret }),
   })
 
+  const text = await res.text()
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.message || `Morning auth error ${res.status}`)
+    throw new Error(`Morning token error ${res.status}: ${text.slice(0, 300)}`)
   }
 
-  const data = await res.json()
-  return data.token
+  const data = JSON.parse(text)
+  const token = data.token || data.access_token || data.jwt
+  if (!token) throw new Error(`Morning token missing in response: ${text.slice(0, 300)}`)
+  return token
 }
 
 function bearerHeader(token: string) {
@@ -50,7 +58,7 @@ export async function createInvoice(params: CreateInvoiceParams) {
     type: 320, // חשבונית מס קבלה
     lang: 'he',
     currency: 'ILS',
-    vatType: 1, // prices include VAT
+    vatType: 1,
     client: {
       name:  params.customerName,
       phone: params.customerPhone || '',
@@ -72,48 +80,31 @@ export async function createInvoice(params: CreateInvoiceParams) {
     body:    JSON.stringify(body),
   })
 
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    throw new Error(err.message || `Morning API error ${res.status}`)
-  }
-
-  return res.json() // { id, url, ... }
-}
-
-export async function getInvoice(invoiceId: string) {
-  const token = await getToken()
-  const res   = await fetch(`${BASE}/documents/${invoiceId}`, {
-    headers: bearerHeader(token),
-  })
-  if (!res.ok) throw new Error(`Morning API error ${res.status}`)
-  return res.json()
+  const text = await res.text()
+  if (!res.ok) throw new Error(`Morning createInvoice ${res.status}: ${text.slice(0, 300)}`)
+  return JSON.parse(text)
 }
 
 export async function searchInvoicesByPhone(phone: string) {
   const token = await getToken()
-  // Normalize: strip leading 0, add 972 prefix for Israeli numbers
-  const normalized = phone.replace(/\D/g, '').replace(/^0/, '972')
-  const params = new URLSearchParams({
-    type:        '320',        // חשבונית מס קבלה
-    pageSize:    '20',
-    page:        '1',
-    'client.phone': normalized,
-  })
-  const res = await fetch(`${BASE}/documents?${params}`, {
-    headers: bearerHeader(token),
-  })
-  if (!res.ok) throw new Error(`Morning API error ${res.status}`)
-  const data = await res.json()
-  // Also try with local format (05x) if normalized returns nothing
-  const items = data.items || data.documents || data.data || []
-  if (items.length === 0 && normalized.startsWith('972')) {
-    const localPhone = '0' + normalized.slice(3)
-    const params2 = new URLSearchParams({ type: '320', pageSize: '20', page: '1', 'client.phone': localPhone })
-    const res2 = await fetch(`${BASE}/documents?${params2}`, { headers: bearerHeader(token) })
-    if (res2.ok) {
-      const data2 = await res2.json()
-      return data2.items || data2.documents || data2.data || []
-    }
+
+  // Try both 972-prefix and local 05x format
+  const digits     = phone.replace(/\D/g, '')
+  const intl       = digits.startsWith('972') ? digits : '972' + digits.replace(/^0/, '')
+  const local      = '0' + intl.slice(3)
+
+  const trySearch = async (clientPhone: string) => {
+    const qs = new URLSearchParams({ type: '320', pageSize: '20', page: '1', 'client.phone': clientPhone })
+    const res = await fetch(`${BASE}/documents?${qs}`, { headers: bearerHeader(token) })
+    const text = await res.text()
+    if (!res.ok) throw new Error(`Morning search ${res.status}: ${text.slice(0, 300)}`)
+    const data = JSON.parse(text)
+    return (data.items || data.documents || data.data || []) as any[]
   }
-  return items
+
+  const items = await trySearch(intl)
+  if (items.length > 0) return items
+
+  const items2 = await trySearch(local)
+  return items2
 }
