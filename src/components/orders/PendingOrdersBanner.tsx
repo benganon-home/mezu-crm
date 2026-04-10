@@ -120,7 +120,7 @@ export function PendingOrdersBanner({ onOrderAdded }: { onOrderAdded: () => void
                       href={buildWaLink(r.data.phone || r.key, `שלום ${r.data.customer_name || ''}! 😊\nראינו שהתחלת הזמנה במיזו אך טרם השלמת אותה.\nנשמח לעזור! יש שאלות? 🙏`)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-xs py-1.5 px-3 flex items-center gap-1.5 border border-green-200 text-green-600 rounded-lg hover:bg-green-50 transition-colors"
+                      className="text-xs py-1.5 px-3 flex items-center gap-1.5 border border-green-200 text-green-600 rounded-full hover:bg-green-50 transition-colors"
                     >
                       <MessageCircle size={11} />
                       וואטסאפ
@@ -136,7 +136,7 @@ export function PendingOrdersBanner({ onOrderAdded }: { onOrderAdded: () => void
                     <button
                       onClick={() => handleDelete(r.key)}
                       disabled={isBusy}
-                      className="text-xs py-1.5 px-3 flex items-center gap-1.5 border border-red-200 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 transition-colors"
+                      className="text-xs py-1.5 px-3 flex items-center gap-1.5 border border-red-200 text-red-600 rounded-full hover:bg-red-50 disabled:opacity-50 transition-colors"
                     >
                       {isBusy ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
                       מחק
