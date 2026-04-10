@@ -140,7 +140,36 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── 4. Create order ───────────────────────────────────────────
+  // ── 4. Apply sales rules ──────────────────────────────────────
+  const { data: rulesData = [] } = await supabase
+    .from('sales_rules')
+    .select('*')
+    .eq('is_active', true)
+
+  const activeRules: any[] = rulesData || []
+  const autoTotal = items.reduce((s: number, i: any) => s + (i.price || 0), 0)
+
+  const matchingRule = activeRules.find((rule: any) =>
+    rule.conditions.every((cond: any) => {
+      const count = items.filter((i: any) =>
+        i.model === cond.category && (!cond.size || i.size === cond.size)
+      ).length
+      return count >= cond.min_qty
+    })
+  ) ?? null
+
+  let finalTotal = autoTotal
+  if (matchingRule) {
+    finalTotal = matchingRule.discount_type === 'fixed_total'
+      ? matchingRule.discount_value
+      : autoTotal * (1 - matchingRule.discount_value / 100)
+    // Distribute final total proportionally across items
+    if (autoTotal > 0) {
+      items.forEach((i: any) => { i.price = parseFloat(((i.price / autoTotal) * finalTotal).toFixed(2)) })
+    }
+  }
+
+  // ── 5. Create order ───────────────────────────────────────────
   const { data: order, error: orderErr } = await supabase
     .from('orders')
     .insert({
@@ -148,7 +177,7 @@ export async function POST(req: NextRequest) {
       status:           'received',
       delivery_type:    'delivery',
       delivery_address: address || null,
-      total_price:      totalPrice,
+      total_price:      finalTotal,
       source:           'site',
     })
     .select('id')
@@ -156,7 +185,7 @@ export async function POST(req: NextRequest) {
 
   if (orderErr) return NextResponse.json({ error: orderErr.message }, { status: 400 })
 
-  // ── 5. Create items ───────────────────────────────────────────
+  // ── 6. Create items ───────────────────────────────────────────
   if (items.length > 0) {
     const { error: itemsErr } = await supabase
       .from('order_items')
@@ -164,7 +193,7 @@ export async function POST(req: NextRequest) {
     if (itemsErr) return NextResponse.json({ error: itemsErr.message }, { status: 400 })
   }
 
-  // ── 6. Return full order ──────────────────────────────────────
+  // ── 7. Return full order ──────────────────────────────────────
   const { data: fullOrder } = await supabase
     .from('orders')
     .select('*, customer:customers(*), items:order_items(*, product:products(images))')
