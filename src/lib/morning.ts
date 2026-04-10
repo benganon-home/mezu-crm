@@ -1,15 +1,31 @@
 /**
  * Morning.co (חשבונית ירוקה) API client
- * Docs: https://morning.co/api/v1
+ * Auth flow: POST /account/token with Basic auth → get JWT → use as Bearer
  */
 
-const BASE = 'https://api.morning.co/v1'
+const BASE = 'https://api.green-invoice.co.il/v1'
 
-function authHeader() {
-  const token = Buffer.from(
+async function getToken(): Promise<string> {
+  const basic = Buffer.from(
     `${process.env.MORNING_API_KEY}:${process.env.MORNING_API_SECRET}`
   ).toString('base64')
-  return { Authorization: `Basic ${token}`, 'Content-Type': 'application/json' }
+
+  const res = await fetch(`${BASE}/account/token`, {
+    method:  'POST',
+    headers: { Authorization: `Basic ${basic}`, 'Content-Type': 'application/json' },
+  })
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}))
+    throw new Error(err.message || `Morning auth error ${res.status}`)
+  }
+
+  const data = await res.json()
+  return data.token
+}
+
+function bearerHeader(token: string) {
+  return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 }
 
 export interface MorningItem {
@@ -20,14 +36,16 @@ export interface MorningItem {
 }
 
 export interface CreateInvoiceParams {
-  customerName:  string
+  customerName:   string
   customerPhone?: string
-  items:         MorningItem[]
-  sendEmail?:    boolean
-  emailAddress?: string
+  items:          MorningItem[]
+  sendEmail?:     boolean
+  emailAddress?:  string
 }
 
 export async function createInvoice(params: CreateInvoiceParams) {
+  const token = await getToken()
+
   const body = {
     type: 320, // חשבונית מס קבלה
     lang: 'he',
@@ -50,7 +68,7 @@ export async function createInvoice(params: CreateInvoiceParams) {
 
   const res = await fetch(`${BASE}/documents`, {
     method:  'POST',
-    headers: authHeader(),
+    headers: bearerHeader(token),
     body:    JSON.stringify(body),
   })
 
@@ -63,8 +81,9 @@ export async function createInvoice(params: CreateInvoiceParams) {
 }
 
 export async function getInvoice(invoiceId: string) {
-  const res = await fetch(`${BASE}/documents/${invoiceId}`, {
-    headers: authHeader(),
+  const token = await getToken()
+  const res   = await fetch(`${BASE}/documents/${invoiceId}`, {
+    headers: bearerHeader(token),
   })
   if (!res.ok) throw new Error(`Morning API error ${res.status}`)
   return res.json()
