@@ -76,7 +76,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
 
         {/* Total */}
         <div className="ltr text-sm font-semibold text-gold tabular-nums mt-auto">
-          {formatPrice(order.total_price)}
+          {formatPrice(items.reduce((s, i) => s + (i.price || 0), 0))}
         </div>
 
         {/* Notes */}
