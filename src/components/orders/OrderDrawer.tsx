@@ -7,6 +7,7 @@ import { formatDate, formatPrice, cn } from '@/lib/utils'
 import { getWaLink, getInvoiceWaLink } from '@/lib/whatsapp'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { CopyButton } from '@/components/ui/CopyButton'
+import { ColorPicker } from '@/components/ui/ColorPicker'
 import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
 
 interface Props {
@@ -406,19 +407,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
                 )}
 
                 {/* Color */}
-                <div className="relative">
-                  <select
-                    className="input text-sm w-full appearance-none pr-3 pl-7 cursor-pointer"
-                    value={newColor}
-                    onChange={e => setNewColor(e.target.value)}
-                  >
-                    <option value="">צבע — ללא</option>
-                    {Object.keys(ITEM_COLOR_MAP).map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
-                </div>
+                <ColorPicker value={newColor} onChange={setNewColor} />
 
                 <input className="input text-sm" placeholder="טקסט על השלט" value={newSignText} onChange={e => setNewSignText(e.target.value)} />
 
@@ -699,16 +688,7 @@ function EditableItemCard({
       )}
 
       {/* Color */}
-      <div className="relative">
-        <select className="input text-sm w-full appearance-none pr-3 pl-7 cursor-pointer"
-          value={editColor} onChange={e => setEditColor(e.target.value)}>
-          <option value="">צבע — ללא</option>
-          {Object.keys(ITEM_COLOR_MAP).map(c => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-        <ChevronDown size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
-      </div>
+      <ColorPicker value={editColor} onChange={setEditColor} />
 
       <input className="input text-sm" placeholder="טקסט על השלט" value={editSignText} onChange={e => setEditSignText(e.target.value)} />
 
