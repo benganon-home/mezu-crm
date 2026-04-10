@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { X, MessageCircle, Edit2, Plus, Trash2, Package, AlertTriangle, Check, ChevronDown } from 'lucide-react'
-import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG, ITEM_COLOR_MAP, FONTS } from '@/types'
+import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG, ITEM_COLOR_MAP, FONTS, Product, ProductSize, SalesRule } from '@/types'
 import { formatDate, formatPrice, cn } from '@/lib/utils'
 import { getWaLink, getInvoiceWaLink } from '@/lib/whatsapp'
 import { StatusBadge } from '@/components/ui/StatusBadge'
@@ -18,22 +18,94 @@ interface Props {
 
 export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const { visible, close } = useDrawerAnimation(onClose)
-  const [saving, setSaving]           = useState(false)
-  const [status, setStatus]           = useState<OrderStatus>(order.status)
-  const [notes, setNotes]             = useState(order.notes || '')
-  const [tracking, setTracking]       = useState(order.tracking_number || '')
-  const [editingItems, setEditingItems] = useState(false)
+  const [saving, setSaving]               = useState(false)
+  const [status, setStatus]               = useState<OrderStatus>(order.status)
+  const [notes, setNotes]                 = useState(order.notes || '')
+  const [tracking, setTracking]           = useState(order.tracking_number || '')
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [deleting, setDeleting]       = useState(false)
-  const [addingItem, setAddingItem]           = useState(false)
-  const [newItem, setNewItem]                 = useState({ item_name: '', color: '', sign_text: '', font: '', price: '' })
-  const [savingItem, setSavingItem]           = useState(false)
+  const [deleting, setDeleting]           = useState(false)
+
+  // Customer editing
   const [editingCustomer, setEditingCustomer] = useState(false)
-  const [editName, setEditName]       = useState(order.customer?.name || '')
-  const [editPhone, setEditPhone]     = useState(order.customer?.phone || '')
+  const [editName, setEditName]   = useState(order.customer?.name || '')
+  const [editPhone, setEditPhone] = useState(order.customer?.phone || '')
   const [savingCustomer, setSavingCustomer] = useState(false)
+
+  // Address editing
+  const [editingAddress, setEditingAddress] = useState(false)
+  const [editAddress, setEditAddress]       = useState(order.delivery_address || '')
+  const [savingAddress, setSavingAddress]   = useState(false)
+
+  // Items state (local copy for optimistic updates)
+  const [items, setItems] = useState<OrderItem[]>(order.items || [])
+
+  // Catalog + sales rules
+  const [catalog, setCatalog]         = useState<Product[]>([])
+  const [salesRules, setSalesRules]   = useState<SalesRule[]>([])
+  const [addingItem, setAddingItem]   = useState(false)
+
+  // New item form
+  const [newProduct, setNewProduct]   = useState<Product | null>(null)
+  const [newSize, setNewSize]         = useState('')
+  const [newColor, setNewColor]       = useState('')
+  const [newSignText, setNewSignText] = useState('')
+  const [newFont, setNewFont]         = useState('')
+  const [newPrice, setNewPrice]       = useState('')
+  const [savingItem, setSavingItem]   = useState(false)
+
   const customer = order.customer
 
+  useEffect(() => {
+    fetch('/api/products').then(r => r.json()).then(d => setCatalog(Array.isArray(d) ? d.filter((p: Product) => p.is_active) : []))
+    fetch('/api/sales-rules').then(r => r.json()).then(d => setSalesRules(Array.isArray(d) ? d.filter((r: SalesRule) => r.is_active) : []))
+  }, [])
+
+  // ── Sales rule matching ───────────────────────────────────────
+  const autoTotal = items.reduce((s, i) => s + (i.price || 0), 0)
+
+  const matchingRule = useMemo(() => {
+    if (items.length === 0) return null
+    return salesRules.find(rule =>
+      rule.conditions.every(cond => {
+        const count = items.filter(i =>
+          i.model === cond.category && (!cond.size || i.size === cond.size)
+        ).length
+        return count >= cond.min_qty
+      })
+    ) ?? null
+  }, [items, salesRules])
+
+  const finalTotal = useMemo(() => {
+    if (!matchingRule) return autoTotal
+    if (matchingRule.discount_type === 'fixed_total') return matchingRule.discount_value
+    return autoTotal * (1 - matchingRule.discount_value / 100)
+  }, [matchingRule, autoTotal])
+
+  // Patch order total whenever items or rule changes
+  const patchTotal = async (updatedItems: OrderItem[]) => {
+    const total = updatedItems.reduce((s, i) => s + (i.price || 0), 0)
+    let newTotal = total
+    const rule = salesRules.find(r =>
+      r.conditions.every(cond => {
+        const count = updatedItems.filter(i =>
+          i.model === cond.category && (!cond.size || i.size === cond.size)
+        ).length
+        return count >= cond.min_qty
+      })
+    )
+    if (rule) {
+      newTotal = rule.discount_type === 'fixed_total'
+        ? rule.discount_value
+        : total * (1 - rule.discount_value / 100)
+    }
+    await fetch(`/api/orders/${order.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ total_price: newTotal }),
+    })
+  }
+
+  // ── General order save ────────────────────────────────────────
   const save = async (patch: Partial<Order>) => {
     setSaving(true)
     const res = await fetch(`/api/orders/${order.id}`, {
@@ -42,7 +114,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
       body: JSON.stringify(patch),
     })
     const updated = await res.json()
-    onUpdate({ ...order, ...updated })
+    onUpdate({ ...order, ...updated, items, customer })
     setSaving(false)
   }
 
@@ -51,92 +123,133 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
     await save({ status: s })
   }
 
+  // ── Customer save ─────────────────────────────────────────────
   const saveCustomer = async () => {
     setSavingCustomer(true)
     const normalizedPhone = editPhone.replace(/\D/g, '').replace(/^972/, '0')
-
-    // Look up existing customer by phone
-    const lookupRes = await fetch(`/api/customers?phone=${encodeURIComponent(normalizedPhone)}`)
+    const lookupRes  = await fetch(`/api/customers?phone=${encodeURIComponent(normalizedPhone)}`)
     const lookupJson = await lookupRes.json()
-    const existing = (lookupJson.data || [])[0]
-
+    const existing   = (lookupJson.data || [])[0]
     let customerId: string
-
     if (existing) {
-      // Update their name if changed
       if (existing.name !== editName) {
         await fetch(`/api/customers/${existing.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: editName }),
         })
       }
       customerId = existing.id
     } else {
-      // Create new customer
-      const createRes = await fetch('/api/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const createRes  = await fetch('/api/customers', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: editName, phone: normalizedPhone }),
       })
-      const newCustomer = await createRes.json()
-      customerId = newCustomer.id
+      const newCust = await createRes.json()
+      customerId    = newCust.id
     }
-
-    // Update order with new customer_id
-    const orderRes = await fetch(`/api/orders/${order.id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
+    await fetch(`/api/orders/${order.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ customer_id: customerId }),
     })
-    const updated = await orderRes.json()
-    onUpdate({
-      ...order,
-      ...updated,
-      customer: { ...(order.customer!), id: customerId, name: editName, phone: normalizedPhone },
-    })
+    onUpdate({ ...order, items, customer: { ...(order.customer!), id: customerId, name: editName, phone: normalizedPhone } })
     setEditingCustomer(false)
     setSavingCustomer(false)
   }
 
+  // ── Address save ──────────────────────────────────────────────
+  const saveAddress = async () => {
+    setSavingAddress(true)
+    await fetch(`/api/orders/${order.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ delivery_address: editAddress }),
+    })
+    onUpdate({ ...order, items, customer, delivery_address: editAddress })
+    setEditingAddress(false)
+    setSavingAddress(false)
+  }
+
+  // ── Item delete ───────────────────────────────────────────────
+  const deleteItem = async (itemId: string) => {
+    await fetch(`/api/order-items/${itemId}`, { method: 'DELETE' })
+    const updated = items.filter(i => i.id !== itemId)
+    setItems(updated)
+    onUpdate({ ...order, items: updated, customer })
+    await patchTotal(updated)
+  }
+
+  // ── Item update ───────────────────────────────────────────────
+  const updateItem = async (itemId: string, patch: Partial<OrderItem>) => {
+    const res  = await fetch(`/api/order-items/${itemId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+    const saved   = await res.json()
+    const updated = items.map(i => i.id === itemId ? { ...i, ...saved } : i)
+    setItems(updated)
+    onUpdate({ ...order, items: updated, customer })
+    await patchTotal(updated)
+  }
+
+  // ── Add item ──────────────────────────────────────────────────
+  const selectProduct = (p: Product | null) => {
+    setNewProduct(p)
+    setNewSize('')
+    if (p) {
+      setNewPrice(p.sizes?.length ? '' : String(p.base_price))
+    } else {
+      setNewPrice('')
+    }
+  }
+
+  const selectSize = (label: string) => {
+    setNewSize(label)
+    if (newProduct) {
+      const s = newProduct.sizes?.find(x => x.label === label)
+      setNewPrice(s ? String(s.price) : String(newProduct.base_price))
+    }
+  }
+
   const addItem = async () => {
-    if (!newItem.item_name.trim()) return
+    if (!newProduct) return
     setSavingItem(true)
     const res = await fetch('/api/order-items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        order_id:  order.id,
-        item_name: newItem.item_name.trim(),
-        color:     newItem.color || null,
-        sign_text: newItem.sign_text || null,
-        font:      newItem.font || null,
-        price:     parseFloat(newItem.price) || 0,
-        status:    'received',
+        order_id:   order.id,
+        item_name:  newProduct.name,
+        model:      newProduct.category || null,
+        size:       newSize || null,
+        color:      newColor || null,
+        sign_text:  newSignText || null,
+        font:       newFont || null,
+        price:      parseFloat(newPrice) || 0,
+        product_id: newProduct.id,
+        status:     'received',
       }),
     })
     const created = await res.json()
-    onUpdate({ ...order, items: [...(order.items || []), created] })
-    setNewItem({ item_name: '', color: '', sign_text: '', font: '', price: '' })
+    const updated = [...items, created]
+    setItems(updated)
+    onUpdate({ ...order, items: updated, customer })
+    await patchTotal(updated)
+    setNewProduct(null); setNewSize(''); setNewColor(''); setNewSignText(''); setNewFont(''); setNewPrice('')
     setAddingItem(false)
     setSavingItem(false)
   }
 
+  // ── Delete order ──────────────────────────────────────────────
   const handleDelete = async () => {
     setDeleting(true)
     const res = await fetch(`/api/orders/${order.id}`, { method: 'DELETE' })
-    if (!res.ok) {
-      setDeleting(false)
-      return
-    }
+    if (!res.ok) { setDeleting(false); return }
     onDelete?.(order.id)
     close()
   }
 
-  const totalPrice = (order.items || []).reduce((sum, i) => sum + (i.price || 0), 0) || order.total_price
-  const waReady    = customer ? getWaLink(customer, 'order_ready',  { itemSummary: order.items?.map(i => i.item_name).join(', ') }) : '#'
-  const waShipped  = customer ? getWaLink(customer, 'order_shipped', { trackingNumber: tracking, invoiceUrl: order.invoice_url || undefined }) : '#'
-  const waInvoice  = customer && order.invoice_url ? getInvoiceWaLink(customer, order.invoice_url) : null
+  const waReady   = customer ? getWaLink(customer, 'order_ready',   { itemSummary: items.map(i => i.item_name).join(', ') }) : '#'
+  const waShipped = customer ? getWaLink(customer, 'order_shipped',  { trackingNumber: tracking, invoiceUrl: order.invoice_url || undefined }) : '#'
+  const waInvoice = customer && order.invoice_url ? getInvoiceWaLink(customer, order.invoice_url) : null
 
   return (
     <>
@@ -147,7 +260,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
         onClick={close}
       />
 
-      {/* ── Delete confirmation dialog ── */}
+      {/* Delete confirmation */}
       {confirmDelete && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/50" onClick={() => setConfirmDelete(false)} />
@@ -161,19 +274,11 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
               פעולה זו אינה ניתנת לביטול.
             </p>
             <div className="flex gap-3">
-              <button
-                onClick={handleDelete}
-                disabled={deleting}
-                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 rounded-full transition-colors disabled:opacity-50"
-              >
+              <button onClick={handleDelete} disabled={deleting}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-2.5 rounded-full transition-colors disabled:opacity-50">
                 {deleting ? 'מוחק...' : 'כן, מחק'}
               </button>
-              <button
-                onClick={() => setConfirmDelete(false)}
-                className="flex-1 btn-secondary py-2.5"
-              >
-                ביטול
-              </button>
+              <button onClick={() => setConfirmDelete(false)} className="flex-1 btn-secondary py-2.5">ביטול</button>
             </div>
           </div>
         </div>
@@ -188,46 +293,22 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
             <div className="flex-1 min-w-0">
               {editingCustomer ? (
                 <div className="flex flex-col gap-2">
-                  <input
-                    className="input text-sm"
-                    placeholder="שם לקוח"
-                    value={editName}
-                    onChange={e => setEditName(e.target.value)}
-                    autoFocus
-                  />
-                  <input
-                    className="input text-sm ltr"
-                    placeholder="טלפון"
-                    value={editPhone}
-                    onChange={e => setEditPhone(e.target.value)}
-                    dir="ltr"
-                  />
+                  <input className="input text-sm" placeholder="שם לקוח" value={editName} onChange={e => setEditName(e.target.value)} autoFocus />
+                  <input className="input text-sm ltr" placeholder="טלפון" value={editPhone} onChange={e => setEditPhone(e.target.value)} dir="ltr" />
                   <div className="flex gap-2 mt-1">
-                    <button
-                      onClick={saveCustomer}
-                      disabled={savingCustomer || !editName.trim() || !editPhone.trim()}
-                      className="btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
-                    >
-                      <Check size={12} />
-                      {savingCustomer ? 'שומר...' : 'שמור'}
+                    <button onClick={saveCustomer} disabled={savingCustomer || !editName.trim() || !editPhone.trim()}
+                      className="btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5 disabled:opacity-50">
+                      <Check size={12} />{savingCustomer ? 'שומר...' : 'שמור'}
                     </button>
-                    <button
-                      onClick={() => { setEditingCustomer(false); setEditName(customer?.name || ''); setEditPhone(customer?.phone || '') }}
-                      className="btn-secondary text-xs px-4 py-1.5"
-                    >
-                      ביטול
-                    </button>
+                    <button onClick={() => { setEditingCustomer(false); setEditName(customer?.name || ''); setEditPhone(customer?.phone || '') }}
+                      className="btn-secondary text-xs px-4 py-1.5">ביטול</button>
                   </div>
                 </div>
               ) : (
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-lg">{customer?.name}</span>
-                    <button
-                      onClick={() => setEditingCustomer(true)}
-                      className="text-muted hover:text-gold transition-colors"
-                      title="עריכת פרטי לקוח"
-                    >
+                    <button onClick={() => setEditingCustomer(true)} className="text-muted hover:text-gold transition-colors" title="עריכת פרטי לקוח">
                       <Edit2 size={13} />
                     </button>
                   </div>
@@ -252,16 +333,9 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
             <div className="label mb-2">סטטוס הזמנה</div>
             <div className="flex gap-2 flex-wrap">
               {ALL_STATUSES.filter(s => s !== 'cancelled').map(s => (
-                <button
-                  key={s}
-                  onClick={() => onStatusChange(s)}
-                  className={cn(
-                    'badge cursor-pointer transition-all',
-                    STATUS_CONFIG[s].bg,
-                    STATUS_CONFIG[s].text,
-                    status === s ? 'ring-2 ring-offset-1 ring-current font-semibold scale-105' : 'opacity-60 hover:opacity-90'
-                  )}
-                >
+                <button key={s} onClick={() => onStatusChange(s)}
+                  className={cn('badge cursor-pointer transition-all', STATUS_CONFIG[s].bg, STATUS_CONFIG[s].text,
+                    status === s ? 'ring-2 ring-offset-1 ring-current font-semibold scale-105' : 'opacity-60 hover:opacity-90')}>
                   <span className={cn('badge-dot', STATUS_CONFIG[s].dot)} />
                   {STATUS_CONFIG[s].label}
                 </button>
@@ -271,48 +345,72 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
 
           {/* Products */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <div className="label">מוצרים בהזמנה ({(order.items || []).length})</div>
-              <button
-                onClick={() => setEditingItems(e => !e)}
-                className="text-xs text-gold flex items-center gap-1 hover:underline"
-              >
-                <Edit2 size={11} /> עריכה
-              </button>
-            </div>
+            <div className="label mb-2">מוצרים בהזמנה ({items.length})</div>
 
             <div className="flex flex-col gap-2">
-              {(order.items || []).map(item => (
-                <ItemCard key={item.id} item={item} editing={editingItems} />
+              {items.map(item => (
+                <EditableItemCard
+                  key={item.id}
+                  item={item}
+                  catalog={catalog}
+                  onSave={(patch) => updateItem(item.id, patch)}
+                  onDelete={() => deleteItem(item.id)}
+                />
               ))}
             </div>
 
-            {editingItems && !addingItem && (
-              <button
-                onClick={() => setAddingItem(true)}
-                className="mt-2 flex items-center gap-1.5 text-xs text-gold hover:underline"
-              >
-                <Plus size={12} /> הוסף פריט
+            {!addingItem && (
+              <button onClick={() => setAddingItem(true)}
+                className="mt-2 flex items-center gap-1.5 text-xs text-gold hover:underline">
+                <Plus size={12} /> הוסף מוצר
               </button>
             )}
 
             {addingItem && (
               <div className="mt-3 border border-cream-dark dark:border-navy-light rounded-xl p-3 flex flex-col gap-2.5 bg-cream/50 dark:bg-navy-deeper/50">
-                <div className="label text-xs mb-0">פריט חדש</div>
+                <div className="label text-xs mb-0">מוצר חדש</div>
 
-                <input
-                  className="input text-sm"
-                  placeholder="שם המוצר *"
-                  value={newItem.item_name}
-                  onChange={e => setNewItem(p => ({ ...p, item_name: e.target.value }))}
-                  autoFocus
-                />
-
+                {/* Product picker */}
                 <div className="relative">
                   <select
                     className="input text-sm w-full appearance-none pr-3 pl-7 cursor-pointer"
-                    value={newItem.color}
-                    onChange={e => setNewItem(p => ({ ...p, color: e.target.value }))}
+                    value={newProduct?.id || ''}
+                    onChange={e => {
+                      const p = catalog.find(x => x.id === e.target.value) || null
+                      selectProduct(p)
+                    }}
+                  >
+                    <option value="">בחר מוצר *</option>
+                    {catalog.map(p => (
+                      <option key={p.id} value={p.id}>{p.name} — {formatPrice(p.base_price)}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+                </div>
+
+                {/* Size picker */}
+                {(newProduct?.sizes?.length ?? 0) > 0 && (
+                  <div className="relative">
+                    <select
+                      className="input text-sm w-full appearance-none pr-3 pl-7 cursor-pointer"
+                      value={newSize}
+                      onChange={e => selectSize(e.target.value)}
+                    >
+                      <option value="">גודל — ללא</option>
+                      {newProduct!.sizes.map((s: ProductSize) => (
+                        <option key={s.label} value={s.label}>{s.label} — {formatPrice(s.price)}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+                  </div>
+                )}
+
+                {/* Color */}
+                <div className="relative">
+                  <select
+                    className="input text-sm w-full appearance-none pr-3 pl-7 cursor-pointer"
+                    value={newColor}
+                    onChange={e => setNewColor(e.target.value)}
                   >
                     <option value="">צבע — ללא</option>
                     {Object.keys(ITEM_COLOR_MAP).map(c => (
@@ -322,87 +420,89 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
                   <ChevronDown size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
                 </div>
 
-                <input
-                  className="input text-sm"
-                  placeholder="טקסט על השלט"
-                  value={newItem.sign_text}
-                  onChange={e => setNewItem(p => ({ ...p, sign_text: e.target.value }))}
-                />
+                <input className="input text-sm" placeholder="טקסט על השלט" value={newSignText} onChange={e => setNewSignText(e.target.value)} />
 
-                <select
-                  className="input text-sm"
-                  value={newItem.font}
-                  onChange={e => setNewItem(p => ({ ...p, font: e.target.value }))}
-                >
-                  <option value="">פונט —</option>
-                  {FONTS.map(f => (
-                    <option key={f} value={f}>{f}</option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <select className="input text-sm w-full appearance-none pr-3 pl-7" value={newFont} onChange={e => setNewFont(e.target.value)}>
+                    <option value="">פונט — ללא</option>
+                    {FONTS.map(f => <option key={f} value={f}>{f}</option>)}
+                  </select>
+                  <ChevronDown size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+                </div>
 
-                <input
-                  className="input text-sm ltr"
-                  placeholder="מחיר (₪)"
-                  value={newItem.price}
-                  onChange={e => setNewItem(p => ({ ...p, price: e.target.value }))}
-                  type="number"
-                  min="0"
-                  dir="ltr"
-                />
+                <input className="input text-sm ltr" placeholder="מחיר (₪)" value={newPrice}
+                  onChange={e => setNewPrice(e.target.value)} type="number" min="0" dir="ltr" />
 
                 <div className="flex gap-2">
-                  <button
-                    onClick={addItem}
-                    disabled={savingItem || !newItem.item_name.trim()}
-                    className="btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5 disabled:opacity-50"
-                  >
-                    <Check size={12} />
-                    {savingItem ? 'שומר...' : 'הוסף'}
+                  <button onClick={addItem} disabled={savingItem || !newProduct}
+                    className="btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5 disabled:opacity-50">
+                    <Check size={12} />{savingItem ? 'שומר...' : 'הוסף'}
                   </button>
-                  <button
-                    onClick={() => { setAddingItem(false); setNewItem({ item_name: '', color: '', sign_text: '', font: '', price: '' }) }}
-                    className="btn-secondary text-xs px-4 py-1.5"
-                  >
-                    ביטול
-                  </button>
+                  <button onClick={() => { setAddingItem(false); selectProduct(null); setNewColor(''); setNewSignText(''); setNewFont('') }}
+                    className="btn-secondary text-xs px-4 py-1.5">ביטול</button>
                 </div>
               </div>
             )}
 
-            <div className="flex justify-between items-center mt-3 pt-3 border-t border-cream-dark dark:border-navy-light">
-              <span className="text-sm text-muted">סה״כ לתשלום</span>
-              <span className="text-lg font-semibold text-gold ltr">{formatPrice(totalPrice)}</span>
+            {/* Total + rule */}
+            <div className="mt-3 pt-3 border-t border-cream-dark dark:border-navy-light flex flex-col gap-2">
+              {matchingRule && (
+                <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2">
+                  <div className="text-xs font-medium text-emerald-700 dark:text-emerald-400">מבצע: {matchingRule.name}</div>
+                  <div className="text-xs text-emerald-600">
+                    {matchingRule.discount_type === 'percent'
+                      ? `${matchingRule.discount_value}% הנחה`
+                      : `מחיר חבילה`}
+                  </div>
+                </div>
+              )}
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted">סה״כ לתשלום</span>
+                <div className="text-right">
+                  {matchingRule && autoTotal !== finalTotal && (
+                    <div className="text-xs text-muted line-through ltr">{formatPrice(autoTotal)}</div>
+                  )}
+                  <span className="text-lg font-semibold text-gold ltr">{formatPrice(finalTotal)}</span>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Address */}
           <div>
-            <div className="label mb-1">כתובת</div>
-            <div className="text-sm">
-              {order.delivery_type === 'pickup'
-                ? 'איסוף עצמי'
-                : order.delivery_address || '—'
-              }
+            <div className="flex items-center justify-between mb-1">
+              <div className="label">כתובת</div>
+              {order.delivery_type !== 'pickup' && !editingAddress && (
+                <button onClick={() => setEditingAddress(true)} className="text-muted hover:text-gold transition-colors">
+                  <Edit2 size={13} />
+                </button>
+              )}
             </div>
+            {editingAddress ? (
+              <div className="flex flex-col gap-2">
+                <input className="input text-sm" value={editAddress} onChange={e => setEditAddress(e.target.value)} autoFocus />
+                <div className="flex gap-2">
+                  <button onClick={saveAddress} disabled={savingAddress}
+                    className="btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5 disabled:opacity-50">
+                    <Check size={12} />{savingAddress ? 'שומר...' : 'שמור'}
+                  </button>
+                  <button onClick={() => { setEditingAddress(false); setEditAddress(order.delivery_address || '') }}
+                    className="btn-secondary text-xs px-4 py-1.5">ביטול</button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-sm">
+                {order.delivery_type === 'pickup' ? 'איסוף עצמי' : (order.delivery_address || '—')}
+              </div>
+            )}
           </div>
 
           {/* Tracking */}
           <div>
             <div className="label mb-1.5">מספר מעקב משלוח</div>
             <div className="flex gap-2">
-              <input
-                className="input flex-1"
-                placeholder="הכנס מספר מעקב..."
-                value={tracking}
-                onChange={e => setTracking(e.target.value)}
-              />
-              <button
-                onClick={() => save({ tracking_number: tracking })}
-                className="btn-secondary text-xs px-3"
-                disabled={saving}
-              >
-                שמור
-              </button>
+              <input className="input flex-1" placeholder="הכנס מספר מעקב..." value={tracking} onChange={e => setTracking(e.target.value)} />
+              <button onClick={() => save({ tracking_number: tracking })} className="btn-secondary text-xs px-3" disabled={saving}>שמור</button>
             </div>
           </div>
 
@@ -414,11 +514,10 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
                 <div className="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0" />
                 <div className="flex-1">
                   <div className="text-sm font-medium text-emerald-800 dark:text-emerald-300">חשבונית #{order.invoice_id}</div>
-                  <div className="text-xs text-emerald-600">{formatPrice(totalPrice)}</div>
+                  <div className="text-xs text-emerald-600">{formatPrice(finalTotal)}</div>
                 </div>
                 {waInvoice && (
-                  <a href={waInvoice} target="_blank" rel="noreferrer"
-                    className="text-xs text-emerald-700 hover:underline flex items-center gap-1">
+                  <a href={waInvoice} target="_blank" rel="noreferrer" className="text-xs text-emerald-700 hover:underline flex items-center gap-1">
                     <MessageCircle size={12} /> שלח
                   </a>
                 )}
@@ -433,27 +532,20 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
           {/* Notes */}
           <div>
             <div className="label mb-1.5">הערות פנימיות</div>
-            <textarea
-              className="input min-h-[80px] resize-none"
-              placeholder="הערות על ההזמנה..."
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              onBlur={() => save({ notes })}
-            />
+            <textarea className="input min-h-[80px] resize-none" placeholder="הערות על ההזמנה..."
+              value={notes} onChange={e => setNotes(e.target.value)} onBlur={() => save({ notes })} />
           </div>
 
-          {/* WhatsApp actions */}
+          {/* WhatsApp */}
           <div className="flex flex-col gap-2 pt-2 border-t border-cream-dark dark:border-navy-light">
             <div className="label mb-1">שליחה ב-WhatsApp</div>
             <a href={waReady} target="_blank" rel="noreferrer"
               className="flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#1EB858] text-white rounded-lg py-2.5 text-sm font-medium transition-colors">
-              <MessageCircle size={15} />
-              ההזמנה מוכנה
+              <MessageCircle size={15} /> ההזמנה מוכנה
             </a>
             <a href={waShipped} target="_blank" rel="noreferrer"
               className="flex items-center justify-center gap-2 bg-navy hover:bg-navy-light dark:bg-cream dark:text-navy text-cream rounded-lg py-2.5 text-sm font-medium transition-colors">
-              <Package size={15} />
-              עדכון משלוח
+              <Package size={15} /> עדכון משלוח
             </a>
           </div>
 
@@ -466,12 +558,9 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
 
           {/* Delete */}
           <div className="pt-2 border-t border-cream-dark dark:border-navy-light">
-            <button
-              onClick={() => setConfirmDelete(true)}
-              className="w-full flex items-center justify-center gap-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 py-2.5 rounded-full transition-colors"
-            >
-              <Trash2 size={14} />
-              מחיקת הזמנה
+            <button onClick={() => setConfirmDelete(true)}
+              className="w-full flex items-center justify-center gap-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 py-2.5 rounded-full transition-colors">
+              <Trash2 size={14} /> מחיקת הזמנה
             </button>
           </div>
         </div>
@@ -480,27 +569,167 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   )
 }
 
-function ItemCard({ item, editing }: { item: OrderItem; editing: boolean }) {
-  return (
-    <div className="bg-cream dark:bg-navy-deeper border border-cream-dark dark:border-navy-light rounded-lg px-3 py-2.5 flex items-center gap-3">
-      <div className="w-9 h-9 rounded-md bg-cream-dark dark:bg-navy-light flex items-center justify-center flex-shrink-0">
-        <Package size={16} className="text-navy/40 dark:text-cream/30" strokeWidth={1.5} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium truncate">{item.item_name}</div>
-        <div className="text-xs text-muted mt-0.5">
-          {[item.color, item.size, item.font].filter(Boolean).join(' · ')}
+// ── Editable item card ────────────────────────────────────────────
+function EditableItemCard({
+  item,
+  catalog,
+  onSave,
+  onDelete,
+}: {
+  item: OrderItem
+  catalog: Product[]
+  onSave: (patch: Partial<OrderItem>) => Promise<void>
+  onDelete: () => Promise<void>
+}) {
+  const [editing, setEditing]     = useState(false)
+  const [saving, setSaving]       = useState(false)
+  const [deleting, setDeleting]   = useState(false)
+
+  const [editProduct, setEditProduct] = useState<Product | null>(
+    catalog.find(p => p.name === item.item_name) || null
+  )
+  const [editSize, setEditSize]       = useState(item.size || '')
+  const [editColor, setEditColor]     = useState(item.color || '')
+  const [editSignText, setEditSignText] = useState(item.sign_text || '')
+  const [editFont, setEditFont]       = useState(item.font || '')
+  const [editPrice, setEditPrice]     = useState(String(item.price || 0))
+
+  // Sync product match when catalog loads
+  useEffect(() => {
+    if (catalog.length && !editProduct) {
+      const found = catalog.find(p => p.name === item.item_name)
+      if (found) setEditProduct(found)
+    }
+  }, [catalog])
+
+  const handleProductChange = (id: string) => {
+    const p = catalog.find(x => x.id === id) || null
+    setEditProduct(p)
+    setEditSize('')
+    if (p) setEditPrice(p.sizes?.length ? '' : String(p.base_price))
+  }
+
+  const handleSizeChange = (label: string) => {
+    setEditSize(label)
+    if (editProduct) {
+      const s = editProduct.sizes?.find(x => x.label === label)
+      setEditPrice(s ? String(s.price) : String(editProduct.base_price))
+    }
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    await onSave({
+      item_name:  editProduct?.name || item.item_name,
+      model:      editProduct?.category || item.model,
+      product_id: editProduct?.id || item.product_id,
+      size:       editSize || null,
+      color:      editColor || null,
+      sign_text:  editSignText || null,
+      font:       editFont || null,
+      price:      parseFloat(editPrice) || 0,
+    })
+    setSaving(false)
+    setEditing(false)
+  }
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    await onDelete()
+  }
+
+  if (!editing) {
+    return (
+      <div className="bg-cream dark:bg-navy-deeper border border-cream-dark dark:border-navy-light rounded-lg px-3 py-2.5 flex items-center gap-3">
+        <div className="w-9 h-9 rounded-md bg-cream-dark dark:bg-navy-light flex items-center justify-center flex-shrink-0 overflow-hidden">
+          {item.product?.images?.[0]
+            ? <img src={item.product.images[0]} alt={item.item_name} className="w-full h-full object-cover" />
+            : <Package size={16} className="text-navy/40 dark:text-cream/30" strokeWidth={1.5} />
+          }
         </div>
-        {item.sign_text && (
-          <div className="text-xs text-gold mt-0.5 font-medium">✏️ {item.sign_text}</div>
-        )}
-      </div>
-      <div className="ltr text-sm font-medium flex-shrink-0">{formatPrice(item.price)}</div>
-      {editing && (
-        <button className="text-muted hover:text-red-500 transition-colors">
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate">{item.item_name}</div>
+          <div className="text-xs text-muted mt-0.5">
+            {[item.color, item.size && `${item.size} ס״מ`, item.font].filter(Boolean).join(' · ')}
+          </div>
+          {item.sign_text && (
+            <div className="text-xs text-gold mt-0.5 font-medium">
+              {item.sign_text.includes('\n') ? item.sign_text.replace('\n', '›') : item.sign_text}
+            </div>
+          )}
+        </div>
+        <div className="ltr text-sm font-medium flex-shrink-0">{formatPrice(item.price)}</div>
+        <button onClick={() => setEditing(true)} className="text-muted hover:text-gold transition-colors flex-shrink-0">
+          <Edit2 size={13} />
+        </button>
+        <button onClick={handleDelete} disabled={deleting} className="text-muted/40 hover:text-red-500 transition-colors flex-shrink-0 disabled:opacity-30">
           <Trash2 size={13} />
         </button>
+      </div>
+    )
+  }
+
+  return (
+    <div className="border border-gold/30 rounded-xl p-3 flex flex-col gap-2.5 bg-cream/50 dark:bg-navy-deeper/50">
+      {/* Product */}
+      <div className="relative">
+        <select className="input text-sm w-full appearance-none pr-3 pl-7 cursor-pointer"
+          value={editProduct?.id || ''}
+          onChange={e => handleProductChange(e.target.value)}>
+          <option value="">— בחר מוצר —</option>
+          {catalog.map(p => (
+            <option key={p.id} value={p.id}>{p.name} — {formatPrice(p.base_price)}</option>
+          ))}
+        </select>
+        <ChevronDown size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+      </div>
+
+      {/* Size */}
+      {(editProduct?.sizes?.length ?? 0) > 0 && (
+        <div className="relative">
+          <select className="input text-sm w-full appearance-none pr-3 pl-7 cursor-pointer"
+            value={editSize} onChange={e => handleSizeChange(e.target.value)}>
+            <option value="">גודל — ללא</option>
+            {editProduct!.sizes.map((s: ProductSize) => (
+              <option key={s.label} value={s.label}>{s.label} — {formatPrice(s.price)}</option>
+            ))}
+          </select>
+          <ChevronDown size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+        </div>
       )}
+
+      {/* Color */}
+      <div className="relative">
+        <select className="input text-sm w-full appearance-none pr-3 pl-7 cursor-pointer"
+          value={editColor} onChange={e => setEditColor(e.target.value)}>
+          <option value="">צבע — ללא</option>
+          {Object.keys(ITEM_COLOR_MAP).map(c => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+        <ChevronDown size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+      </div>
+
+      <input className="input text-sm" placeholder="טקסט על השלט" value={editSignText} onChange={e => setEditSignText(e.target.value)} />
+
+      <div className="relative">
+        <select className="input text-sm w-full appearance-none pr-3 pl-7" value={editFont} onChange={e => setEditFont(e.target.value)}>
+          <option value="">פונט — ללא</option>
+          {FONTS.map(f => <option key={f} value={f}>{f}</option>)}
+        </select>
+        <ChevronDown size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+      </div>
+
+      <input className="input text-sm ltr" placeholder="מחיר (₪)" value={editPrice}
+        onChange={e => setEditPrice(e.target.value)} type="number" min="0" dir="ltr" />
+
+      <div className="flex gap-2">
+        <button onClick={handleSave} disabled={saving}
+          className="btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5 disabled:opacity-50">
+          <Check size={12} />{saving ? 'שומר...' : 'שמור'}
+        </button>
+        <button onClick={() => setEditing(false)} className="btn-secondary text-xs px-4 py-1.5">ביטול</button>
+      </div>
     </div>
   )
 }
