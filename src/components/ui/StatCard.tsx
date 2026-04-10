@@ -17,7 +17,7 @@ export function StatCard({ label, value, sub, valueClass, onClick, active, showF
     <div
       onClick={onClick}
       className={cn(
-        'bg-white dark:bg-navy-dark border rounded-lg px-4 py-3 transition-all flex flex-col',
+        'bg-white dark:bg-navy-dark border rounded-2xl px-4 py-3 transition-all flex flex-col',
         onClick && 'cursor-pointer hover:shadow-md hover:-translate-y-px',
         active
           ? 'border-gold ring-2 ring-gold/20 dark:ring-gold/30'
