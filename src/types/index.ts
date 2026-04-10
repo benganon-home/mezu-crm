@@ -154,8 +154,8 @@ export const FONTS = [
 // ─── Item color map ──────────────────────────────────────────────────────────
 
 export const ITEM_COLOR_MAP: Record<string, { hex: string; border?: boolean }> = {
-  'דמוי שיש בהיר':    { hex: '#D8D3C8' },
-  'דמוי שיש אפור חול': { hex: '#B8B0A0' },
+  'דמוי שיש בהיר':    { hex: '#E8E6E1', border: true },
+  'דמוי שיש אפור חול': { hex: '#D8D3C8' },
   'דמוי שיש כהה':     { hex: '#6B6560' },
   'לבן שלג':          { hex: '#F5F3EF', border: true },
 }
