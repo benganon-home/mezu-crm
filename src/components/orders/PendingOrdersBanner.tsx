@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { AlertCircle, Check, Trash2, Loader2 } from 'lucide-react'
-import { formatPrice } from '@/lib/utils'
+import { AlertCircle, Check, Trash2, Loader2, MessageCircle } from 'lucide-react'
+import { formatPrice, buildWaLink } from '@/lib/utils'
 
 interface PendingData {
   customer_name?: string
@@ -88,7 +88,7 @@ export function PendingOrdersBanner({ onOrderAdded }: { onOrderAdded: () => void
       <div className="flex items-center gap-2 px-4 py-2.5 border-b bg-orange-50 dark:bg-orange-950/30" style={{ borderColor: '#FED7AA' }}>
         <AlertCircle size={14} className="text-orange-500 shrink-0" />
         <span className="text-sm font-medium text-orange-700 dark:text-orange-400">
-          {records.length} הזמנות ממתינות — שולמו אך לא נוספו (לא היה טלפון מתאים)
+          {records.length} הזמנות ממתינות
         </span>
       </div>
 
@@ -116,6 +116,15 @@ export function PendingOrdersBanner({ onOrderAdded }: { onOrderAdded: () => void
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2 justify-end">
+                    <a
+                      href={buildWaLink(r.data.phone || r.key, `שלום ${r.data.customer_name || ''}! 😊\nראינו שהתחלת הזמנה במיזו אך טרם השלמת אותה.\nנשמח לעזור! יש שאלות? 🙏`)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs py-1.5 px-3 flex items-center gap-1.5 border border-green-200 text-green-600 rounded-lg hover:bg-green-50 transition-colors"
+                    >
+                      <MessageCircle size={11} />
+                      וואטסאפ
+                    </a>
                     <button
                       onClick={() => handleAdd(r)}
                       disabled={isBusy}
