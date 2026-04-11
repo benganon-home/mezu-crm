@@ -265,7 +265,20 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
       const res  = await fetch(`/api/orders/${order.id}/invoice`)
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'שגיאה בחיפוש חשבוניות')
-      setMorningInvoices(data.invoices || [])
+
+      const all      = data.invoices || []
+      const name     = customer?.name?.trim() || ''
+      const matched  = all.filter((inv: any) => inv.clientName?.trim() === name)
+
+      // Auto-link if there's exactly one match for this customer
+      if (matched.length === 1) {
+        await linkInvoice(matched[0])
+        return
+      }
+
+      // Multiple matches → show only their invoices (most recent first)
+      // No match → show all recent so user can pick manually
+      setMorningInvoices(matched.length > 1 ? matched : all)
     } catch (err: any) {
       setInvoiceError(err.message)
     } finally {
@@ -276,8 +289,8 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   // ── Link chosen Morning invoice ───────────────────────────────
   const linkInvoice = async (inv: any) => {
     setLinkingId(inv.id)
-    const invoiceId  = String(inv.id)
-    const invoiceUrl = inv.url || ''  // normalized field from API
+    const invoiceId  = String(inv.number)   // show readable number, not UUID
+    const invoiceUrl = inv.url || ''
     await fetch(`/api/orders/${order.id}/invoice`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
