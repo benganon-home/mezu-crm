@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createInvoice, searchInvoicesByPhone } from '@/lib/morning'
+import { createInvoice, searchInvoicesByPhone, MorningDocument } from '@/lib/morning'
 
-// GET /api/orders/[id]/invoice — search Morning for invoices matching this order's customer
+// GET /api/orders/[id]/invoice — search Morning for invoices matching this customer
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createClient()
   const { data: order, error } = await supabase
@@ -18,13 +18,22 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   try {
     const invoices = await searchInvoicesByPhone(phone)
-    return NextResponse.json({ invoices })
+    // Normalize to a clean shape the frontend expects
+    const normalized = invoices.map((inv: MorningDocument) => ({
+      id:           inv.id,
+      number:       inv.number,
+      amount:       inv.amount,
+      documentDate: inv.documentDate,
+      clientName:   inv.client?.name || '',
+      url:          inv.url?.he || inv.url?.origin || inv.url?.en || '',
+    }))
+    return NextResponse.json({ invoices: normalized })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
 
-// PATCH /api/orders/[id]/invoice — link an existing Morning invoice to this order
+// PATCH /api/orders/[id]/invoice — link a Morning invoice to this order
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createClient()
   const { invoice_id, invoice_url } = await req.json()
@@ -36,29 +45,21 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   return NextResponse.json({ ok: true, invoice_id, invoice_url })
 }
 
-// POST /api/orders/[id]/invoice — create Morning invoice for an order
+// POST /api/orders/[id]/invoice — create a new Morning invoice for this order
 export async function POST(_req: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createClient()
 
-  // Fetch order with customer + items
   const { data: order, error } = await supabase
     .from('orders')
     .select(`*, customer:customers(id, name, phone, email), items:order_items(*)`)
     .eq('id', params.id)
     .single()
 
-  if (error || !order) {
-    return NextResponse.json({ error: error?.message || 'Order not found' }, { status: 404 })
-  }
-
-  if (order.invoice_id) {
-    return NextResponse.json({ error: 'Invoice already exists', invoice_id: order.invoice_id, invoice_url: order.invoice_url }, { status: 409 })
-  }
+  if (error || !order) return NextResponse.json({ error: error?.message || 'Order not found' }, { status: 404 })
+  if (order.invoice_id) return NextResponse.json({ error: 'Invoice already exists', invoice_id: order.invoice_id, invoice_url: order.invoice_url }, { status: 409 })
 
   const items = order.items || []
-  if (items.length === 0) {
-    return NextResponse.json({ error: 'Order has no items' }, { status: 400 })
-  }
+  if (items.length === 0) return NextResponse.json({ error: 'Order has no items' }, { status: 400 })
 
   try {
     const result = await createInvoice({
@@ -74,17 +75,12 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
       })),
     })
 
-    // Save invoice_id + invoice_url back to the order
-    const invoiceId  = String(result.id || result.invoiceId || result.document_id || '')
-    const invoiceUrl = result.url || result.invoiceUrl || result.document_url || ''
+    const invoiceId  = String(result.id || '')
+    const invoiceUrl = result.url?.he || result.url?.origin || result.url?.en || ''
 
-    await supabase
-      .from('orders')
-      .update({ invoice_id: invoiceId, invoice_url: invoiceUrl })
-      .eq('id', params.id)
-
+    await supabase.from('orders').update({ invoice_id: invoiceId, invoice_url: invoiceUrl }).eq('id', params.id)
     return NextResponse.json({ invoice_id: invoiceId, invoice_url: invoiceUrl })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Failed to create invoice' }, { status: 500 })
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
