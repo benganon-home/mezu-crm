@@ -33,6 +33,7 @@ export default function OrdersPage() {
   const [yearFilter, setYearFilter]   = useState<number>(new Date().getFullYear())
   const [undoPending, setUndoPending] = useState<{ itemId: string; orderId: string; item: OrderItem } | null>(null)
   const undoTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [morningRevenue, setMorningRevenue] = useState<number | null>(null)
 
   // ── Fetch all orders once (no server-side filtering) ──────────
   const fetchOrders = useCallback(async () => {
@@ -52,6 +53,16 @@ export default function OrdersPage() {
   }, [])
 
   useEffect(() => { fetchOrders() }, [fetchOrders])
+
+  // Fetch real monthly revenue from Morning
+  useEffect(() => {
+    const now   = new Date()
+    const from  = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
+    fetch(`/api/morning-revenue?from=${from}`)
+      .then(r => r.json())
+      .then(d => { if (d.total != null) setMorningRevenue(d.total) })
+      .catch(() => {})
+  }, [])
 
   // Available years from data
   const availableYears = useMemo(() => {
@@ -280,7 +291,12 @@ export default function OrdersPage() {
           showFilter active={readyActive}
           onClick={() => setReadyActive(v => !v)}
         />
-        <StatCard label="הכנסות (תצוגה)" value={formatPrice(stats.revenue)} valueClass="text-gold" />
+        <StatCard
+          label={morningRevenue != null ? `הכנסות ${new Date().toLocaleString('he-IL', { month: 'long' })}` : 'הכנסות (תצוגה)'}
+          value={morningRevenue != null ? formatPrice(morningRevenue) : formatPrice(stats.revenue)}
+          valueClass="text-gold"
+          sub={morningRevenue != null ? 'ממורנינג — חודש נוכחי' : 'הערכה לפי הזמנות'}
+        />
       </div>
 
       {/* Toolbar — single row */}
