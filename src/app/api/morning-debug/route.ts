@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
-import { searchInvoicesByPhone } from '@/lib/morning'
+import { searchInvoicesByName } from '@/lib/morning'
 
-// GET /api/morning-debug?phone=05XXXXXXXX
+// GET /api/morning-debug?name=שם+לקוח
 export async function GET(req: Request) {
-  const phone = new URL(req.url).searchParams.get('phone') || '0508642482'
+  const name = new URL(req.url).searchParams.get('name') || ''
   try {
-    const invoices = await searchInvoicesByPhone(phone)
+    const invoices = await searchInvoicesByName(name)
     return NextResponse.json({
       count: invoices.length,
       invoices: invoices.map(inv => ({
@@ -14,8 +14,7 @@ export async function GET(req: Request) {
         amount:       inv.amount,
         documentDate: inv.documentDate,
         clientName:   inv.client?.name,
-        clientPhone:  inv.client?.phone,
-        urlHe:        inv.url?.he,
+        urlHe:        inv.url?.he?.slice(0, 80) + '...',
       })),
     })
   } catch (err: any) {

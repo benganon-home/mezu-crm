@@ -69,37 +69,32 @@ export interface CreateInvoiceParams {
 
 // ── Search invoices by customer phone ─────────────────────────
 
-export async function searchInvoicesByPhone(phone: string): Promise<MorningDocument[]> {
-  const token  = await getToken()
-  const digits = phone.replace(/\D/g, '')
-  const local  = digits.startsWith('0') ? digits : '0' + digits.replace(/^972/, '')
+async function doSearch(token: string, body: Record<string, any>): Promise<MorningDocument[]> {
+  const res  = await fetch(`${BASE}/documents/search`, {
+    method:  'POST',
+    headers: bearer(token),
+    body:    JSON.stringify(body),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(`Morning search (${res.status}): ${data.errorMessage || JSON.stringify(data)}`)
+  return data.items || []
+}
 
-  // Try local format (05x), then try without phone filter to get recent docs
-  const doSearch = async (clientPhone?: string): Promise<MorningDocument[]> => {
-    const body: Record<string, any> = { pageSize: 20, page: 1 }
-    if (clientPhone) body.client = { phone: clientPhone }
+export async function searchInvoicesByName(name: string): Promise<MorningDocument[]> {
+  const token = await getToken()
 
-    const res  = await fetch(`${BASE}/documents/search`, {
-      method:  'POST',
-      headers: bearer(token),
-      body:    JSON.stringify(body),
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(`Morning search failed (${res.status}): ${data.errorMessage || JSON.stringify(data)}`)
-    return data.items || []
+  // Try exact name, then first word of name, then all recent
+  const byName = await doSearch(token, { pageSize: 20, page: 1, client: { name } })
+  if (byName.length > 0) return byName
+
+  const firstName = name.split(' ')[0]
+  if (firstName && firstName !== name) {
+    const byFirst = await doSearch(token, { pageSize: 20, page: 1, client: { name: firstName } })
+    if (byFirst.length > 0) return byFirst
   }
 
-  // 1. Try local format with phone
-  const byPhone = await doSearch(local)
-  if (byPhone.length > 0) return byPhone
-
-  // 2. Try international format
-  const intl    = digits.startsWith('972') ? digits : '972' + digits.replace(/^0/, '')
-  const byIntl  = await doSearch(intl)
-  if (byIntl.length > 0) return byIntl
-
-  // 3. Fallback: return most recent 20 docs for the user to pick from
-  return doSearch()
+  // Fallback: return 20 most recent documents
+  return doSearch(token, { pageSize: 20, page: 1 })
 }
 
 // ── Create invoice ─────────────────────────────────────────────

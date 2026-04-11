@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createInvoice, searchInvoicesByPhone, MorningDocument } from '@/lib/morning'
+import { createInvoice, searchInvoicesByName, MorningDocument } from '@/lib/morning'
 
 // GET /api/orders/[id]/invoice — search Morning for invoices matching this customer
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
@@ -13,11 +13,10 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
 
   if (error || !order) return NextResponse.json({ error: 'Order not found' }, { status: 404 })
 
-  const phone = (order.customer as any)?.phone
-  if (!phone) return NextResponse.json({ error: 'Customer has no phone' }, { status: 400 })
+  const name = (order.customer as any)?.name || ''
 
   try {
-    const invoices = await searchInvoicesByPhone(phone)
+    const invoices = await searchInvoicesByName(name)
     // Normalize to a clean shape the frontend expects
     const normalized = invoices.map((inv: MorningDocument) => ({
       id:           inv.id,
