@@ -1,18 +1,16 @@
 /**
  * Morning.co (חשבונית ירוקה) API client
  *
- * Auth: POST /account/token with JSON body { id, secret } → JWT token
- * Then: Bearer token on all subsequent requests
- *
- * Docs: https://morning.co/developers
+ * Base URL : https://api.greeninvoice.co.il/api/v1
+ * Auth     : POST /account/token  { id, secret } → { token: JWT }
+ *            then:  Authorization: Bearer <token>
  */
 
-const BASE = 'https://api.morning.co/v1'
+const BASE = 'https://api.greeninvoice.co.il/api/v1'
 
-export async function getToken(): Promise<string> {
+async function getToken(): Promise<string> {
   const id     = process.env.MORNING_API_KEY
   const secret = process.env.MORNING_API_SECRET
-
   if (!id || !secret) throw new Error('MORNING_API_KEY / MORNING_API_SECRET not set')
 
   const res = await fetch(`${BASE}/account/token`, {
@@ -21,20 +19,18 @@ export async function getToken(): Promise<string> {
     body:    JSON.stringify({ id, secret }),
   })
 
-  const text = await res.text()
-  if (!res.ok) {
-    throw new Error(`Morning token error ${res.status}: ${text.slice(0, 300)}`)
+  const data = await res.json()
+  if (!res.ok || !data.token) {
+    throw new Error(`Morning auth failed (${res.status}): ${data.errorMessage || JSON.stringify(data)}`)
   }
-
-  const data = JSON.parse(text)
-  const token = data.token || data.access_token || data.jwt
-  if (!token) throw new Error(`Morning token missing in response: ${text.slice(0, 300)}`)
-  return token
+  return data.token
 }
 
-function bearerHeader(token: string) {
+function bearer(token: string) {
   return { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
 }
+
+// ── Types ──────────────────────────────────────────────────────
 
 export interface MorningItem {
   description: string
@@ -51,14 +47,16 @@ export interface CreateInvoiceParams {
   emailAddress?:  string
 }
 
+// ── Create invoice ─────────────────────────────────────────────
+
 export async function createInvoice(params: CreateInvoiceParams) {
   const token = await getToken()
 
   const body = {
-    type: 320, // חשבונית מס קבלה
-    lang: 'he',
+    type:     320, // חשבונית מס קבלה
+    lang:     'he',
     currency: 'ILS',
-    vatType: 1,
+    vatType:  1,
     client: {
       name:  params.customerName,
       phone: params.customerPhone || '',
@@ -74,37 +72,44 @@ export async function createInvoice(params: CreateInvoiceParams) {
       : {}),
   }
 
-  const res = await fetch(`${BASE}/documents`, {
+  const res  = await fetch(`${BASE}/documents`, {
     method:  'POST',
-    headers: bearerHeader(token),
+    headers: bearer(token),
     body:    JSON.stringify(body),
   })
-
-  const text = await res.text()
-  if (!res.ok) throw new Error(`Morning createInvoice ${res.status}: ${text.slice(0, 300)}`)
-  return JSON.parse(text)
+  const data = await res.json()
+  if (!res.ok) throw new Error(`Morning createInvoice (${res.status}): ${data.errorMessage || JSON.stringify(data)}`)
+  return data
 }
 
+// ── Search invoices by customer phone ─────────────────────────
+
 export async function searchInvoicesByPhone(phone: string) {
-  const token = await getToken()
+  const token   = await getToken()
+  const digits  = phone.replace(/\D/g, '')
+  const local   = digits.startsWith('0') ? digits : '0' + digits.replace(/^972/, '')
+  const intl    = digits.startsWith('972') ? digits : '972' + digits.replace(/^0/, '')
 
-  // Try both 972-prefix and local 05x format
-  const digits     = phone.replace(/\D/g, '')
-  const intl       = digits.startsWith('972') ? digits : '972' + digits.replace(/^0/, '')
-  const local      = '0' + intl.slice(3)
-
-  const trySearch = async (clientPhone: string) => {
-    const qs = new URLSearchParams({ type: '320', pageSize: '20', page: '1', 'client.phone': clientPhone })
-    const res = await fetch(`${BASE}/documents?${qs}`, { headers: bearerHeader(token) })
-    const text = await res.text()
-    if (!res.ok) throw new Error(`Morning search ${res.status}: ${text.slice(0, 300)}`)
-    const data = JSON.parse(text)
-    return (data.items || data.documents || data.data || []) as any[]
+  const trySearch = async (clientPhone: string): Promise<any[]> => {
+    const qs  = new URLSearchParams({ type: '320', pageSize: '20', page: '1', 'client.phone': clientPhone })
+    const res = await fetch(`${BASE}/documents?${qs}`, { headers: bearer(token) })
+    const d   = await res.json()
+    if (!res.ok) throw new Error(`Morning search (${res.status}): ${d.errorMessage || JSON.stringify(d)}`)
+    return d.items || d.documents || d.data || []
   }
 
-  const items = await trySearch(intl)
-  if (items.length > 0) return items
+  // Try local format first (05x), then international (972x)
+  const r1 = await trySearch(local)
+  if (r1.length > 0) return r1
+  return trySearch(intl)
+}
 
-  const items2 = await trySearch(local)
-  return items2
+// ── Get single invoice ─────────────────────────────────────────
+
+export async function getInvoice(invoiceId: string) {
+  const token = await getToken()
+  const res   = await fetch(`${BASE}/documents/${invoiceId}`, { headers: bearer(token) })
+  const data  = await res.json()
+  if (!res.ok) throw new Error(`Morning getInvoice (${res.status}): ${data.errorMessage || JSON.stringify(data)}`)
+  return data
 }
