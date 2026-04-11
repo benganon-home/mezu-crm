@@ -572,33 +572,57 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
             )}
 
             {/* Search results */}
-            {morningInvoices && (
-              <div className="flex flex-col gap-1.5">
-                {morningInvoices.length === 0 ? (
-                  <div className="text-sm text-muted text-center py-3 border border-dashed border-cream-dark dark:border-navy-light rounded-xl">
-                    לא נמצאו חשבוניות ב-Morning עבור לקוח זה
+            {morningInvoices && (() => {
+              const customerName = customer?.name || ''
+              const isMatch = (inv: any) => inv.clientName && customerName &&
+                inv.clientName.trim() === customerName.trim()
+              const matched = morningInvoices.filter(isMatch)
+              const others  = morningInvoices.filter(i => !isMatch(i))
+                .sort((a: any, b: any) => (a.clientName || '').localeCompare(b.clientName || '', 'he'))
+
+              const renderRow = (inv: any, highlight: boolean) => (
+                <button key={inv.id} onClick={() => linkInvoice(inv)} disabled={linkingId === inv.id}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-colors text-right w-full disabled:opacity-50',
+                    highlight
+                      ? 'border-gold/40 bg-gold/5 hover:border-gold hover:bg-gold/10'
+                      : 'border-cream-dark dark:border-navy-light hover:border-gold hover:bg-gold/5'
+                  )}>
+                  <FileText size={14} className={highlight ? 'text-gold flex-shrink-0' : 'text-muted flex-shrink-0'} />
+                  <div className="flex-1 min-w-0">
+                    <div className={cn('text-sm font-medium', highlight && 'text-gold')}>
+                      {inv.clientName}
+                    </div>
+                    <div className="text-xs text-muted">
+                      חשבונית #{inv.number} · {inv.amount ? formatPrice(inv.amount) : ''} · {inv.documentDate ? new Date(inv.documentDate).toLocaleDateString('he-IL') : ''}
+                    </div>
                   </div>
-                ) : (
-                  morningInvoices.map((inv: any) => (
-                    <button key={inv.id} onClick={() => linkInvoice(inv)} disabled={linkingId === inv.id}
-                      className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-cream-dark dark:border-navy-light hover:border-gold hover:bg-gold/5 transition-colors text-right w-full disabled:opacity-50">
-                      <FileText size={14} className="text-gold flex-shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium">חשבונית #{inv.number}</div>
-                        <div className="text-xs text-muted">
-                          {inv.clientName} · {inv.amount ? formatPrice(inv.amount) : ''} · {inv.documentDate ? new Date(inv.documentDate).toLocaleDateString('he-IL') : ''}
-                        </div>
-                      </div>
-                      {linkingId === inv.id
-                        ? <Loader2 size={13} className="animate-spin text-gold" />
-                        : <Check size={13} className="text-muted" />
-                      }
-                    </button>
-                  ))
-                )}
-                <button onClick={() => setMorningInvoices(null)} className="text-xs text-muted hover:text-navy dark:hover:text-cream text-center py-1">ביטול</button>
-              </div>
-            )}
+                  {linkingId === inv.id
+                    ? <Loader2 size={13} className="animate-spin text-gold" />
+                    : <Check size={13} className="text-muted opacity-40" />
+                  }
+                </button>
+              )
+
+              return (
+                <div className="flex flex-col gap-1">
+                  {matched.length > 0 && (
+                    <>
+                      <div className="text-xs text-gold font-medium px-1 pt-1">התאמות עבור {customerName}</div>
+                      {matched.map(inv => renderRow(inv, true))}
+                      {others.length > 0 && <div className="text-xs text-muted px-1 pt-2 pb-0.5">שאר החשבוניות האחרונות</div>}
+                    </>
+                  )}
+                  {others.map(inv => renderRow(inv, false))}
+                  {morningInvoices.length === 0 && (
+                    <div className="text-sm text-muted text-center py-3 border border-dashed border-cream-dark dark:border-navy-light rounded-xl">
+                      לא נמצאו חשבוניות ב-Morning
+                    </div>
+                  )}
+                  <button onClick={() => setMorningInvoices(null)} className="text-xs text-muted hover:text-navy dark:hover:text-cream text-center py-1.5">ביטול</button>
+                </div>
+              )
+            })()}
 
             {/* No invoice yet — search button */}
             {!invoiceUrl && !morningInvoices && (
