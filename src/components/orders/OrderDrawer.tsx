@@ -277,7 +277,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const linkInvoice = async (inv: any) => {
     setLinkingId(inv.id)
     const invoiceId  = String(inv.id)
-    const invoiceUrl = inv.url || inv.documentUrl || inv.download_url || ''
+    const invoiceUrl = inv.url || ''  // normalized field from API
     await fetch(`/api/orders/${order.id}/invoice`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -584,9 +584,9 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
                       className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-cream-dark dark:border-navy-light hover:border-gold hover:bg-gold/5 transition-colors text-right w-full disabled:opacity-50">
                       <FileText size={14} className="text-gold flex-shrink-0" />
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium">חשבונית #{inv.number || inv.id}</div>
+                        <div className="text-sm font-medium">חשבונית #{inv.number}</div>
                         <div className="text-xs text-muted">
-                          {inv.client?.name} · {inv.sum ? `₪${inv.sum}` : ''} · {inv.date ? new Date(inv.date * 1000).toLocaleDateString('he-IL') : ''}
+                          {inv.clientName} · {inv.amount ? formatPrice(inv.amount) : ''} · {inv.documentDate ? new Date(inv.documentDate).toLocaleDateString('he-IL') : ''}
                         </div>
                       </div>
                       {linkingId === inv.id
