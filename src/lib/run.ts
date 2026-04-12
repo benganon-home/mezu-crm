@@ -2,11 +2,11 @@
 // Docs: see public/RUN API Documentation.pdf
 // All requests are GET to https://<HOST>/RunCom.Server/Request.aspx
 
-const HOST          = process.env.RUN_HOST || ''
-const CUSTOMER_NUM  = process.env.RUN_CUSTOMER_NUMBER || ''
-const SHIPMENT_TYPE = process.env.RUN_SHIPMENT_TYPE || ''
-const CARGO_TYPE    = process.env.RUN_CARGO_TYPE || ''
-const AUTH_TOKEN    = process.env.RUN_AUTH_TOKEN || ''
+const HOST          = (process.env.RUN_HOST || '').trim()
+const CUSTOMER_NUM  = (process.env.RUN_CUSTOMER_NUMBER || '').trim()
+const SHIPMENT_TYPE = (process.env.RUN_SHIPMENT_TYPE || '').trim()
+const CARGO_TYPE    = (process.env.RUN_CARGO_TYPE || '').trim()
+const AUTH_TOKEN    = (process.env.RUN_AUTH_TOKEN || '').trim()
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

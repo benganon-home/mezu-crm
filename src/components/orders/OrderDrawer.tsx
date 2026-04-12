@@ -22,7 +22,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const [saving, setSaving]               = useState(false)
   const [status, setStatus]               = useState<OrderStatus>(order.status)
   const [notes, setNotes]                 = useState(order.notes || '')
-  const [tracking, setTracking]           = useState(order.tracking_number || '')
+  const [tracking, setTracking]           = useState(order.tracking_number && order.tracking_number !== '0' ? order.tracking_number : '')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting]           = useState(false)
 
