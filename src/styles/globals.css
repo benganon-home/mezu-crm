@@ -96,7 +96,7 @@ h3 { font-size: 16px; font-weight: 500; }
   }
 
   .page-header {
-    @apply flex items-center justify-between mb-5 pb-4 border-b border-cream-dark dark:border-navy-light;
+    @apply flex flex-wrap items-center justify-between gap-y-2 mb-5 pb-4 border-b border-cream-dark dark:border-navy-light;
   }
 }
 
@@ -251,4 +251,12 @@ h3 { font-size: 16px; font-weight: 500; }
 }
 .chip-btn-active {
   @apply bg-navy text-cream border-navy dark:bg-cream dark:text-navy dark:border-cream;
+}
+
+/* ─── Mobile responsive ──────────────────────────────────────── */
+@media (max-width: 767px) {
+  .drawer {
+    width: 100vw;
+    right: -100vw;
+  }
 }

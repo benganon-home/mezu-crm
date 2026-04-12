@@ -453,8 +453,8 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
                 </div>
               )}
             </div>
-            <button onClick={close} className="text-muted hover:text-navy dark:hover:text-cream p-1 rounded shrink-0">
-              <X size={18} />
+            <button onClick={close} className="text-muted hover:text-navy dark:hover:text-cream p-2 rounded shrink-0">
+              <X size={20} />
             </button>
           </div>
         </div>

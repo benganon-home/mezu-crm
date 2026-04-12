@@ -300,8 +300,8 @@ export default function OrdersPage() {
       </div>
 
       {/* Toolbar — single row */}
-      <div className="flex gap-2 items-center">
-        <div className="relative flex-1">
+      <div className="flex flex-col md:flex-row gap-2 md:items-center">
+        <div className="relative md:flex-1">
           <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
             className="input pr-9 w-full"
@@ -310,7 +310,7 @@ export default function OrdersPage() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-1.5 items-center shrink-0">
+        <div className="flex gap-1.5 items-center overflow-x-auto pb-0.5 md:shrink-0">
           <button onClick={() => setSelectedStatuses(ALL_STATUSES)} className={cn('chip-btn', allSelected && 'chip-btn-active')}>הכל</button>
           {ALL_STATUSES.map(s => {
             const active = selectedStatuses.includes(s)
@@ -328,7 +328,7 @@ export default function OrdersPage() {
             )
           })}
         </div>
-        <div className="relative w-[200px] shrink-0">
+        <div className="relative md:w-[200px] md:shrink-0">
           <select
             value={deliveryFilter}
             onChange={e => setDeliveryFilter(e.target.value as typeof deliveryFilter)}
@@ -366,9 +366,10 @@ export default function OrdersPage() {
 
       {/* Orders */}
       <div className="surface overflow-hidden">
+        <div className="overflow-x-auto">
 
         {/* Sticky column headers */}
-        <div className="sticky top-0 z-10 text-[11px] font-medium text-muted border-b border-cream-dark dark:border-navy-light bg-cream dark:bg-navy-dark">
+        <div className="sticky top-0 z-10 text-[11px] font-medium text-muted border-b border-cream-dark dark:border-navy-light bg-cream dark:bg-navy-dark min-w-[820px]">
           <div className="flex mx-2">
             <div className="w-[260px] shrink-0 px-4 py-2.5 border-l border-cream-dark dark:border-navy-light">
               פרטי ההזמנה
@@ -387,12 +388,12 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        {loading && <div className="text-center py-12 text-muted text-sm">טוען...</div>}
+        {loading && <div className="text-center py-12 text-muted text-sm min-w-[820px]">טוען...</div>}
         {!loading && paginatedOrders.length === 0 && (
-          <div className="text-center py-12 text-muted text-sm">לא נמצאו הזמנות</div>
+          <div className="text-center py-12 text-muted text-sm min-w-[820px]">לא נמצאו הזמנות</div>
         )}
 
-        <div className="flex flex-col gap-2 p-2 bg-[#EEEDF5] dark:bg-navy-deeper">
+        <div className="flex flex-col gap-2 p-2 bg-[#EEEDF5] dark:bg-navy-deeper min-w-[820px]">
           {paginatedOrders.map(order => (
             <OrderRow
               key={order.id}
@@ -405,6 +406,7 @@ export default function OrdersPage() {
             />
           ))}
         </div>
+        </div>{/* end overflow-x-auto */}
 
         {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-2.5 border-t border-cream-dark dark:border-navy-light text-xs text-muted">

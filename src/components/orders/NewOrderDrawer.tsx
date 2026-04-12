@@ -191,13 +191,13 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
         onClick={close}
       />
 
-      <div className={cn('drawer flex flex-col', visible && 'open')} style={{ width: 500 }}>
+      <div className={cn('drawer flex flex-col', visible && 'open')}>
 
         {/* ── Header ── */}
         <div className="flex-shrink-0 bg-white dark:bg-navy-dark border-b border-cream-dark dark:border-navy-light px-5 py-4 flex items-center justify-between">
           <h2>הזמנה חדשה</h2>
-          <button onClick={close} className="text-muted hover:text-navy dark:hover:text-cream p-1 rounded">
-            <X size={18} />
+          <button onClick={close} className="text-muted hover:text-navy dark:hover:text-cream p-2 rounded">
+            <X size={20} />
           </button>
         </div>
 
