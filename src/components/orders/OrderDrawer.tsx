@@ -22,7 +22,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const [saving, setSaving]               = useState(false)
   const [status, setStatus]               = useState<OrderStatus>(order.status)
   const [notes, setNotes]                 = useState(order.notes || '')
-  const [tracking, setTracking]           = useState(order.tracking_number && order.tracking_number !== '0' ? order.tracking_number : '')
+  const [tracking, setTracking]           = useState(['', '0', null, undefined].includes(order.tracking_number as any) ? '' : order.tracking_number || '')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting]           = useState(false)
 
@@ -604,9 +604,14 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
               <div className="label">משלוח — Run</div>
               {tracking && (
                 <button onClick={async () => {
-                  await save({ tracking_number: null })
+                  await fetch(`/api/orders/${order.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ tracking_number: '' }),
+                  })
                   setTracking('')
                   setTrackingEvents(null)
+                  onUpdate({ ...order, items, customer, tracking_number: '' })
                 }} className="text-xs text-red-400 hover:text-red-600 transition-colors">
                   הסר משלוח
                 </button>
