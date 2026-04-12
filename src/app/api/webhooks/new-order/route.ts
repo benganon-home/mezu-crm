@@ -169,12 +169,38 @@ export async function POST(req: NextRequest) {
 
   let finalTotal = autoTotal
   if (matchingRule) {
-    finalTotal = matchingRule.discount_type === 'fixed_total'
-      ? matchingRule.discount_value
-      : autoTotal * (1 - matchingRule.discount_value / 100)
-    // Distribute final total proportionally across items
-    if (autoTotal > 0) {
-      items.forEach((i: any) => { i.price = parseFloat(((i.price / autoTotal) * finalTotal).toFixed(2)) })
+    if (matchingRule.discount_type === 'fixed_total') {
+      // Only apply the fixed discount to bundle items (min qty per condition).
+      // Extra items (e.g. 5× 16cm mezuzot) keep their full price.
+      const usedIndices = new Set<number>()
+      matchingRule.conditions.forEach((cond: any) => {
+        let needed = cond.min_qty
+        items.forEach((item: any, idx: number) => {
+          if (needed > 0 && !usedIndices.has(idx) && item.model === cond.category && (!cond.size || item.size === cond.size)) {
+            usedIndices.add(idx)
+            needed--
+          }
+        })
+      })
+      const bundleAutoTotal = items.reduce((s: number, i: any, idx: number) =>
+        usedIndices.has(idx) ? s + (i.price || 0) : s, 0)
+      const extraTotal = items.reduce((s: number, i: any, idx: number) =>
+        !usedIndices.has(idx) ? s + (i.price || 0) : s, 0)
+      // Distribute the fixed discount proportionally among bundle items only
+      if (bundleAutoTotal > 0) {
+        items.forEach((item: any, idx: number) => {
+          if (usedIndices.has(idx)) {
+            item.price = parseFloat(((item.price / bundleAutoTotal) * matchingRule.discount_value).toFixed(2))
+          }
+        })
+      }
+      finalTotal = matchingRule.discount_value + extraTotal
+    } else {
+      // Percentage discount applies to all items
+      finalTotal = autoTotal * (1 - matchingRule.discount_value / 100)
+      if (autoTotal > 0) {
+        items.forEach((i: any) => { i.price = parseFloat(((i.price / autoTotal) * finalTotal).toFixed(2)) })
+      }
     }
   }
 
