@@ -48,14 +48,16 @@ export function parseAddress(address: string): { city: string; street: string; b
 // ─── Create shipment ──────────────────────────────────────────────────────────
 
 export interface CreateShipmentParams {
-  name:      string   // consignee name (P11)
-  city:      string   // city (P13)
-  street:    string   // street (P15)
-  building?: string   // building no (P16)
-  phone:     string   // primary phone (P20)
-  email?:    string   // email (P40)
-  reference: string   // your reference, e.g. order ID (P22)
-  remarks?:  string   // additional remarks (P25)
+  name:       string   // consignee name (P11)
+  city:       string   // city (P13)
+  street:     string   // street (P15)
+  building?:  string   // building no (P16)
+  floor?:     string   // floor (P18)
+  apartment?: string   // apartment (P19)
+  phone:      string   // primary phone (P20)
+  email?:     string   // email (P40)
+  reference:  string   // your reference, e.g. order ID (P22)
+  remarks?:   string   // additional remarks (P25)
 }
 
 export interface RunShipment {
@@ -84,7 +86,9 @@ export async function createShipment(p: CreateShipmentParams): Promise<RunShipme
     a(),                                    // P14 street code
     a(p.street.slice(0, 30)),               // P15 street name
     a((p.building || '').slice(0, 5)),      // P16 building no
-    a(), a(), a(),                          // P17-P19 entrance/floor/apt
+    a(),                                    // P17 entrance
+    a((p.floor || '').slice(0, 2)),         // P18 floor
+    a((p.apartment || '').slice(0, 4)),     // P19 apartment
     a(p.phone.replace(/\D/g, '').slice(0, 20)), // P20 phone (digits only)
     a(),                                    // P21 additional phone
     a(p.reference.slice(0, 200)),           // P22 reference number

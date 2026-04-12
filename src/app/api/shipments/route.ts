@@ -1,19 +1,18 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { createShipment, parseAddress } from '@/lib/run'
+import { createShipment } from '@/lib/run'
 
 // POST /api/shipments
-// Body: { order_id }
-// Creates a Run shipment from order data and saves the tracking number
+// Body: { order_id, city, street, building?, floor?, apartment? }
 
 export async function POST(req: Request) {
   try {
-    const { order_id } = await req.json()
+    const { order_id, city, street, building, floor, apartment } = await req.json()
     if (!order_id) return NextResponse.json({ error: 'order_id חסר' }, { status: 400 })
+    if (!city || !street) return NextResponse.json({ error: 'עיר ורחוב הם שדות חובה' }, { status: 400 })
 
     const supabase = createClient()
 
-    // Fetch order + customer
     const { data: order, error } = await supabase
       .from('orders')
       .select('*, customers(name, phone, email)')
@@ -25,26 +24,23 @@ export async function POST(req: Request) {
     }
 
     const customer = order.customers as any
-    const address  = parseAddress(order.delivery_address || customer?.address || '')
 
     const shipment = await createShipment({
       name:      customer?.name || 'לקוח',
-      city:      address.city,
-      street:    address.street,
-      building:  address.building,
+      city,
+      street,
+      building:  building  || '',
+      floor:     floor     || '',
+      apartment: apartment || '',
       phone:     customer?.phone || '',
       email:     customer?.email || '',
       reference: order_id,
-      remarks:   order.notes || '',
+      remarks:   order.notes   || '',
     })
 
-    // Save tracking number + auto-update status to shipped
     await supabase
       .from('orders')
-      .update({
-        tracking_number: shipment.shipNum,
-        status:          'shipped',
-      })
+      .update({ tracking_number: shipment.shipNum, status: 'shipped' })
       .eq('id', order_id)
 
     return NextResponse.json({ shipNum: shipment.shipNum, randId: shipment.randId })

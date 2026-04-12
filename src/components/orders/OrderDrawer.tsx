@@ -35,6 +35,12 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const [linkingId, setLinkingId]               = useState<string | null>(null)
 
   // Shipping (Run)
+  const [showShipForm, setShowShipForm]         = useState(false)
+  const [shipCity, setShipCity]                 = useState('')
+  const [shipStreet, setShipStreet]             = useState('')
+  const [shipBuilding, setShipBuilding]         = useState('')
+  const [shipFloor, setShipFloor]               = useState('')
+  const [shipApt, setShipApt]                   = useState('')
   const [creatingShipment, setCreatingShipment] = useState(false)
   const [shipmentError, setShipmentError]       = useState<string | null>(null)
   const [trackingEvents, setTrackingEvents]     = useState<any[] | null>(null)
@@ -317,12 +323,20 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
       const res  = await fetch('/api/shipments', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ order_id: order.id }),
+        body:    JSON.stringify({
+          order_id: order.id,
+          city:     shipCity.trim(),
+          street:   shipStreet.trim(),
+          building: shipBuilding.trim(),
+          floor:    shipFloor.trim(),
+          apartment: shipApt.trim(),
+        }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'שגיאה ביצירת משלוח')
       setTracking(data.shipNum)
       setStatus('shipped')
+      setShowShipForm(false)
       onUpdate({ ...order, items, customer, tracking_number: data.shipNum, status: 'shipped' })
     } catch (err: any) {
       setShipmentError(err.message)
@@ -639,18 +653,43 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
             ) : (
               /* No shipment yet */
               <div className="flex flex-col gap-2">
-                {order.delivery_type !== 'pickup' && (
-                  <button onClick={createRunShipment} disabled={creatingShipment}
-                    className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-3 py-2.5 text-sm font-medium transition-colors disabled:opacity-50">
-                    {creatingShipment
-                      ? <><Loader2 size={14} className="animate-spin" /> יוצר משלוח...</>
-                      : <><Truck size={14} /> צור משלוח ב-Run</>
-                    }
+                {order.delivery_type !== 'pickup' && !showShipForm && (
+                  <button onClick={() => setShowShipForm(true)}
+                    className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-3 py-2.5 text-sm font-medium transition-colors">
+                    <Truck size={14} /> צור משלוח ב-Run
                   </button>
                 )}
-                {shipmentError && (
-                  <div className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">{shipmentError}</div>
+
+                {/* Address form */}
+                {showShipForm && (
+                  <div className="border border-blue-200 dark:border-blue-800 rounded-xl p-3 flex flex-col gap-2 bg-blue-50/50 dark:bg-blue-900/10">
+                    <div className="text-xs font-medium text-blue-700 dark:text-blue-400">פרטי כתובת למשלוח</div>
+                    <div className="text-xs text-muted">
+                      שם: <span className="font-medium text-navy dark:text-cream">{customer?.name}</span>
+                      {' · '}טלפון: <span className="ltr font-medium text-navy dark:text-cream">{customer?.phone}</span>
+                    </div>
+                    <input className="input text-sm" placeholder="עיר *" value={shipCity} onChange={e => setShipCity(e.target.value)} autoFocus />
+                    <input className="input text-sm" placeholder="רחוב *" value={shipStreet} onChange={e => setShipStreet(e.target.value)} />
+                    <div className="grid grid-cols-3 gap-2">
+                      <input className="input text-sm" placeholder="בניין" value={shipBuilding} onChange={e => setShipBuilding(e.target.value)} />
+                      <input className="input text-sm" placeholder="קומה" value={shipFloor} onChange={e => setShipFloor(e.target.value)} />
+                      <input className="input text-sm" placeholder="דירה" value={shipApt} onChange={e => setShipApt(e.target.value)} />
+                    </div>
+                    {shipmentError && (
+                      <div className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">{shipmentError}</div>
+                    )}
+                    <div className="flex gap-2 mt-1">
+                      <button onClick={createRunShipment}
+                        disabled={creatingShipment || !shipCity.trim() || !shipStreet.trim()}
+                        className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-50">
+                        {creatingShipment ? <><Loader2 size={13} className="animate-spin" /> יוצר...</> : <><Truck size={13} /> שלח לRun</>}
+                      </button>
+                      <button onClick={() => { setShowShipForm(false); setShipmentError(null) }}
+                        className="btn-secondary text-xs px-4">ביטול</button>
+                    </div>
+                  </div>
                 )}
+
                 <div className="flex gap-2">
                   <input className="input flex-1 text-sm ltr" placeholder="או הכנס מספר מעקב ידנית..." value={tracking}
                     onChange={e => setTracking(e.target.value)} dir="ltr" />
