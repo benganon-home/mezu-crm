@@ -600,7 +600,18 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
 
           {/* Shipping */}
           <div>
-            <div className="label mb-2">משלוח — Run</div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="label">משלוח — Run</div>
+              {tracking && (
+                <button onClick={async () => {
+                  await save({ tracking_number: null })
+                  setTracking('')
+                  setTrackingEvents(null)
+                }} className="text-xs text-red-400 hover:text-red-600 transition-colors">
+                  הסר משלוח
+                </button>
+              )}
+            </div>
 
             {tracking ? (
               /* Has shipment number */
