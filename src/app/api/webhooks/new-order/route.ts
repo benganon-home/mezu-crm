@@ -55,6 +55,14 @@ export async function POST(req: NextRequest) {
   const totalPrice = parseFloat(totalStr) || 0
   const extraCount = parseInt(extraQtyStr) || 0
 
+  // Normalize size: "18 ס״מ רגיל" → "18", "24 ס״מ" → "24", "16" → "16"
+  const normalizeSize = (s: string | null | undefined): string | null => {
+    if (!s) return null
+    const m = s.match(/^(\d+)/)
+    return m ? m[1] : s
+  }
+  const mezuzah_size_norm = normalizeSize(mezuzah_size)
+
   // ── 1. Find or create customer ────────────────────────────────
   const { data: existing } = await supabase
     .from('customers')
@@ -96,11 +104,11 @@ export async function POST(req: NextRequest) {
 
   // Main mezuzah
   if (mezuzah_model) {
-    const { id: productId, price } = lookupPrice(mezuzah_model, mezuzah_size)
+    const { id: productId, price } = lookupPrice(mezuzah_model, mezuzah_size_norm)
     items.push({
       item_name:  mezuzah_model,
       model:      'מזוזות',
-      size:       mezuzah_size || null,
+      size:       mezuzah_size_norm || null,
       color,
       price,
       product_id: productId,
