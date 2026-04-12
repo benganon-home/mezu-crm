@@ -34,13 +34,34 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const [morningInvoices, setMorningInvoices]     = useState<any[] | null>(null)
   const [linkingId, setLinkingId]               = useState<string | null>(null)
 
-  // Shipping (Run)
+  // Shipping (Run) — parse address for pre-fill
+  const parsed = (() => {
+    const addr = order.delivery_address || ''
+    const empty = { city: '', street: '', building: '', floor: '', apartment: '' }
+    if (!addr) return empty
+    const lastComma = addr.lastIndexOf(',')
+    if (lastComma === -1) return { ...empty, street: addr.trim() }
+    const city = addr.slice(lastComma + 1).trim()
+    const raw  = addr.slice(0, lastComma).trim()
+    const full = raw.match(/^(.+?)\s+(\d+)\s+קומה\s+(\d+)\s+דירה\s+(\d+)\s*$/i)
+    if (full) return { city, street: full[1].trim(), building: full[2], floor: full[3], apartment: full[4] }
+    const withApt = raw.match(/^(.+?)\s+(\d+)\s+דירה\s+(\d+)\s*$/i)
+    if (withApt) return { city, street: withApt[1].trim(), building: withApt[2], floor: '', apartment: withApt[3] }
+    const withFloor = raw.match(/^(.+?)\s+(\d+)\s+קומה\s+(\d+)\s*$/i)
+    if (withFloor) return { city, street: withFloor[1].trim(), building: withFloor[2], floor: withFloor[3], apartment: '' }
+    const slash = raw.match(/^(.+?)\s+(\d+)\/(\d+)\s*$/)
+    if (slash) return { city, street: slash[1].trim(), building: slash[2], floor: '', apartment: slash[3] }
+    const simple = raw.match(/^(.+?)\s+(\d+[א-ת]?)\s*$/)
+    if (simple) return { city, street: simple[1].trim(), building: simple[2], floor: '', apartment: '' }
+    return { city, street: raw, building: '', floor: '', apartment: '' }
+  })()
+
   const [showShipForm, setShowShipForm]         = useState(false)
-  const [shipCity, setShipCity]                 = useState('')
-  const [shipStreet, setShipStreet]             = useState('')
-  const [shipBuilding, setShipBuilding]         = useState('')
-  const [shipFloor, setShipFloor]               = useState('')
-  const [shipApt, setShipApt]                   = useState('')
+  const [shipCity, setShipCity]                 = useState(parsed.city)
+  const [shipStreet, setShipStreet]             = useState(parsed.street)
+  const [shipBuilding, setShipBuilding]         = useState(parsed.building)
+  const [shipFloor, setShipFloor]               = useState(parsed.floor)
+  const [shipApt, setShipApt]                   = useState(parsed.apartment)
   const [creatingShipment, setCreatingShipment] = useState(false)
   const [shipmentError, setShipmentError]       = useState<string | null>(null)
   const [trackingEvents, setTrackingEvents]     = useState<any[] | null>(null)

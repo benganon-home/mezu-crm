@@ -28,20 +28,52 @@ function xmlTag(xml: string, tag: string): string {
 }
 
 // ─── Address parsing ──────────────────────────────────────────────────────────
-// Handles "רחוב הרצל 12, תל אביב" → { city, street, building }
+// Supported formats:
+//   "הרצל 11 קומה 2 דירה 3, תל אביב"   → street=הרצל, building=11, floor=2, apt=3
+//   "הרצל 11/3, תל אביב"               → street=הרצל, building=11, apt=3
+//   "הרצל 11, תל אביב"                 → street=הרצל, building=11
+//   "הרצל 11 דירה 3, תל אביב"          → street=הרצל, building=11, apt=3
 
-export function parseAddress(address: string): { city: string; street: string; building: string } {
-  if (!address) return { city: '', street: '', building: '' }
-  const parts = address.split(',').map(p => p.trim()).filter(Boolean)
-  if (parts.length >= 2) {
-    const city      = parts[parts.length - 1]
-    const streetRaw = parts.slice(0, -1).join(', ')
-    const match     = streetRaw.match(/^(.*?)\s+(\d+[א-ת]?)\s*$/)
-    if (match) return { city, street: match[1], building: match[2] }
-    return { city, street: streetRaw, building: '' }
-  }
-  // No comma — everything as street, city empty
-  return { city: '', street: address, building: '' }
+export interface ParsedAddress {
+  city:      string
+  street:    string
+  building:  string
+  floor:     string
+  apartment: string
+}
+
+export function parseAddress(address: string): ParsedAddress {
+  const empty: ParsedAddress = { city: '', street: '', building: '', floor: '', apartment: '' }
+  if (!address) return empty
+
+  // City = everything after last comma
+  const lastComma = address.lastIndexOf(',')
+  if (lastComma === -1) return { ...empty, street: address.trim() }
+
+  const city      = address.slice(lastComma + 1).trim()
+  const streetRaw = address.slice(0, lastComma).trim()
+
+  // Pattern: "רחוב 11 קומה 2 דירה 3"
+  const full = streetRaw.match(/^(.+?)\s+(\d+)\s+קומה\s+(\d+)\s+דירה\s+(\d+)\s*$/i)
+  if (full) return { city, street: full[1].trim(), building: full[2], floor: full[3], apartment: full[4] }
+
+  // Pattern: "רחוב 11 דירה 3"
+  const withApt = streetRaw.match(/^(.+?)\s+(\d+)\s+דירה\s+(\d+)\s*$/i)
+  if (withApt) return { city, street: withApt[1].trim(), building: withApt[2], floor: '', apartment: withApt[3] }
+
+  // Pattern: "רחוב 11 קומה 2"
+  const withFloor = streetRaw.match(/^(.+?)\s+(\d+)\s+קומה\s+(\d+)\s*$/i)
+  if (withFloor) return { city, street: withFloor[1].trim(), building: withFloor[2], floor: withFloor[3], apartment: '' }
+
+  // Pattern: "רחוב 11/3" (building/apartment)
+  const slash = streetRaw.match(/^(.+?)\s+(\d+)\/(\d+)\s*$/)
+  if (slash) return { city, street: slash[1].trim(), building: slash[2], floor: '', apartment: slash[3] }
+
+  // Pattern: "רחוב 11"
+  const simple = streetRaw.match(/^(.+?)\s+(\d+[א-ת]?)\s*$/)
+  if (simple) return { city, street: simple[1].trim(), building: simple[2], floor: '', apartment: '' }
+
+  return { city, street: streetRaw, building: '', floor: '', apartment: '' }
 }
 
 // ─── Create shipment ──────────────────────────────────────────────────────────
