@@ -462,21 +462,6 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
         {/* Body */}
         <div className="px-5 py-5 flex flex-col gap-6">
 
-          {/* Status */}
-          <div>
-            <div className="label mb-2">סטטוס הזמנה</div>
-            <div className="flex gap-2 flex-wrap">
-              {ALL_STATUSES.filter(s => s !== 'cancelled').map(s => (
-                <button key={s} onClick={() => onStatusChange(s)}
-                  className={cn('badge cursor-pointer transition-all', STATUS_CONFIG[s].bg, STATUS_CONFIG[s].text,
-                    status === s ? 'ring-2 ring-offset-1 ring-current font-semibold scale-105' : 'opacity-60 hover:opacity-90')}>
-                  <span className={cn('badge-dot', STATUS_CONFIG[s].dot)} />
-                  {STATUS_CONFIG[s].label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Products */}
           <div>
             <div className="label mb-2">מוצרים בהזמנה ({items.length})</div>
