@@ -23,10 +23,13 @@ export async function GET(req: Request) {
     }
 
     if (mode === 'ship') {
-      // Actually call ship_create_anonymous and return raw XML response
+      // Try different shipment type + cargo type code combos to find the right ones
+      const shipType  = new URL(req.url).searchParams.get('p3') || '1'
+      const cargoType = new URL(req.url).searchParams.get('p7') || '1'
+
       const args = [
-        n(CUSTOMER_NUM), a('מסירה'), n(), n(), a('MEZU'), a(),
-        n(), n(), n(), n(),
+        n(CUSTOMER_NUM), a('מסירה'), n(shipType), n(), a('MEZU'), a(),
+        n(cargoType), n(), n(), n(),
         a('לקוח בדיקה'),
         a(), a('תל אביב'), a(), a('דיזנגוף'), a('1'),
         a(), a(), a(),
@@ -41,7 +44,7 @@ export async function GET(req: Request) {
       const url = `${base}?APPNAME=run&PRGNAME=ship_create_anonymous&ARGUMENTS=${encodeURIComponent(args)}`
       const res  = await fetch(url)
       const text = await res.text()
-      return NextResponse.json({ ok: res.ok, status: res.status, raw: text })
+      return NextResponse.json({ ok: res.ok, status: res.status, p3: shipType, p7: cargoType, raw: text })
     }
 
     if (mode === 'auth') {
