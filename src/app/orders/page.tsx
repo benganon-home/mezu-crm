@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Plus, Search, ChevronDown, Download } from 'lucide-react'
+import { Plus, Search, ChevronDown, Download, Printer } from 'lucide-react'
 import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG } from '@/types'
 import { UndoToast } from '@/components/ui/UndoToast'
 import { formatPrice, cn } from '@/lib/utils'
@@ -256,6 +256,16 @@ export default function OrdersPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          <a
+            href="/api/labels/ready"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn-secondary flex items-center gap-2 text-sm"
+            title="הדפס תוויות לכל ההזמנות המוכנות"
+          >
+            <Printer size={14} strokeWidth={1.5} />
+            תוויות מוכן
+          </a>
           <button
             onClick={() => setShowExport(true)}
             className="btn-secondary flex items-center gap-2 text-sm"

@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
     await supabase
       .from('orders')
-      .update({ tracking_number: shipment.shipNum, status: 'shipped' })
+      .update({ tracking_number: shipment.shipNum })
       .eq('id', order_id)
 
     return NextResponse.json({ shipNum: shipment.shipNum, randId: shipment.randId })

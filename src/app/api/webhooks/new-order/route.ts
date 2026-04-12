@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
+import { searchInvoicesByName } from '@/lib/morning'
 
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -193,7 +194,25 @@ export async function POST(req: NextRequest) {
     if (itemsErr) return NextResponse.json({ error: itemsErr.message }, { status: 400 })
   }
 
-  // ── 7. Return full order ──────────────────────────────────────
+  // ── 7. Auto-link Morning invoice by customer name ─────────────
+  if (customer_name) {
+    try {
+      const invoices = await searchInvoicesByName(customer_name)
+      if (invoices.length === 1) {
+        await supabase
+          .from('orders')
+          .update({
+            invoice_id:  invoices[0].id,
+            invoice_url: invoices[0].url?.he || invoices[0].url?.origin || null,
+          })
+          .eq('id', order.id)
+      }
+    } catch {
+      // Invoice linking is best-effort — don't fail the order creation
+    }
+  }
+
+  // ── 8. Return full order ──────────────────────────────────────
   const { data: fullOrder } = await supabase
     .from('orders')
     .select('*, customer:customers(*), items:order_items(*, product:products(images))')
