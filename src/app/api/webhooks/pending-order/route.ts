@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { randomUUID } from 'crypto'
 
 function getAdmin() {
   return createClient(
@@ -16,12 +17,12 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json()
   const cleanPhone = (body.phone || '').replace(/\D/g, '').replace(/^972/, '0')
-  if (!cleanPhone) return NextResponse.json({ error: 'Missing phone' }, { status: 400 })
+  const key = cleanPhone || randomUUID()
 
   const { error } = await getAdmin()
     .from('pending_orders')
     .upsert({
-      key: cleanPhone,
+      key,
       data: {
         phone:          cleanPhone,
         customer_name:  body.customer_name  || null,
