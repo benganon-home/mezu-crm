@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Order, OrderItem, OrderStatus, ITEM_COLOR_MAP } from '@/types'
 import { formatDateShort, formatPrice, cn } from '@/lib/utils'
 import { CopyButton } from '@/components/ui/CopyButton'
@@ -24,7 +24,8 @@ function getInitials(name: string): string {
 export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusChange, onDeleteItem, onClick }: Props) {
   const customer = order.customer
   const items    = order.items || []
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId]   = useState<string | null>(null)
+  const [previewImg, setPreviewImg]   = useState<{ src: string; x: number; y: number } | null>(null)
 
   const handleDeleteItem = (item: OrderItem, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -126,22 +127,21 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
               </div>
 
               {/* Image */}
-              <div className="w-[52px] shrink-0 px-2 py-2.5 relative group/img" onClick={e => e.stopPropagation()}>
-                <div className="w-9 h-9 rounded-lg bg-cream-dark/60 dark:bg-navy-light/30 flex items-center justify-center overflow-hidden">
+              <div className="w-[52px] shrink-0 px-2 py-2.5" onClick={e => e.stopPropagation()}>
+                <div
+                  className="w-9 h-9 rounded-lg bg-cream-dark/60 dark:bg-navy-light/30 flex items-center justify-center overflow-hidden cursor-zoom-in"
+                  onMouseEnter={e => {
+                    if (!item.product?.images?.[0]) return
+                    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+                    setPreviewImg({ src: item.product.images[0], x: r.left, y: r.top })
+                  }}
+                  onMouseLeave={() => setPreviewImg(null)}
+                >
                   {item.product?.images?.[0]
                     ? <img src={item.product.images[0]} alt={item.item_name} className="w-full h-full object-cover" />
                     : <ImageIcon size={15} className="text-muted/30" strokeWidth={1.5} />
                   }
                 </div>
-                {item.product?.images?.[0] && (
-                  <div className="pointer-events-none absolute top-full right-0 mt-1 z-50 hidden group-hover/img:block">
-                    <img
-                      src={item.product.images[0]}
-                      alt={item.item_name}
-                      className="w-40 h-40 object-cover rounded-xl shadow-2xl border border-cream-dark dark:border-navy-light"
-                    />
-                  </div>
-                )}
               </div>
 
               {/* פריטים */}
@@ -216,6 +216,19 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
       </div>
     </div>
 
+      {/* Fixed image preview — escapes overflow:hidden */}
+      {previewImg && (
+        <div
+          className="fixed z-[999] pointer-events-none"
+          style={{ top: previewImg.y - 220, left: previewImg.x - 80 }}
+        >
+          <img
+            src={previewImg.src}
+            alt="תצוגה מקדימה"
+            className="w-56 h-56 object-cover rounded-2xl shadow-2xl border-2 border-white dark:border-navy-light"
+          />
+        </div>
+      )}
 </>
   )
 }
