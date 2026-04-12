@@ -94,15 +94,13 @@ export async function GET() {
       fetch(`${MORNING_BASE}/documents/search`, {
         method:  'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ pageSize: 1, page: 1, documentDateFrom: m.from, documentDateTo: m.to }),
+        body:    JSON.stringify({ pageSize: 100, page: 1, documentDateFrom: m.from, documentDateTo: m.to }),
       }).then(r => r.json())
     ))
 
     morningMonthly = months.map((m, i) => ({
       month: m.key,
-      total: results[i]?.aggregations?.total?.value
-          ?? results[i]?.aggregations?.totalIncome?.value
-          ?? 0,
+      total: (results[i]?.items ?? []).reduce((s: number, doc: any) => s + (doc.amount ?? 0), 0),
     }))
 
     currentMonthRevenue = morningMonthly.at(-1)?.total ?? null
