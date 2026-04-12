@@ -156,13 +156,8 @@ export const FONTS = [
 export const ITEM_COLOR_MAP: Record<string, { hex: string; border?: boolean }> = {
   'דמוי שיש כהה':      { hex: '#61615F' },
   'דמוי שיש אפור חול': { hex: '#C8C3BA' },
-  'דמוי שיש אפור-חול': { hex: '#C8C3BA' },   // dash variant
   'דמוי שיש בהיר':     { hex: '#DCDCDC', border: true },
   'לבן שלג':           { hex: '#FFFFFF', border: true },
-  'לבן':               { hex: '#FFFFFF', border: true },
-  'בטון אפור':         { hex: '#8A8A88' },
-  'בטון בהיר':         { hex: '#C4C2BE', border: true },
-  'אפקט אבן שיש':     { hex: '#B8B4AC' },
 }
 
 // ─── API response types ───────────────────────────────────────────────────────
