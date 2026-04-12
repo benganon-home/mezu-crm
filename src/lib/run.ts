@@ -19,7 +19,6 @@ function runUrl(program: string, args: string): string {
 }
 
 function headers(): HeadersInit {
-  if (AUTH_TOKEN) return { Authorization: `Token ${AUTH_TOKEN}` }
   return {}
 }
 

@@ -23,38 +23,25 @@ export async function GET(req: Request) {
     }
 
     if (mode === 'ship') {
-      // Test shipment creation with dummy data (uses _details to avoid actually creating)
-      // _details returns a table showing how params were received - doesn't create the shipment
+      // Actually call ship_create_anonymous and return raw XML response
       const args = [
         n(CUSTOMER_NUM), a('מסירה'), n(), n(), a('MEZU'), a(),
         n(), n(), n(), n(),
-        a('לקוח בדיקה'),  // P11 name
-        a(),
-        a('תל אביב'),     // P13 city
-        a(),
-        a('דיזנגוף'),     // P15 street
-        a('1'),           // P16 building
+        a('לקוח בדיקה'),
+        a(), a('תל אביב'), a(), a('דיזנגוף'), a('1'),
         a(), a(), a(),
-        a('0500000000'),  // P20 phone
-        a(), a('TEST-DEBUG'), n(1),
+        a('0500000000'),
+        a(), a('DEBUG-TEST'), n(1),
         a(), a(), a(), a(), a(),
         n(), n(), n(), a(), a(), n(), n(),
         a('XML'), a('N'), a(), n(),
-        a('test@test.com'), a(), a(),
+        a(), a(), a(),
       ].join(',')
 
-      // Use _details mode - shows params without creating a shipment
-      const url = `${base}?APPNAME=run&PRGNAME=ship_create_anonymous_details&ARGUMENTS=${encodeURIComponent(args)}`
-      const res  = await fetch(url, {
-        headers: AUTH_TOKEN ? { Authorization: `Token ${AUTH_TOKEN}` } : {},
-      })
+      const url = `${base}?APPNAME=run&PRGNAME=ship_create_anonymous&ARGUMENTS=${encodeURIComponent(args)}`
+      const res  = await fetch(url)
       const text = await res.text()
-      return NextResponse.json({
-        ok:      res.ok,
-        status:  res.status,
-        headers: Object.fromEntries(res.headers.entries()),
-        preview: text.slice(0, 1000),
-      })
+      return NextResponse.json({ ok: res.ok, status: res.status, raw: text })
     }
 
     if (mode === 'auth') {
