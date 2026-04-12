@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createServerClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/server'
 import { createShipment, parseAddress } from '@/lib/run'
 
 // POST /api/shipments
@@ -11,7 +11,7 @@ export async function POST(req: Request) {
     const { order_id } = await req.json()
     if (!order_id) return NextResponse.json({ error: 'order_id חסר' }, { status: 400 })
 
-    const supabase = createServerClient()
+    const supabase = createClient()
 
     // Fetch order + customer
     const { data: order, error } = await supabase
