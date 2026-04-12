@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, MessageCircle, Edit2, Plus, Trash2, Package, AlertTriangle, Check, ChevronDown, FileText, Loader2, ExternalLink, Search } from 'lucide-react'
+import { X, MessageCircle, Edit2, Plus, Trash2, Package, AlertTriangle, Check, ChevronDown, FileText, Loader2, ExternalLink, Search, Truck, Printer, RefreshCw } from 'lucide-react'
 import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG, ITEM_COLOR_MAP, FONTS, Product, ProductSize, SalesRule } from '@/types'
 import { formatDate, formatPrice, cn } from '@/lib/utils'
 import { getWaLink, getInvoiceWaLink } from '@/lib/whatsapp'
@@ -33,6 +33,12 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const [searchingInvoices, setSearchingInvoices] = useState(false)
   const [morningInvoices, setMorningInvoices]     = useState<any[] | null>(null)
   const [linkingId, setLinkingId]               = useState<string | null>(null)
+
+  // Shipping (Run)
+  const [creatingShipment, setCreatingShipment] = useState(false)
+  const [shipmentError, setShipmentError]       = useState<string | null>(null)
+  const [trackingEvents, setTrackingEvents]     = useState<any[] | null>(null)
+  const [loadingTracking, setLoadingTracking]   = useState(false)
 
   // Customer editing
   const [editingCustomer, setEditingCustomer] = useState(false)
@@ -303,6 +309,43 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
     setLinkingId(null)
   }
 
+  // ── Create Run shipment ───────────────────────────────────────
+  const createRunShipment = async () => {
+    setCreatingShipment(true)
+    setShipmentError(null)
+    try {
+      const res  = await fetch('/api/shipments', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ order_id: order.id }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'שגיאה ביצירת משלוח')
+      setTracking(data.shipNum)
+      setStatus('shipped')
+      onUpdate({ ...order, items, customer, tracking_number: data.shipNum, status: 'shipped' })
+    } catch (err: any) {
+      setShipmentError(err.message)
+    } finally {
+      setCreatingShipment(false)
+    }
+  }
+
+  // ── Load Run tracking ─────────────────────────────────────────
+  const loadTracking = async (shipNum: string) => {
+    setLoadingTracking(true)
+    try {
+      const res  = await fetch(`/api/shipments/${shipNum}/tracking`)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setTrackingEvents(data.events || [])
+    } catch {
+      setTrackingEvents([])
+    } finally {
+      setLoadingTracking(false)
+    }
+  }
+
   const waReady   = customer ? getWaLink(customer, 'order_ready',   { itemSummary: items.map(i => i.item_name).join(', ') }) : '#'
   const waShipped = customer ? getWaLink(customer, 'order_shipped',  { trackingNumber: tracking, invoiceUrl: invoiceUrl || undefined }) : '#'
   const waInvoice = customer && invoiceUrl ? getInvoiceWaLink(customer, invoiceUrl) : null
@@ -541,13 +584,80 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
             )}
           </div>
 
-          {/* Tracking */}
+          {/* Shipping */}
           <div>
-            <div className="label mb-1.5">מספר מעקב משלוח</div>
-            <div className="flex gap-2">
-              <input className="input flex-1" placeholder="הכנס מספר מעקב..." value={tracking} onChange={e => setTracking(e.target.value)} />
-              <button onClick={() => save({ tracking_number: tracking })} className="btn-secondary text-xs px-3" disabled={saving}>שמור</button>
-            </div>
+            <div className="label mb-2">משלוח — Run</div>
+
+            {tracking ? (
+              /* Has shipment number */
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-3 py-2.5">
+                  <Truck size={15} className="text-blue-600 flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-blue-800 dark:text-blue-300 ltr">{tracking}</div>
+                    <div className="text-xs text-muted">מספר משלוח ב-Run</div>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <a href={`/api/shipments/${tracking}/label`} target="_blank" rel="noreferrer"
+                      className="flex items-center gap-1 text-xs font-medium text-blue-700 hover:text-blue-900 bg-blue-100 dark:bg-blue-800/40 hover:bg-blue-200 px-2.5 py-1 rounded-full transition-colors">
+                      <Printer size={11} /> תווית
+                    </a>
+                    <button onClick={() => loadTracking(tracking)} disabled={loadingTracking}
+                      className="flex items-center gap-1 text-xs font-medium text-blue-700 hover:text-blue-900 bg-blue-100 dark:bg-blue-800/40 hover:bg-blue-200 px-2.5 py-1 rounded-full transition-colors disabled:opacity-50">
+                      {loadingTracking ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
+                      מעקב
+                    </button>
+                  </div>
+                </div>
+
+                {/* Tracking events */}
+                {trackingEvents && trackingEvents.length > 0 && (
+                  <div className="flex flex-col gap-1 pr-1">
+                    {trackingEvents.slice(0, 4).map((e, i) => (
+                      <div key={i} className="flex items-start gap-2 text-xs">
+                        <div className={cn('w-1.5 h-1.5 rounded-full mt-1 flex-shrink-0', i === 0 ? 'bg-blue-500' : 'bg-cream-dark dark:bg-navy-light')} />
+                        <div className="flex-1">
+                          <span className="text-navy dark:text-cream">{e.desc}</span>
+                          <span className="text-muted mx-1">·</span>
+                          <span className="text-muted ltr">{e.date} {e.time}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {trackingEvents && trackingEvents.length === 0 && (
+                  <div className="text-xs text-muted text-center py-1">אין עדכוני מעקב עדיין</div>
+                )}
+
+                {/* Manual override */}
+                <div className="flex gap-2 mt-1">
+                  <input className="input flex-1 text-sm ltr" placeholder="שנה מספר מעקב..." value={tracking}
+                    onChange={e => setTracking(e.target.value)} dir="ltr" />
+                  <button onClick={() => save({ tracking_number: tracking })} className="btn-secondary text-xs px-3" disabled={saving}>שמור</button>
+                </div>
+              </div>
+            ) : (
+              /* No shipment yet */
+              <div className="flex flex-col gap-2">
+                {order.delivery_type !== 'pickup' && (
+                  <button onClick={createRunShipment} disabled={creatingShipment}
+                    className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-3 py-2.5 text-sm font-medium transition-colors disabled:opacity-50">
+                    {creatingShipment
+                      ? <><Loader2 size={14} className="animate-spin" /> יוצר משלוח...</>
+                      : <><Truck size={14} /> צור משלוח ב-Run</>
+                    }
+                  </button>
+                )}
+                {shipmentError && (
+                  <div className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">{shipmentError}</div>
+                )}
+                <div className="flex gap-2">
+                  <input className="input flex-1 text-sm ltr" placeholder="או הכנס מספר מעקב ידנית..." value={tracking}
+                    onChange={e => setTracking(e.target.value)} dir="ltr" />
+                  <button onClick={() => save({ tracking_number: tracking })} className="btn-secondary text-xs px-3" disabled={saving || !tracking}>שמור</button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Invoice */}
