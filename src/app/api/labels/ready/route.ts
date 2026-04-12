@@ -41,7 +41,7 @@ export async function GET() {
 
   const pdfBytes = await merged.save()
 
-  return new Response(pdfBytes, {
+  return new Response(Buffer.from(pdfBytes), {
     headers: {
       'Content-Type':        'application/pdf',
       'Content-Disposition': `inline; filename="labels-${new Date().toISOString().slice(0,10)}.pdf"`,
