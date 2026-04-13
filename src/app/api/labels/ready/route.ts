@@ -1,12 +1,20 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createServerClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 import { buildLabelUrl } from '@/lib/run'
 import { PDFDocument } from 'pdf-lib'
+
+function getSupabaseAdmin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  if (key) return createClient(url, key)
+  return createServerClient()
+}
 
 // GET /api/labels/ready
 // Merges all K-Express label PDFs for orders in 'ready' status with a tracking number
 export async function GET() {
-  const supabase = createClient()
+  const supabase = getSupabaseAdmin()
 
   const { data: orders, error } = await supabase
     .from('orders')
