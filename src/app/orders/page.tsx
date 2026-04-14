@@ -144,6 +144,22 @@ export default function OrdersPage() {
     fetchOrders()
   }
 
+  // ── Mark all ready-to-ship → shipped ─────────────────────────
+  const markAllReadyShipped = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const ids = allOrders
+      .filter(o => (o.items || []).length > 0 && (o.items || []).every(i => i.status === 'ready'))
+      .flatMap(o => o.items || [])
+      .map(i => i.id)
+    if (!ids.length) return
+    await fetch('/api/order-items/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids, status: 'shipped' }),
+    })
+    fetchOrders()
+  }
+
   // ── Selection ─────────────────────────────────────────────────
   const toggleItemSelect = (id: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -300,6 +316,8 @@ export default function OrdersPage() {
         <StatCard label="מוכן לשליחה"    value={stats.ready}                valueClass="text-emerald-600"
           showFilter active={readyActive}
           onClick={() => setReadyActive(v => !v)}
+          actionLabel="סמן כנשלח"
+          onAction={markAllReadyShipped}
         />
         <StatCard
           label={morningRevenue != null ? `הכנסות ${new Date().toLocaleString('he-IL', { month: 'long' })}` : 'הכנסות (תצוגה)'}
