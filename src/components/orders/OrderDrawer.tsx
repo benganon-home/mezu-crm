@@ -356,9 +356,8 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'שגיאה ביצירת משלוח')
       setTracking(data.shipNum)
-      setStatus('shipped')
       setShowShipForm(false)
-      onUpdate({ ...order, items, customer, tracking_number: data.shipNum, status: 'shipped' })
+      onUpdate({ ...order, items, customer, tracking_number: data.shipNum })
     } catch (err: any) {
       setShipmentError(err.message)
     } finally {
