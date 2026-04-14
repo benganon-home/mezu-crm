@@ -27,24 +27,37 @@ export async function GET() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!orders?.length) return NextResponse.json({ error: 'אין הזמנות מוכנות עם תוויות' }, { status: 404 })
 
-  const merged = await PDFDocument.create()
+  const merged  = await PDFDocument.create()
+  const failed: string[] = []
 
   for (const order of orders) {
     try {
       const url = buildLabelUrl(order.tracking_number!)
       const res = await fetch(url)
-      if (!res.ok) continue
+      if (!res.ok) {
+        failed.push(`${order.tracking_number} (HTTP ${res.status})`)
+        continue
+      }
+      const contentType = res.headers.get('content-type') || ''
+      if (!contentType.includes('pdf')) {
+        failed.push(`${order.tracking_number} (not a PDF: ${contentType})`)
+        continue
+      }
       const bytes = await res.arrayBuffer()
       const pdf   = await PDFDocument.load(bytes)
       const pages = await merged.copyPages(pdf, pdf.getPageIndices())
       pages.forEach(p => merged.addPage(p))
-    } catch {
-      // Skip labels that fail — don't block the whole batch
+    } catch (e: any) {
+      failed.push(`${order.tracking_number} (${e.message})`)
     }
   }
 
   if (merged.getPageCount() === 0) {
-    return NextResponse.json({ error: 'לא ניתן לטעון תוויות' }, { status: 500 })
+    return NextResponse.json({
+      error: 'לא ניתן לטעון תוויות',
+      details: failed,
+      ordersFound: orders.length,
+    }, { status: 500 })
   }
 
   const pdfBytes = await merged.save()
