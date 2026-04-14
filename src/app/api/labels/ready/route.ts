@@ -12,25 +12,35 @@ function getSupabaseAdmin() {
 }
 
 // GET /api/labels/ready
-// Merges all K-Express label PDFs for orders in 'ready' status with a tracking number
+// Prints labels for orders where ALL items have status='ready' AND tracking_number is set
+// ("מוכן לשליחה" — same logic as the orders page stat card)
 export async function GET() {
   const supabase = getSupabaseAdmin()
 
+  // Fetch all orders with their items and tracking number
   const { data: orders, error } = await supabase
     .from('orders')
-    .select('id, tracking_number')
-    .eq('status', 'ready')
+    .select('id, tracking_number, items:order_items(status)')
     .not('tracking_number', 'is', null)
     .neq('tracking_number', '')
     .neq('tracking_number', '0')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  if (!orders?.length) return NextResponse.json({ error: 'אין הזמנות מוכנות עם תוויות' }, { status: 404 })
 
-  const merged  = await PDFDocument.create()
+  // Keep only orders where every item has status='ready'
+  const readyOrders = (orders || []).filter(o =>
+    (o.items || []).length > 0 &&
+    (o.items as any[]).every(i => i.status === 'ready')
+  )
+
+  if (!readyOrders.length) {
+    return NextResponse.json({ error: 'אין הזמנות מוכנות לשליחה עם תוויות' }, { status: 404 })
+  }
+
+  const merged = await PDFDocument.create()
   const failed: string[] = []
 
-  for (const order of orders) {
+  for (const order of readyOrders) {
     try {
       const url = buildLabelUrl(order.tracking_number!)
       const res = await fetch(url)
@@ -54,9 +64,9 @@ export async function GET() {
 
   if (merged.getPageCount() === 0) {
     return NextResponse.json({
-      error: 'לא ניתן לטעון תוויות',
-      details: failed,
-      ordersFound: orders.length,
+      error:       'לא ניתן לטעון תוויות',
+      details:     failed,
+      ordersFound: readyOrders.length,
     }, { status: 500 })
   }
 
