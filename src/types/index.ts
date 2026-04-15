@@ -132,6 +132,16 @@ export interface OrderTrackingToken {
   expires_at?: string | null
 }
 
+export interface ProductColor {
+  id: string
+  name_he: string
+  hex: string
+  has_border: boolean
+  display_order: number
+  is_active: boolean
+  created_at: string
+}
+
 export interface OrderItem {
   id: string
   order_id: string

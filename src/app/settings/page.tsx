@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { LogOut, MessageCircle, Save, Moon, Sun } from 'lucide-react'
 import { SalesRulesSection } from '@/components/settings/SalesRulesSection'
+import { ProductColorsSection } from '@/components/settings/ProductColorsSection'
 
 const DEFAULT_TEMPLATES = {
   ready:   'שלום {שם}, ההזמנה שלך ממיזו מוכנה! 🎉 נשמח לתאם משלוח / איסוף 🙏',
@@ -97,6 +98,9 @@ export default function SettingsPage() {
 
       {/* Sales Rules */}
       <SalesRulesSection />
+
+      {/* Product Colors */}
+      <ProductColorsSection />
 
       {/* Account */}
       <div className="surface p-5">
