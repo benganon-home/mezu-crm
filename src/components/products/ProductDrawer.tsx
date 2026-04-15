@@ -22,7 +22,11 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
   const isEdit = !!product
 
   const [name, setName]               = useState(product?.name || '')
+  const [subtitle, setSubtitle]       = useState(product?.subtitle || '')
   const [description, setDescription] = useState(product?.description || '')
+  const [longDescription, setLongDescription] = useState(product?.long_description || '')
+  const [materials, setMaterials]     = useState(product?.materials || '')
+  const [careInstructions, setCareInstructions] = useState(product?.care_instructions || '')
   const [basePrice, setBasePrice]     = useState(product?.base_price?.toString() || '')
   const [category, setCategory]       = useState(product?.category || '')
   const [isActive, setIsActive]       = useState(product?.is_active ?? true)
@@ -88,7 +92,11 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
     setSaving(true)
     const payload = {
       name: name.trim(),
+      subtitle: subtitle.trim() || null,
       description: description.trim() || null,
+      long_description: longDescription.trim() || null,
+      materials: materials.trim() || null,
+      care_instructions: careInstructions.trim() || null,
       base_price: parseFloat(basePrice) || 0,
       category: category || null,
       is_active: isActive,
@@ -124,7 +132,11 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
     if (!product) return
     const payload = {
       name: `עותק של ${product.name}`,
+      subtitle: product.subtitle,
       description: product.description,
+      long_description: product.long_description,
+      materials: product.materials,
+      care_instructions: product.care_instructions,
       base_price: product.base_price,
       category: product.category,
       is_active: true,
@@ -249,6 +261,17 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
             />
           </div>
 
+          {/* Subtitle */}
+          <div>
+            <div className="label mb-1.5">כותרת משנה</div>
+            <input
+              className="input w-full"
+              placeholder="טקסט קצר שמופיע מתחת לשם, למשל: דגם סטנדרטי 18 ס״מ"
+              value={subtitle}
+              onChange={e => setSubtitle(e.target.value)}
+            />
+          </div>
+
           {/* Category + Price */}
           <div className="grid grid-cols-2 gap-3">
             <div>
@@ -276,14 +299,48 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
             </div>
           </div>
 
-          {/* Description */}
+          {/* Short description */}
           <div>
-            <div className="label mb-1.5">תיאור</div>
+            <div className="label mb-1.5">תיאור קצר</div>
             <textarea
-              className="input w-full min-h-[80px] resize-none"
-              placeholder="תיאור קצר של המוצר, חומר, סגנון..."
+              className="input w-full min-h-[60px] resize-none"
+              placeholder="שורה או שתיים — יופיע בקארד המוצר"
               value={description}
               onChange={e => setDescription(e.target.value)}
+            />
+          </div>
+
+          {/* Long description */}
+          <div>
+            <div className="label mb-1.5">תיאור מלא</div>
+            <textarea
+              className="input w-full min-h-[120px] resize-y"
+              placeholder="פירוט מלא של המוצר — חומר, תהליך ייצור, סגנון, פרטים ייחודיים. תומך ב-Markdown (## כותרות, **מודגש**, רשימות וכו׳)"
+              value={longDescription}
+              onChange={e => setLongDescription(e.target.value)}
+            />
+            <p className="text-[11px] text-muted mt-1">יופיע בעמוד המוצר באתר</p>
+          </div>
+
+          {/* Materials */}
+          <div>
+            <div className="label mb-1.5">חומרים</div>
+            <textarea
+              className="input w-full min-h-[80px] resize-y"
+              placeholder="ממה עשוי המוצר — PLA, PETG, מתכת, עץ, גימור וכו'"
+              value={materials}
+              onChange={e => setMaterials(e.target.value)}
+            />
+          </div>
+
+          {/* Care / warnings */}
+          <div>
+            <div className="label mb-1.5">הוראות שימוש ואזהרות</div>
+            <textarea
+              className="input w-full min-h-[80px] resize-y"
+              placeholder="איך להשתמש / לנקות / מה לא לעשות (חום, רטיבות וכו')"
+              value={careInstructions}
+              onChange={e => setCareInstructions(e.target.value)}
             />
           </div>
 
