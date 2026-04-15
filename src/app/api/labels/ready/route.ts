@@ -62,12 +62,12 @@ export async function GET() {
     return NextResponse.json({ error: 'לא ניתן לטעון תוויות', details: failed, ordersFound: readyOrders.length }, { status: 500 })
   }
 
-  // A4 layout: fixed 2 cols × 3 rows = 6 labels per page
+  // A4 layout: fixed 2 cols × 4 rows = 8 labels per page
   const A4_W      = 595.28
   const A4_H      = 841.89
   const MARGIN    = 6
   const COLS      = 2
-  const ROWS      = 3
+  const ROWS      = 4
   const PER_PAGE  = COLS * ROWS
 
   // Measure actual label size from first page
