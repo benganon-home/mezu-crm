@@ -196,10 +196,12 @@ create policy "auth_only_read_favorites"           on favorites
 
 -- ─── 11. Updated-at triggers (reuse existing function) ────────────
 
-create trigger if not exists content_pages_updated_at
+drop trigger if exists content_pages_updated_at on content_pages;
+create trigger content_pages_updated_at
   before update on content_pages
   for each row execute function update_updated_at();
 
-create trigger if not exists blog_posts_updated_at
+drop trigger if exists blog_posts_updated_at on blog_posts;
+create trigger blog_posts_updated_at
   before update on blog_posts
   for each row execute function update_updated_at();
