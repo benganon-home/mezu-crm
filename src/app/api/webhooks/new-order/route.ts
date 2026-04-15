@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import { searchInvoicesByName } from '@/lib/morning'
+import { applySalesRules } from '@/lib/sales-rules'
 
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -155,54 +156,7 @@ export async function POST(req: NextRequest) {
     .select('*')
     .eq('is_active', true)
 
-  const activeRules: any[] = rulesData || []
-  const autoTotal = items.reduce((s: number, i: any) => s + (i.price || 0), 0)
-
-  const matchingRule = activeRules.find((rule: any) =>
-    rule.conditions.every((cond: any) => {
-      const count = items.filter((i: any) =>
-        i.model === cond.category && (!cond.size || i.size === cond.size)
-      ).length
-      return count >= cond.min_qty
-    })
-  ) ?? null
-
-  let finalTotal = autoTotal
-  if (matchingRule) {
-    if (matchingRule.discount_type === 'fixed_total') {
-      // Only apply the fixed discount to bundle items (min qty per condition).
-      // Extra items (e.g. 5× 16cm mezuzot) keep their full price.
-      const usedIndices = new Set<number>()
-      matchingRule.conditions.forEach((cond: any) => {
-        let needed = cond.min_qty
-        items.forEach((item: any, idx: number) => {
-          if (needed > 0 && !usedIndices.has(idx) && item.model === cond.category && (!cond.size || item.size === cond.size)) {
-            usedIndices.add(idx)
-            needed--
-          }
-        })
-      })
-      const bundleAutoTotal = items.reduce((s: number, i: any, idx: number) =>
-        usedIndices.has(idx) ? s + (i.price || 0) : s, 0)
-      const extraTotal = items.reduce((s: number, i: any, idx: number) =>
-        !usedIndices.has(idx) ? s + (i.price || 0) : s, 0)
-      // Distribute the fixed discount proportionally among bundle items only
-      if (bundleAutoTotal > 0) {
-        items.forEach((item: any, idx: number) => {
-          if (usedIndices.has(idx)) {
-            item.price = parseFloat(((item.price / bundleAutoTotal) * matchingRule.discount_value).toFixed(2))
-          }
-        })
-      }
-      finalTotal = matchingRule.discount_value + extraTotal
-    } else {
-      // Percentage discount applies to all items
-      finalTotal = autoTotal * (1 - matchingRule.discount_value / 100)
-      if (autoTotal > 0) {
-        items.forEach((i: any) => { i.price = parseFloat(((i.price / autoTotal) * finalTotal).toFixed(2)) })
-      }
-    }
-  }
+  const { finalTotal } = applySalesRules(items, rulesData || [])
 
   // ── 5. Create order ───────────────────────────────────────────
   const { data: order, error: orderErr } = await supabase

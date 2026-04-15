@@ -4,7 +4,7 @@ export type OrderStatus = 'received' | 'preparing' | 'ready' | 'shipped' | 'canc
 
 export type DeliveryType = 'delivery' | 'pickup'
 
-export type OrderSource = 'site' | 'email' | 'whatsapp' | 'manual'
+export type OrderSource = 'site' | 'email' | 'whatsapp' | 'manual' | 'store'
 
 export type ReminderType = 'call' | 'whatsapp' | 'task'
 
@@ -31,6 +31,8 @@ export interface ProductSize {
   price: number
 }
 
+export type ConfiguratorType = 'mezuzah' | 'sign' | 'blessing' | 'generic'
+
 export interface Product {
   id: string
   name: string
@@ -40,9 +42,94 @@ export interface Product {
   colors: string[]
   images: string[]
   category?: string | null
+  category_id?: string | null
   is_active: boolean
+  // Storefront fields (added for mezu.co.il rebuild)
+  slug?: string | null
+  subtitle?: string | null
+  long_description?: string | null
+  materials?: string | null
+  care_instructions?: string | null
+  display_order?: number
+  tags?: string[]
+  sku?: string | null
+  configurator_type?: ConfiguratorType
   created_at: string
   updated_at: string
+}
+
+// ─── Storefront entities ──────────────────────────────────────
+export interface ProductCategory {
+  id: string
+  slug: string
+  name_he: string
+  description?: string | null
+  hero_image?: string | null
+  display_order?: number
+  is_active: boolean
+  seo_title?: string | null
+  seo_description?: string | null
+  created_at: string
+}
+
+export interface TextSlot {
+  name: string                  // e.g. 'main', 'subtitle'
+  max_chars: number
+  required: boolean
+  placeholder?: string
+}
+
+export interface SignTemplate {
+  id: string
+  product_id?: string | null
+  name: string                  // קלאסי, מסגרת, לב, ...
+  svg_template: string          // parametric SVG with {{name}} placeholders
+  preview_image?: string | null
+  allowed_fonts: string[]
+  allowed_colors: string[]
+  text_slots: TextSlot[]
+  base_price: number
+  display_order?: number
+  is_active: boolean
+  created_at: string
+}
+
+export interface ContentPage {
+  slug: string                  // 'about', 'materials', 'terms', ...
+  title_he: string
+  body_md: string
+  seo_description?: string | null
+  updated_at: string
+}
+
+export interface BlogPost {
+  id: string
+  slug: string
+  title_he: string
+  excerpt?: string | null
+  body_md: string
+  cover_image?: string | null
+  tags?: string[]
+  is_published: boolean
+  published_at?: string | null
+  seo_title?: string | null
+  seo_description?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Favorite {
+  customer_id: string
+  product_id: string
+  created_at: string
+}
+
+export interface OrderTrackingToken {
+  token: string
+  order_id: string
+  email?: string | null
+  created_at: string
+  expires_at?: string | null
 }
 
 export interface OrderItem {
