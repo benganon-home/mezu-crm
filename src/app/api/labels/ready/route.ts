@@ -62,24 +62,27 @@ export async function GET() {
     return NextResponse.json({ error: 'לא ניתן לטעון תוויות', details: failed, ordersFound: readyOrders.length }, { status: 500 })
   }
 
-  // Measure actual label dimensions from first page
-  const A4_W   = 595.28
-  const A4_H   = 841.89
-  const MARGIN = 4   // pt padding between labels
-  const COLS   = 2
+  // A4 layout: fixed 2 cols × 3 rows = 6 labels per page
+  const A4_W      = 595.28
+  const A4_H      = 841.89
+  const MARGIN    = 6
+  const COLS      = 2
+  const ROWS      = 3
+  const PER_PAGE  = COLS * ROWS
 
+  // Measure actual label size from first page
   const firstPage = labelPages[0].doc.getPage(labelPages[0].pageIndex)
   const labelNatW = firstPage.getWidth()
   const labelNatH = firstPage.getHeight()
 
-  // Scale label to fill column width
-  const cellW  = (A4_W - MARGIN * (COLS + 1)) / COLS
-  const scale  = cellW / labelNatW
-  const cellH  = labelNatH * scale
+  // Cell box = whatever's left after margins between + around
+  const cellW = (A4_W - MARGIN * (COLS + 1)) / COLS
+  const cellH = (A4_H - MARGIN * (ROWS + 1)) / ROWS
 
-  // How many rows fit on one A4 page
-  const ROWS     = Math.max(1, Math.floor((A4_H - MARGIN) / (cellH + MARGIN)))
-  const PER_PAGE = COLS * ROWS
+  // Scale so label fits inside cell — respect BOTH dimensions
+  const scale   = Math.min(cellW / labelNatW, cellH / labelNatH)
+  const scaledW = labelNatW * scale
+  const scaledH = labelNatH * scale
 
   const merged = await PDFDocument.create()
 
@@ -94,9 +97,13 @@ export async function GET() {
       const col = j % COLS
       const row = Math.floor(j / COLS)
 
-      const x = MARGIN + col * (cellW + MARGIN)
-      // PDF y=0 is bottom-left; rows go top→bottom
-      const y = A4_H - MARGIN - (row + 1) * cellH - row * MARGIN
+      // Cell top-left corner (in PDF coords, y=0 is bottom)
+      const cellX = MARGIN + col * (cellW + MARGIN)
+      const cellY = A4_H - MARGIN - (row + 1) * cellH - row * MARGIN
+
+      // Center label inside cell
+      const x = cellX + (cellW - scaledW) / 2
+      const y = cellY + (cellH - scaledH) / 2
 
       a4.drawPage(embedded, { x, y, xScale: scale, yScale: scale })
     }
