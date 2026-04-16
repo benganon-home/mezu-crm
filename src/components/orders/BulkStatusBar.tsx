@@ -1,16 +1,26 @@
 'use client'
 
+import { useState } from 'react'
 import { OrderStatus, ALL_STATUSES, STATUS_CONFIG } from '@/types'
-import { X } from 'lucide-react'
+import { X, Copy, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Props {
   count: number
   onApply: (status: OrderStatus) => void
+  onDuplicate: () => Promise<void>
   onClear: () => void
 }
 
-export function BulkStatusBar({ count, onApply, onClear }: Props) {
+export function BulkStatusBar({ count, onApply, onDuplicate, onClear }: Props) {
+  const [duplicating, setDuplicating] = useState(false)
+
+  const handleDuplicate = async () => {
+    setDuplicating(true)
+    await onDuplicate()
+    setDuplicating(false)
+  }
+
   return (
     <div
       className={cn(
@@ -42,6 +52,19 @@ export function BulkStatusBar({ count, onApply, onClear }: Props) {
           </button>
         ))}
       </div>
+
+      <span className="text-cream-dark select-none">|</span>
+
+      <button
+        type="button"
+        onClick={handleDuplicate}
+        disabled={duplicating}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gold text-gold text-xs font-medium
+                   hover:bg-gold hover:text-white transition-colors disabled:opacity-50"
+      >
+        {duplicating ? <Loader2 size={13} className="animate-spin" /> : <Copy size={13} />}
+        שכפל הזמנה
+      </button>
 
       <button
         type="button"

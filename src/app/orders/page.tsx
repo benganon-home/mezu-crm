@@ -220,6 +220,53 @@ export default function OrdersPage() {
     fetchOrders()
   }
 
+  // Duplicate selected items as a new order (same customer, today's date)
+  const onDuplicate = async () => {
+    // Find the order(s) that own the selected items
+    const selectedIds = Array.from(selectedItemIds)
+    const sourceOrder = allOrders.find(o =>
+      o.items?.some(i => selectedIds.includes(i.id))
+    )
+    if (!sourceOrder?.customer) return
+
+    // Collect only the selected items
+    const selectedItems = allOrders
+      .flatMap(o => o.items || [])
+      .filter(i => selectedIds.includes(i.id))
+
+    const res = await fetch('/api/orders/new', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        customer: {
+          name:    sourceOrder.customer.name,
+          phone:   sourceOrder.customer.phone,
+          address: sourceOrder.delivery_address || sourceOrder.customer.address || '',
+        },
+        order: {
+          delivery_type:    sourceOrder.delivery_type,
+          delivery_address: sourceOrder.delivery_address || '',
+          notes:            `שכפול מהזמנה ${sourceOrder.id.slice(-8)}`,
+        },
+        items: selectedItems.map(i => ({
+          product_id: i.product_id,
+          item_name:  i.item_name,
+          model:      i.model,
+          color:      i.color,
+          sign_text:  i.sign_text,
+          font:       i.font,
+          size:       i.size,
+          price:      i.price,
+        })),
+      }),
+    })
+
+    if (res.ok) {
+      setSelectedItemIds(new Set())
+      fetchOrders()
+    }
+  }
+
   const onItemStatusChange = (itemId: string, newStatus: OrderStatus) => {
     setAllOrders(prev => prev.map(order => {
       const items = order.items?.map(i => i.id === itemId ? { ...i, status: newStatus } : i)
@@ -375,6 +422,7 @@ export default function OrdersPage() {
         <BulkStatusBar
           count={selectedItemIds.size}
           onApply={onBulkStatus}
+          onDuplicate={onDuplicate}
           onClear={() => setSelectedItemIds(new Set())}
         />
       )}
