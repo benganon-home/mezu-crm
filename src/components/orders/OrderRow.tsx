@@ -171,9 +171,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                 {item.sign_text
                   ? <>
                       <span className="text-gold font-medium truncate">
-                        {item.sign_text.includes('\n')
-                          ? item.sign_text.replace('\n', '›')
-                          : item.sign_text}
+                        {item.sign_text.replace(/\s*\|\s*/g, ' ↕ ').replace('\n', ' ↕ ')}
                       </span>
                       <CopyButton text={item.sign_text} />
                     </>
@@ -183,7 +181,9 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
 
               {/* פונט */}
               <div className="w-[110px] shrink-0 px-2 py-3.5 text-muted truncate">
-                {item.font || '—'}
+                {item.font ? (
+                  <span style={{ fontFamily: `'${item.font}', sans-serif` }}>{item.font}</span>
+                ) : '—'}
               </div>
 
               {/* מחיר */}
