@@ -14,9 +14,9 @@ interface TemplateVars {
 export function buildTemplate(template: WaTemplate, vars: TemplateVars): string {
   switch (template) {
     case 'order_ready':
-      return `שלום ${vars.customerName} 😊\nההזמנה שלך ממיזו מוכנה!${vars.itemSummary ? `\n${vars.itemSummary}` : ''}\nנשמח לתאם איתך משלוח / איסוף 🙏`
+      return `שלום ${vars.customerName} 😊\nההזמנה שלך מ-MEZU מוכנה!${vars.itemSummary ? `\n${vars.itemSummary}` : ''}\nנשמח לתאם איתך משלוח / איסוף 🙏`
     case 'order_shipped':
-      return `שלום ${vars.customerName} 😊\nההזמנה שלך ממיזו נשלחה! 📦${vars.trackingNumber ? `\nמספר מעקב: ${vars.trackingNumber}` : ''}${vars.invoiceUrl ? `\nחשבונית: ${vars.invoiceUrl}` : ''}`
+      return `שלום ${vars.customerName} 😊\nההזמנה שלך מ-MEZU נשלחה! 📦${vars.trackingNumber ? `\nמספר מעקב: ${vars.trackingNumber}` : ''}${vars.invoiceUrl ? `\nחשבונית: ${vars.invoiceUrl}` : ''}`
     case 'custom':
       return vars.customText || ''
   }
@@ -28,6 +28,6 @@ export function getWaLink(customer: Customer, template: WaTemplate, vars?: Parti
 }
 
 export function getInvoiceWaLink(customer: Customer, invoiceUrl: string): string {
-  const msg = `שלום ${customer.name}, מצורפת חשבונית עבור הזמנתך ממיזו 🧾\n${invoiceUrl}`
+  const msg = `שלום ${customer.name}, מצורפת חשבונית עבור הזמנתך מ-MEZU 🧾\n${invoiceUrl}`
   return buildWaLink(customer.phone, msg)
 }

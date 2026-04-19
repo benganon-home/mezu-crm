@@ -117,7 +117,7 @@ export function PendingOrdersBanner({ onOrderAdded }: { onOrderAdded: () => void
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2 justify-end">
                     <a
-                      href={buildWaLink(r.data.phone || r.key, `שלום ${r.data.customer_name || ''}! 😊\nראינו שהתחלת הזמנה במיזו אך טרם השלמת אותה.\nנשמח לעזור! יש שאלות? 🙏`)}
+                      href={buildWaLink(r.data.phone || r.key, `שלום ${r.data.customer_name || ''}! 😊\nראינו שהתחלת הזמנה ב-MEZU אך טרם השלמת אותה.\nנשמח לעזור! יש שאלות? 🙏`)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs py-1.5 px-3 flex items-center gap-1.5 border border-green-200 text-green-600 rounded-full hover:bg-green-50 transition-colors"

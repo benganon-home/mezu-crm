@@ -8,9 +8,9 @@ import { SalesRulesSection } from '@/components/settings/SalesRulesSection'
 import { ProductColorsSection } from '@/components/settings/ProductColorsSection'
 
 const DEFAULT_TEMPLATES = {
-  ready:   'שלום {שם}, ההזמנה שלך ממיזו מוכנה! 🎉 נשמח לתאם משלוח / איסוף 🙏',
-  shipped: 'שלום {שם}, ההזמנה שלך ממיזו נשלחה! 📦 מספר מעקב: {מעקב}',
-  invoice: 'שלום {שם}, מצורפת חשבונית עבור הזמנתך ממיזו 🧾 {חשבונית}',
+  ready:   'שלום {שם}, ההזמנה שלך מ-MEZU מוכנה! 🎉 נשמח לתאם משלוח / איסוף 🙏',
+  shipped: 'שלום {שם}, ההזמנה שלך מ-MEZU נשלחה! 📦 מספר מעקב: {מעקב}',
+  invoice: 'שלום {שם}, מצורפת חשבונית עבור הזמנתך מ-MEZU 🧾 {חשבונית}',
 }
 
 export default function SettingsPage() {
