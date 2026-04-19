@@ -926,6 +926,7 @@ function EditableItemCard({
       size:       editSize || null,
       color:      editColor || null,
       sign_text:  editSignText || null,
+      sign_type:  item.sign_type || editProduct?.name || null,
       font:       editFont || null,
       price:      parseFloat(editPrice) || 0,
     })
@@ -1001,12 +1002,19 @@ function EditableItemCard({
       {/* Color */}
       <ColorPicker value={editColor} onChange={setEditColor} />
 
-      <input className="input text-sm" placeholder="טקסט על השלט" value={editSignText} onChange={e => setEditSignText(e.target.value)} />
+      <input className="input text-sm" placeholder="טקסט על השלט" value={editSignText} onChange={e => setEditSignText(e.target.value)} maxLength={20} />
 
       <div className="relative">
         <select className="input text-sm w-full appearance-none pr-3 pl-7" value={editFont} onChange={e => setEditFont(e.target.value)}>
           <option value="">פונט — ללא</option>
-          {FONTS.map(f => <option key={f} value={f}>{f}</option>)}
+          {(() => {
+            const isHeb = /[\u0590-\u05FF]/.test(editSignText)
+            const hebFonts = ['Heebo','Rubik','Bona Nova','Frank Ruhl Libre','Alef','Karantina']
+            const filtered = editSignText.trim()
+              ? FONTS.filter(f => isHeb ? hebFonts.includes(f) : !hebFonts.includes(f))
+              : FONTS
+            return filtered.map(f => <option key={f} value={f}>{f}</option>)
+          })()}
         </select>
         <ChevronDown size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
       </div>
