@@ -926,7 +926,6 @@ function EditableItemCard({
       size:       editSize || null,
       color:      editColor || null,
       sign_text:  editSignText || null,
-      sign_type:  item.sign_type || editProduct?.name || null,
       font:       editFont || null,
       price:      parseFloat(editPrice) || 0,
     })
