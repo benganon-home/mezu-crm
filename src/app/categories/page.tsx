@@ -131,7 +131,7 @@ export default function CategoriesPage() {
             {confirmDelete === cat.id && (
               <div className="mt-2 surface p-4 border-red-200 dark:border-red-800 flex items-center gap-3">
                 <AlertTriangle size={16} className="text-red-500 shrink-0" />
-                <span className="text-sm flex-1">למחוק את "{cat.name_he}"? מוצרים בקטגוריה זו יישארו ללא קטגוריה.</span>
+                <span className="text-sm flex-1">למחוק את {cat.name_he}? מוצרים בקטגוריה זו יישארו ללא קטגוריה.</span>
                 <button onClick={() => handleDelete(cat.id)} className="text-xs text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-full transition-colors">מחק</button>
                 <button onClick={() => setConfirmDelete(null)} className="text-xs text-muted hover:text-navy px-2 py-1.5">ביטול</button>
               </div>
