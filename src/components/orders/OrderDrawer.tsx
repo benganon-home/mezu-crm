@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { X, MessageCircle, Edit2, Plus, Trash2, Package, AlertTriangle, Check, ChevronDown, FileText, Loader2, ExternalLink, Search, Truck, Printer, RefreshCw } from 'lucide-react'
 import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG, ITEM_COLOR_MAP, FONTS, Product, ProductSize, SalesRule } from '@/types'
 import { formatDate, formatPrice, cn } from '@/lib/utils'
+import { applySalesRules } from '@/lib/sales-rules'
 import { getWaLink, getInvoiceWaLink } from '@/lib/whatsapp'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { CopyButton } from '@/components/ui/CopyButton'
@@ -102,44 +103,21 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
     fetch('/api/sales-rules').then(r => r.json()).then(d => setSalesRules(Array.isArray(d) ? d.filter((r: SalesRule) => r.is_active) : []))
   }, [])
 
-  // ── Sales rule matching ───────────────────────────────────────
+  // ── Sales rule matching (shared engine) ──────────────────────
   const autoTotal = items.reduce((s, i) => s + (i.price || 0), 0)
 
-  const matchingRule = useMemo(() => {
-    if (items.length === 0) return null
-    return salesRules.find(rule =>
-      rule.conditions.every(cond => {
-        const count = items.filter(i =>
-          i.model === cond.category && (!cond.size || i.size === cond.size)
-        ).length
-        return count >= cond.min_qty
-      })
-    ) ?? null
-  }, [items, salesRules])
-
-  const finalTotal = useMemo(() => {
-    if (!matchingRule) return autoTotal
-    if (matchingRule.discount_type === 'fixed_total') return matchingRule.discount_value
-    return autoTotal * (1 - matchingRule.discount_value / 100)
-  }, [matchingRule, autoTotal])
+  const { appliedRule: matchingRule, finalTotal } = useMemo(() => {
+    if (items.length === 0) return { appliedRule: null, finalTotal: autoTotal }
+    // Build items array for the shared engine (don't mutate originals)
+    const ruleItems = items.map(i => ({ model: i.model, size: i.size, price: i.price }))
+    const result = applySalesRules(ruleItems, salesRules)
+    return { appliedRule: result.appliedRule, finalTotal: result.finalTotal }
+  }, [items, salesRules, autoTotal])
 
   // Patch order total whenever items or rule changes
   const patchTotal = async (updatedItems: OrderItem[]) => {
-    const total = updatedItems.reduce((s, i) => s + (i.price || 0), 0)
-    let newTotal = total
-    const rule = salesRules.find(r =>
-      r.conditions.every(cond => {
-        const count = updatedItems.filter(i =>
-          i.model === cond.category && (!cond.size || i.size === cond.size)
-        ).length
-        return count >= cond.min_qty
-      })
-    )
-    if (rule) {
-      newTotal = rule.discount_type === 'fixed_total'
-        ? rule.discount_value
-        : total * (1 - rule.discount_value / 100)
-    }
+    const ruleItems = updatedItems.map(i => ({ model: i.model, size: i.size, price: i.price }))
+    const { finalTotal: newTotal } = applySalesRules(ruleItems, salesRules)
     await fetch(`/api/orders/${order.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
