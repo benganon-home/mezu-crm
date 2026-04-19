@@ -449,11 +449,13 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
                     <span className="ltr text-sm text-muted">{customer?.phone}</span>
                     <CopyButton text={customer?.phone || ''} />
                   </div>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span className="text-[11px] text-muted">הזמנה</span>
-                    <span className="text-[11px] font-mono font-medium ltr">#{order.id.replace(/-/g, '').slice(-8).toUpperCase()}</span>
-                    <CopyButton text={order.id.replace(/-/g, '').slice(-8).toUpperCase()} />
-                  </div>
+                  {order.order_number && (
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span className="text-[11px] text-muted">הזמנה</span>
+                      <span className="text-[11px] font-mono font-medium ltr">#{order.order_number}</span>
+                      <CopyButton text={String(order.order_number)} />
+                    </div>
+                  )}
                 </div>
               )}
             </div>

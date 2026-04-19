@@ -162,6 +162,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string
+  order_number?: number | null
   customer_id: string
   order_group_id?: string | null
   status: OrderStatus
