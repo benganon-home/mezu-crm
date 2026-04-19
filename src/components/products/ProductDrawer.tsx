@@ -7,7 +7,7 @@ import { formatPrice, cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
 
-const CATEGORIES = ['מזוזות', 'שלטי בית', 'ברכות', 'אחר']
+const DEFAULT_CATEGORIES = ['מזוזות', 'שלטי בית', 'ברכות', 'אחר']
 
 interface Props {
   product?: Product | null
@@ -22,6 +22,8 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
   const isEdit = !!product
 
   const [name, setName]               = useState(product?.name || '')
+  const [slug, setSlug]               = useState(product?.slug || '')
+  const [slugManual, setSlugManual]   = useState(!!product?.slug)
   const [subtitle, setSubtitle]       = useState(product?.subtitle || '')
   const [description, setDescription] = useState(product?.description || '')
   const [longDescription, setLongDescription] = useState(product?.long_description || '')
@@ -29,9 +31,33 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
   const [careInstructions, setCareInstructions] = useState(product?.care_instructions || '')
   const [basePrice, setBasePrice]     = useState(product?.base_price?.toString() || '')
   const [category, setCategory]       = useState(product?.category || '')
+  const [newCategory, setNewCategory] = useState('')
+  const [addingCategory, setAddingCategory] = useState(false)
   const [isActive, setIsActive]       = useState(product?.is_active ?? true)
   const [images, setImages]           = useState<string[]>(product?.images || [])
   const [sizes, setSizes]             = useState<ProductSize[]>(product?.sizes || [])
+
+  // Auto-generate slug from name (unless manually edited)
+  const autoSlug = (text: string) =>
+    text.trim().toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9\u0590-\u05FF-]/g, '')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+
+  // Merge default + DB categories
+  const [dbCategories, setDbCategories] = useState<string[]>([])
+  useState(() => {
+    fetch('/api/products')
+      .then(r => r.json())
+      .then((prods: any[]) => {
+        const cats = new Set(DEFAULT_CATEGORIES)
+        prods.forEach((p: any) => { if (p.category) cats.add(p.category) })
+        setDbCategories(Array.from(cats))
+      })
+      .catch(() => setDbCategories([...DEFAULT_CATEGORIES]))
+  })
+  const categories = dbCategories.length > 0 ? dbCategories : DEFAULT_CATEGORIES
   const [newSizeLabel, setNewSizeLabel] = useState('')
   const [newSizePrice, setNewSizePrice] = useState('')
   const [saving, setSaving]           = useState(false)
@@ -90,8 +116,10 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
   const handleSave = async () => {
     if (!name.trim()) return
     setSaving(true)
+    const finalSlug = (slug.trim() || autoSlug(name)) || null
     const payload = {
       name: name.trim(),
+      slug: finalSlug,
       subtitle: subtitle.trim() || null,
       description: description.trim() || null,
       long_description: longDescription.trim() || null,
@@ -132,6 +160,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
     if (!product) return
     const payload = {
       name: `עותק של ${product.name}`,
+      slug: null,
       subtitle: product.subtitle,
       description: product.description,
       long_description: product.long_description,
@@ -256,9 +285,30 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
               className="input w-full"
               placeholder="למשל: מזוזה מעוצבת שחורה"
               value={name}
-              onChange={e => setName(e.target.value)}
+              onChange={e => {
+                setName(e.target.value)
+                if (!slugManual) setSlug(autoSlug(e.target.value))
+              }}
               autoFocus={!isEdit}
             />
+          </div>
+
+          {/* Slug */}
+          <div>
+            <div className="label mb-1.5">כתובת URL</div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted shrink-0 ltr">/product/</span>
+              <input
+                className="input w-full text-sm ltr"
+                placeholder={autoSlug(name) || 'auto-generated'}
+                value={slug}
+                onChange={e => { setSlug(e.target.value.toLowerCase().replace(/\s+/g, '-')); setSlugManual(true) }}
+                dir="ltr"
+              />
+            </div>
+            {!slugManual && name.trim() && (
+              <p className="text-[10px] text-muted mt-1">נוצר אוטומטית משם המוצר. ניתן לערוך ידנית.</p>
+            )}
           </div>
 
           {/* Subtitle */}
@@ -276,14 +326,54 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <div className="label mb-1.5">קטגוריה</div>
-              <select
-                className="input w-full"
-                value={category}
-                onChange={e => setCategory(e.target.value)}
-              >
-                <option value="">— בחר —</option>
-                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              {addingCategory ? (
+                <div className="flex gap-2">
+                  <input
+                    className="input flex-1 text-sm"
+                    placeholder="שם קטגוריה חדשה"
+                    value={newCategory}
+                    onChange={e => setNewCategory(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && newCategory.trim()) {
+                        setCategory(newCategory.trim())
+                        setDbCategories(prev => [...new Set([...prev, newCategory.trim()])])
+                        setNewCategory('')
+                        setAddingCategory(false)
+                      }
+                    }}
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => {
+                      if (newCategory.trim()) {
+                        setCategory(newCategory.trim())
+                        setDbCategories(prev => [...new Set([...prev, newCategory.trim()])])
+                      }
+                      setNewCategory('')
+                      setAddingCategory(false)
+                    }}
+                    className="btn-primary text-xs px-3 py-1.5"
+                  >
+                    {newCategory.trim() ? '✓' : '✕'}
+                  </button>
+                </div>
+              ) : (
+                <select
+                  className="input w-full"
+                  value={category}
+                  onChange={e => {
+                    if (e.target.value === '__new__') {
+                      setAddingCategory(true)
+                    } else {
+                      setCategory(e.target.value)
+                    }
+                  }}
+                >
+                  <option value="">— בחר —</option>
+                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="__new__">+ קטגוריה חדשה</option>
+                </select>
+              )}
             </div>
             <div>
               <div className="label mb-1.5">מחיר בסיס (₪)</div>
