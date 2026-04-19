@@ -58,6 +58,21 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
       .catch(() => setDbCategories([...DEFAULT_CATEGORIES]))
   })
   const categories = dbCategories.length > 0 ? dbCategories : DEFAULT_CATEGORIES
+
+  const createCategory = async () => {
+    const name = newCategory.trim()
+    if (!name) { setAddingCategory(false); return }
+    // Create in product_categories table
+    await fetch('/api/product-categories', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name_he: name }),
+    })
+    setCategory(name)
+    setDbCategories(prev => [...new Set([...prev, name])])
+    setNewCategory('')
+    setAddingCategory(false)
+  }
   const [newSizeLabel, setNewSizeLabel] = useState('')
   const [newSizePrice, setNewSizePrice] = useState('')
   const [saving, setSaving]           = useState(false)
@@ -333,25 +348,11 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
                     placeholder="שם קטגוריה חדשה"
                     value={newCategory}
                     onChange={e => setNewCategory(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && newCategory.trim()) {
-                        setCategory(newCategory.trim())
-                        setDbCategories(prev => [...new Set([...prev, newCategory.trim()])])
-                        setNewCategory('')
-                        setAddingCategory(false)
-                      }
-                    }}
+                    onKeyDown={e => { if (e.key === 'Enter') createCategory() }}
                     autoFocus
                   />
                   <button
-                    onClick={() => {
-                      if (newCategory.trim()) {
-                        setCategory(newCategory.trim())
-                        setDbCategories(prev => [...new Set([...prev, newCategory.trim()])])
-                      }
-                      setNewCategory('')
-                      setAddingCategory(false)
-                    }}
+                    onClick={createCategory}
                     className="btn-primary text-xs px-3 py-1.5"
                   >
                     {newCategory.trim() ? '✓' : '✕'}
