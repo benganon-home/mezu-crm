@@ -171,7 +171,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                 {item.sign_text
                   ? <>
                       <span className="text-gold font-medium truncate">
-                        {item.sign_text.replace(/\s*\|\s*/g, ' ↕ ').replace('\n', ' ↕ ')}
+                        {item.sign_text.replace('\n', '>')}
                       </span>
                       <CopyButton text={item.sign_text} />
                     </>
