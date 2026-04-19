@@ -34,6 +34,8 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
   const [newCategory, setNewCategory] = useState('')
   const [addingCategory, setAddingCategory] = useState(false)
   const [isActive, setIsActive]       = useState(product?.is_active ?? true)
+  const [isPopular, setIsPopular]     = useState(product?.is_popular ?? false)
+  const [displayOrder, setDisplayOrder] = useState(String(product?.display_order ?? 0))
   const [images, setImages]           = useState<string[]>(product?.images || [])
   const [sizes, setSizes]             = useState<ProductSize[]>(product?.sizes || [])
 
@@ -143,6 +145,8 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
       base_price: parseFloat(basePrice) || 0,
       category: category || null,
       is_active: isActive,
+      is_popular: isPopular,
+      display_order: parseInt(displayOrder) || 0,
       images,
       sizes,
       colors: product?.colors || [],
@@ -522,6 +526,42 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
                 isActive ? 'right-0.5' : 'left-0.5'
               )} />
             </button>
+          </div>
+
+          {/* Popular toggle */}
+          <div className="flex items-center justify-between py-3 border-t border-cream-dark dark:border-navy-light">
+            <div>
+              <div className="text-sm font-medium">מוצר פופולרי ⭐</div>
+              <div className="text-xs text-muted mt-0.5">מציג תג פופולרי באתר</div>
+            </div>
+            <button
+              onClick={() => setIsPopular(v => !v)}
+              className={cn(
+                'w-11 h-6 rounded-full transition-colors relative shrink-0',
+                isPopular ? 'bg-gold' : 'bg-cream-dark dark:bg-navy-light'
+              )}
+            >
+              <div className={cn(
+                'w-5 h-5 rounded-full bg-white shadow absolute top-0.5 transition-all duration-200',
+                isPopular ? 'right-0.5' : 'left-0.5'
+              )} />
+            </button>
+          </div>
+
+          {/* Display order */}
+          <div className="flex items-center justify-between py-3 border-t border-cream-dark dark:border-navy-light">
+            <div>
+              <div className="text-sm font-medium">סדר תצוגה</div>
+              <div className="text-xs text-muted mt-0.5">מספר נמוך = מופיע ראשון</div>
+            </div>
+            <input
+              className="input w-20 text-center text-sm ltr"
+              type="number"
+              min="0"
+              value={displayOrder}
+              onChange={e => setDisplayOrder(e.target.value)}
+              dir="ltr"
+            />
           </div>
 
           {/* Save error */}
