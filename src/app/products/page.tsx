@@ -43,6 +43,8 @@ export default function ProductsPage() {
         (p.description || '').toLowerCase().includes(q)
       )
     }
+    // Sort by display_order (lower first), then by name
+    result.sort((a, b) => (a.display_order ?? 999) - (b.display_order ?? 999) || a.name.localeCompare(b.name, 'he'))
     return result
   }, [products, category, search, showInactive])
 
