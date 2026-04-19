@@ -32,7 +32,7 @@ export default function CategoriesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-5 max-w-2xl">
+    <div className="flex flex-col gap-5">
       <div className="page-header">
         <div>
           <h1>קטגוריות</h1>
