@@ -55,6 +55,7 @@ export interface Product {
   sku?: string | null
   configurator_type?: ConfiguratorType
   is_popular?: boolean
+  is_new?: boolean
   created_at: string
   updated_at: string
 }
