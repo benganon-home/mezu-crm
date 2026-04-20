@@ -48,15 +48,16 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
       .replace(/-+/g, '-')
       .replace(/^-|-$/g, '')
 
-  // Merge default + DB categories
+  // Fetch categories from product_categories table
   const [dbCategories, setDbCategories] = useState<string[]>([])
   useState(() => {
-    fetch('/api/products')
+    fetch('/api/product-categories')
       .then(r => r.json())
-      .then((prods: any[]) => {
-        const cats = new Set(DEFAULT_CATEGORIES)
-        prods.forEach((p: any) => { if (p.category) cats.add(p.category) })
-        setDbCategories(Array.from(cats))
+      .then((cats: any[]) => {
+        const names = Array.isArray(cats) ? cats.map((c: any) => c.name_he) : []
+        // Merge with defaults in case some aren't in the table yet
+        const all = new Set([...DEFAULT_CATEGORIES, ...names])
+        setDbCategories(Array.from(all))
       })
       .catch(() => setDbCategories([...DEFAULT_CATEGORIES]))
   })
