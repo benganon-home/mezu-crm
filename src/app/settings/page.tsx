@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { LogOut, MessageCircle, Save, Moon, Sun } from 'lucide-react'
 import { SalesRulesSection } from '@/components/settings/SalesRulesSection'
 import { ProductColorsSection } from '@/components/settings/ProductColorsSection'
+import { CouponsSection } from '@/components/settings/CouponsSection'
 
 const DEFAULT_TEMPLATES = {
   ready:   'שלום {שם}, ההזמנה שלך מ-MEZU מוכנה! 🎉 נשמח לתאם משלוח / איסוף 🙏',
@@ -101,6 +102,9 @@ export default function SettingsPage() {
 
       {/* Product Colors */}
       <ProductColorsSection />
+
+      {/* Coupons */}
+      <CouponsSection />
 
       {/* Account */}
       <div className="surface p-5">
