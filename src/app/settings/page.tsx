@@ -7,6 +7,7 @@ import { LogOut, MessageCircle, Save, Moon, Sun } from 'lucide-react'
 import { SalesRulesSection } from '@/components/settings/SalesRulesSection'
 import { ProductColorsSection } from '@/components/settings/ProductColorsSection'
 import { CouponsSection } from '@/components/settings/CouponsSection'
+import { BannersSection } from '@/components/settings/BannersSection'
 
 const DEFAULT_TEMPLATES = {
   ready:   'שלום {שם}, ההזמנה שלך מ-MEZU מוכנה! 🎉 נשמח לתאם משלוח / איסוף 🙏',
@@ -102,6 +103,9 @@ export default function SettingsPage() {
 
       {/* Product Colors */}
       <ProductColorsSection />
+
+      {/* Banners */}
+      <BannersSection />
 
       {/* Coupons */}
       <CouponsSection />
