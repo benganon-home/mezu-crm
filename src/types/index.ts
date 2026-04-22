@@ -57,6 +57,7 @@ export interface Product {
   is_popular?: boolean
   is_new?: boolean
   has_apartment_number?: boolean
+  stl_file?: string | null
   created_at: string
   updated_at: string
 }

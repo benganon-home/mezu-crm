@@ -38,6 +38,8 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
   const [isNew, setIsNew]             = useState(product?.is_new ?? false)
   const [hasApartmentNumber, setHasApartmentNumber] = useState(product?.has_apartment_number ?? false)
   const [displayOrder, setDisplayOrder] = useState(String(product?.display_order ?? 0))
+  const [stlFile, setStlFile]         = useState(product?.stl_file || '')
+  const [uploadingStl, setUploadingStl] = useState(false)
   const [images, setImages]           = useState<string[]>(product?.images || [])
   const [sizes, setSizes]             = useState<ProductSize[]>(product?.sizes || [])
 
@@ -151,6 +153,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
       is_popular: isPopular,
       is_new: isNew,
       has_apartment_number: hasApartmentNumber,
+      stl_file: stlFile || null,
       display_order: parseInt(displayOrder) || 0,
       images,
       sizes,
@@ -299,6 +302,45 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
             )}
             {uploadError && (
               <p className="text-xs text-red-600 dark:text-red-400 mt-1.5">{uploadError}</p>
+            )}
+          </div>
+
+          {/* STL 3D file */}
+          <div>
+            <div className="label mb-1.5">קובץ תלת מימד (STL)</div>
+            {stlFile ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-emerald-600 truncate flex-1">קובץ הועלה</span>
+                <button onClick={() => setStlFile('')} className="text-xs text-red-500 hover:text-red-700">הסר</button>
+              </div>
+            ) : (
+              <label className={cn(
+                'flex items-center justify-center gap-2 border border-dashed rounded-lg py-3 cursor-pointer text-xs text-muted transition-colors',
+                uploadingStl ? 'opacity-50 pointer-events-none' : 'hover:border-gold hover:text-gold border-cream-dark dark:border-navy-light'
+              )}>
+                <input
+                  type="file"
+                  accept=".stl"
+                  className="hidden"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0]
+                    if (!file) return
+                    setUploadingStl(true)
+                    try {
+                      const supabase = createClient()
+                      const path = `stl/${Date.now()}_${file.name}`
+                      const { error: err } = await supabase.storage
+                        .from('product-images')
+                        .upload(path, file, { upsert: true })
+                      if (err) throw err
+                      const { data } = supabase.storage.from('product-images').getPublicUrl(path)
+                      setStlFile(data.publicUrl)
+                    } catch {}
+                    setUploadingStl(false)
+                  }}
+                />
+                {uploadingStl ? 'מעלה...' : '+ העלאת קובץ STL'}
+              </label>
             )}
           </div>
 
