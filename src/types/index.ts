@@ -56,6 +56,7 @@ export interface Product {
   configurator_type?: ConfiguratorType
   is_popular?: boolean
   is_new?: boolean
+  has_apartment_number?: boolean
   created_at: string
   updated_at: string
 }
