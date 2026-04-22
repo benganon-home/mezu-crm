@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { X, Plus, Trash2, Search, CheckCircle2, UserPlus, ChevronRight } from 'lucide-react'
+import { X, Plus, Minus, Trash2, Search, CheckCircle2, UserPlus, ChevronRight } from 'lucide-react'
 import { Customer, Product, ProductSize, SalesRule, ITEM_COLOR_MAP, FONTS } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
 import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
@@ -18,6 +18,7 @@ interface NewItem {
   font: string
   size: string
   price: string
+  qty: number
 }
 
 interface Props {
@@ -29,7 +30,7 @@ const COLORS = Object.entries(ITEM_COLOR_MAP)
 const CATEGORY_ORDER = ['מזוזות', 'שלטי בית', 'ברכות', 'אחר']
 
 function makeItem(item_name = '', model = '', size = '', price = ''): NewItem {
-  return { _id: crypto.randomUUID(), item_name, model, color: '', sign_text: '', font: '', size, price }
+  return { _id: crypto.randomUUID(), item_name, model, color: '', sign_text: '', font: '', size, price, qty: 1 }
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
@@ -61,16 +62,15 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
   const [saving, setSaving]             = useState(false)
   const [error, setError]               = useState<string | null>(null)
 
-  const autoTotal = items.reduce((s, i) => s + (parseFloat(i.price) || 0), 0)
+  const autoTotal = items.reduce((s, i) => s + (parseFloat(i.price) || 0) * i.qty, 0)
 
   const matchingRule = useMemo(() => {
     if (items.length === 0) return null
     return salesRules.find(rule =>
       rule.conditions.every(cond => {
-        const count = items.filter(i =>
-          i.model === cond.category &&
-          (!cond.size || i.size === cond.size)
-        ).length
+        const count = items
+          .filter(i => i.model === cond.category && (!cond.size || i.size === cond.size))
+          .reduce((s, i) => s + i.qty, 0)
         return count >= cond.min_qty
       })
     ) ?? null
@@ -168,7 +168,10 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
         body: JSON.stringify({
           customer: { phone, name: customerName, address: address || null },
           order:    { delivery_type: deliveryType, delivery_address: address, notes },
-          items:    items.map(({ _id, ...rest }) => ({ ...rest, price: parseFloat(rest.price) || 0 })),
+          items:    items.flatMap(({ _id, qty, ...rest }) => {
+            const row = { ...rest, price: parseFloat(rest.price) || 0 }
+            return Array.from({ length: qty }, () => ({ ...row }))
+          }),
           total_price_override: matchingRule ? finalTotal : null,
         }),
       })
@@ -324,12 +327,13 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
             </div>
           ) : (
             <section className="flex flex-col gap-3">
-              <div className="label">{items.length} {items.length === 1 ? 'פריט' : 'פריטים'}</div>
+              <div className="label">{items.reduce((s, i) => s + i.qty, 0)} {items.reduce((s, i) => s + i.qty, 0) === 1 ? 'פריט' : 'פריטים'}</div>
               {items.map(item => (
                 <ItemCard
                   key={item._id}
                   item={item}
                   onChange={(f, v) => updateItem(item._id, f, v)}
+                  onQtyChange={(q) => setItems(p => p.map(i => i._id === item._id ? { ...i, qty: q } : i))}
                   onRemove={() => removeItem(item._id)}
                 />
               ))}
@@ -434,10 +438,12 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
 function ItemCard({
   item,
   onChange,
+  onQtyChange,
   onRemove,
 }: {
   item: NewItem
   onChange: (field: keyof NewItem, value: string) => void
+  onQtyChange: (qty: number) => void
   onRemove: () => void
 }) {
   return (
@@ -476,6 +482,29 @@ function ItemCard({
         >
           <Trash2 size={14} />
         </button>
+      </div>
+
+      {/* Qty counter */}
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted flex-shrink-0">כמות:</span>
+        <div className="inline-flex items-center border border-cream-dark dark:border-navy-light rounded-lg">
+          <button
+            onClick={() => onQtyChange(Math.max(1, item.qty - 1))}
+            className="h-7 w-7 flex items-center justify-center text-muted hover:text-gold transition-colors"
+          >
+            <Minus size={12} />
+          </button>
+          <span className="w-8 text-center text-sm font-medium tabular-nums">{item.qty}</span>
+          <button
+            onClick={() => onQtyChange(item.qty + 1)}
+            className="h-7 w-7 flex items-center justify-center text-muted hover:text-gold transition-colors"
+          >
+            <Plus size={12} />
+          </button>
+        </div>
+        {item.qty > 1 && (
+          <span className="text-xs text-muted">({item.qty} שורות ייווצרו בהזמנה)</span>
+        )}
       </div>
 
       {/* Row 2: Color circles */}
