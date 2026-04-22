@@ -75,6 +75,9 @@ export async function GET() {
   const byDayOfWeek = dayLabels.map((day, i) => ({ day, count: dayCount[i] }))
 
   // ── Morning: last 6 months revenue ───────────────────────────
+  // Income document types: 20=חשבונית מס, 305=חשבונית מס/קבלה, 400=קבלה
+  const INCOME_TYPES = [20, 305, 400]
+
   let morningMonthly: Array<{ month: string; total: number }> = []
   let currentMonthRevenue: number | null = null
   let lastMonthRevenue:    number | null = null
@@ -90,18 +93,31 @@ export async function GET() {
       return { key: `${yr}-${mo}`, from: `${yr}-${mo}-01`, to: lastDay }
     }).reverse()
 
-    const results = await Promise.all(months.map(m =>
-      fetch(`${MORNING_BASE}/documents/search`, {
-        method:  'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ pageSize: 100, page: 1, documentDateFrom: m.from, documentDateTo: m.to }),
-      }).then(r => r.json())
-    ))
+    // Fetch all pages for each month, sum only income document types
+    // IMPORTANT: Never use aggregations — they are unreliable for date-filtered totals
+    const fetchMonthTotal = async (m: { from: string; to: string }) => {
+      let total = 0
+      let page  = 1
+      while (true) {
+        const res = await fetch(`${MORNING_BASE}/documents/search`, {
+          method:  'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ pageSize: 100, page, documentDateFrom: m.from, documentDateTo: m.to }),
+        })
+        const data = await res.json()
+        const docs = data?.items ?? []
+        if (docs.length === 0) break
+        for (const doc of docs) {
+          if (INCOME_TYPES.includes(doc.type)) total += doc.amount ?? 0
+        }
+        if (docs.length < 100) break
+        page++
+      }
+      return Math.round(total * 100) / 100
+    }
 
-    morningMonthly = months.map((m, i) => ({
-      month: m.key,
-      total: (results[i]?.items ?? []).reduce((s: number, doc: any) => s + (doc.amount ?? 0), 0),
-    }))
+    const totals = await Promise.all(months.map(fetchMonthTotal))
+    morningMonthly = months.map((m, i) => ({ month: m.key, total: totals[i] }))
 
     currentMonthRevenue = morningMonthly.at(-1)?.total ?? null
     lastMonthRevenue    = morningMonthly.at(-2)?.total ?? null
