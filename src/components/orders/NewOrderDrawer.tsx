@@ -78,9 +78,33 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
 
   const finalTotal = useMemo(() => {
     if (!matchingRule) return autoTotal
-    if (matchingRule.discount_type === 'fixed_total') return matchingRule.discount_value
+    if (matchingRule.discount_type === 'fixed_total') {
+      // Bundle price applies only to the min_qty items per condition.
+      // Extra items beyond the bundle keep their full price.
+      let extrasTotal = 0
+      // Track how many units each condition "consumes"
+      const consumed: Record<string, number> = {}
+      for (const cond of matchingRule.conditions) {
+        const key = `${cond.category}|${cond.size || ''}`
+        consumed[key] = cond.min_qty
+      }
+      for (const item of items) {
+        const key = `${item.model}|${item.size || ''}`
+        const keyNoSize = `${item.model}|`
+        const condKey = consumed[key] !== undefined ? key : consumed[keyNoSize] !== undefined ? keyNoSize : null
+        if (condKey && consumed[condKey] > 0) {
+          const used = Math.min(item.qty, consumed[condKey])
+          consumed[condKey] -= used
+          const extraQty = item.qty - used
+          if (extraQty > 0) extrasTotal += (parseFloat(item.price) || 0) * extraQty
+        } else {
+          extrasTotal += (parseFloat(item.price) || 0) * item.qty
+        }
+      }
+      return matchingRule.discount_value + extrasTotal
+    }
     return autoTotal * (1 - matchingRule.discount_value / 100)
-  }, [matchingRule, autoTotal])
+  }, [matchingRule, autoTotal, items])
 
   // Phone lookup with debounce
   const searchCustomer = useCallback(async (raw: string) => {
