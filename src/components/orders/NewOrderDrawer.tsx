@@ -27,7 +27,7 @@ interface Props {
 }
 
 const COLORS = Object.entries(ITEM_COLOR_MAP)
-const CATEGORY_ORDER = ['מזוזות', 'שלטי בית', 'ברכות', 'אחר']
+const PREFERRED_ORDER = ['מזוזות', 'שלטי בית', 'ברכות', 'אקססוריז']
 
 function makeItem(item_name = '', model = '', size = '', price = ''): NewItem {
   return { _id: crypto.randomUUID(), item_name, model, color: '', sign_text: '', font: '', size, price, qty: 1 }
@@ -286,7 +286,16 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
           <section>
             <div className="label mb-2">הוספת פריטים</div>
             <div className="bg-cream dark:bg-navy-deeper rounded-xl p-3 flex flex-col gap-2">
-              {CATEGORY_ORDER.map(cat => {
+              {(() => {
+                // Build dynamic category list from actual products
+                const cats = new Set(catalog.map(p => p.category || 'אחר'))
+                const sorted = [...cats].sort((a, b) => {
+                  const ia = PREFERRED_ORDER.indexOf(a)
+                  const ib = PREFERRED_ORDER.indexOf(b)
+                  return (ia === -1 ? 999 : ia) - (ib === -1 ? 999 : ib)
+                })
+                return sorted
+              })().map(cat => {
                 const catProducts = catalog.filter(p => (p.category || 'אחר') === cat)
                 if (catProducts.length === 0) return null
                 return (
