@@ -89,6 +89,8 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
 
   // New item form
   const [newProduct, setNewProduct]   = useState<Product | null>(null)
+  const [newCustom, setNewCustom]     = useState(false)
+  const [newCustomName, setNewCustomName] = useState('')
   const [newSize, setNewSize]         = useState('')
   const [newColor, setNewColor]       = useState('')
   const [newSignText, setNewSignText] = useState('')
@@ -230,21 +232,22 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   }
 
   const addItem = async () => {
-    if (!newProduct) return
+    if (!newProduct && !newCustom) return
+    if (newCustom && !newCustomName.trim()) return
     setSavingItem(true)
     const res = await fetch('/api/order-items', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         order_id:   order.id,
-        item_name:  newProduct.name,
-        model:      newProduct.category || null,
+        item_name:  newCustom ? newCustomName.trim() : newProduct!.name,
+        model:      newCustom ? 'אחר' : (newProduct!.category || null),
         size:       newSize || null,
         color:      newColor || null,
         sign_text:  newSignText || null,
         font:       newFont || null,
         price:      parseFloat(newPrice) || 0,
-        product_id: newProduct.id,
+        product_id: newCustom ? null : newProduct!.id,
         status:     'received',
       }),
     })
@@ -253,7 +256,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
     setItems(updated)
     onUpdate({ ...order, items: updated, customer })
     await patchTotal(updated)
-    setNewProduct(null); setNewSize(''); setNewColor(''); setNewSignText(''); setNewFont(''); setNewPrice('')
+    setNewProduct(null); setNewCustom(false); setNewCustomName(''); setNewSize(''); setNewColor(''); setNewSignText(''); setNewFont(''); setNewPrice('')
     setAddingItem(false)
     setSavingItem(false)
   }
@@ -473,26 +476,47 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
               <div className="mt-3 border border-cream-dark dark:border-navy-light rounded-xl p-3 flex flex-col gap-2.5 bg-cream/50 dark:bg-navy-deeper/50">
                 <div className="label text-xs mb-0">מוצר חדש</div>
 
-                {/* Product picker */}
-                <div className="relative">
-                  <select
-                    className="input text-sm w-full appearance-none pr-3 pl-7 cursor-pointer"
-                    value={newProduct?.id || ''}
-                    onChange={e => {
-                      const p = catalog.find(x => x.id === e.target.value) || null
-                      selectProduct(p)
-                    }}
-                  >
-                    <option value="">בחר מוצר *</option>
-                    {catalog.map(p => (
-                      <option key={p.id} value={p.id}>{p.name} — {formatPrice(p.base_price)}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+                {/* Toggle: catalog or custom */}
+                <div className="flex gap-1.5">
+                  <button
+                    onClick={() => { setNewCustom(false); setNewCustomName('') }}
+                    className={cn('text-xs px-3 py-1 rounded-lg border transition-all', !newCustom ? 'bg-navy text-cream border-navy dark:bg-gold dark:border-gold' : 'border-cream-dark dark:border-navy-light text-muted')}
+                  >מהקטלוג</button>
+                  <button
+                    onClick={() => { setNewCustom(true); selectProduct(null) }}
+                    className={cn('text-xs px-3 py-1 rounded-lg border transition-all', newCustom ? 'bg-navy text-cream border-navy dark:bg-gold dark:border-gold' : 'border-cream-dark dark:border-navy-light text-muted')}
+                  >אחר</button>
                 </div>
 
+                {newCustom ? (
+                  <input
+                    className="input text-sm"
+                    placeholder="שם המוצר *"
+                    value={newCustomName}
+                    onChange={e => setNewCustomName(e.target.value)}
+                    autoFocus
+                  />
+                ) : (
+                  <div className="relative">
+                    <select
+                      className="input text-sm w-full appearance-none pr-3 pl-7 cursor-pointer"
+                      value={newProduct?.id || ''}
+                      onChange={e => {
+                        const p = catalog.find(x => x.id === e.target.value) || null
+                        selectProduct(p)
+                      }}
+                    >
+                      <option value="">בחר מוצר *</option>
+                      {catalog.map(p => (
+                        <option key={p.id} value={p.id}>{p.name} — {formatPrice(p.base_price)}</option>
+                      ))}
+                    </select>
+                    <ChevronDown size={12} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted" />
+                  </div>
+                )}
+
                 {/* Size picker */}
-                {(newProduct?.sizes?.length ?? 0) > 0 && (
+                {!newCustom && (newProduct?.sizes?.length ?? 0) > 0 && (
                   <div className="relative">
                     <select
                       className="input text-sm w-full appearance-none pr-3 pl-7 cursor-pointer"
@@ -525,11 +549,11 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
                   onChange={e => setNewPrice(e.target.value)} type="number" min="0" dir="ltr" />
 
                 <div className="flex gap-2">
-                  <button onClick={addItem} disabled={savingItem || !newProduct}
+                  <button onClick={addItem} disabled={savingItem || (!newProduct && !newCustom) || (newCustom && !newCustomName.trim())}
                     className="btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5 disabled:opacity-50">
                     <Check size={12} />{savingItem ? 'שומר...' : 'הוסף'}
                   </button>
-                  <button onClick={() => { setAddingItem(false); selectProduct(null); setNewColor(''); setNewSignText(''); setNewFont('') }}
+                  <button onClick={() => { setAddingItem(false); selectProduct(null); setNewCustom(false); setNewCustomName(''); setNewColor(''); setNewSignText(''); setNewFont(''); setNewPrice('') }}
                     className="btn-secondary text-xs px-4 py-1.5">ביטול</button>
                 </div>
               </div>
@@ -867,6 +891,7 @@ function EditableItemCard({
   onDelete: () => Promise<void>
 }) {
   const [editing, setEditing]     = useState(false)
+  const [editingPrice, setEditingPrice] = useState(false)
   const [saving, setSaving]       = useState(false)
   const [deleting, setDeleting]   = useState(false)
 
@@ -878,6 +903,7 @@ function EditableItemCard({
   const [editSignText, setEditSignText] = useState(item.sign_text || '')
   const [editFont, setEditFont]       = useState(item.font || '')
   const [editPrice, setEditPrice]     = useState(String(item.price || 0))
+  const [inlinePrice, setInlinePrice] = useState(String(item.price || 0))
 
   // Sync product match when catalog loads
   useEffect(() => {
@@ -943,7 +969,33 @@ function EditableItemCard({
             </div>
           )}
         </div>
-        <div className="ltr text-sm font-medium flex-shrink-0">{formatPrice(item.price)}</div>
+        {editingPrice ? (
+          <input
+            className="input w-20 text-sm ltr text-right flex-shrink-0"
+            type="number" min="0" dir="ltr" autoFocus
+            value={inlinePrice}
+            onChange={e => setInlinePrice(e.target.value)}
+            onBlur={async () => {
+              const val = parseFloat(inlinePrice) || 0
+              setEditingPrice(false)
+              if (val !== item.price) {
+                await onSave({ price: val })
+              }
+            }}
+            onKeyDown={async e => {
+              if (e.key === 'Enter') {
+                const val = parseFloat(inlinePrice) || 0
+                setEditingPrice(false)
+                if (val !== item.price) await onSave({ price: val })
+              }
+              if (e.key === 'Escape') { setEditingPrice(false); setInlinePrice(String(item.price || 0)) }
+            }}
+          />
+        ) : (
+          <button onClick={() => setEditingPrice(true)} className="ltr text-sm font-medium flex-shrink-0 hover:text-gold transition-colors" title="לחץ לעריכת מחיר">
+            {formatPrice(item.price)}
+          </button>
+        )}
         <button onClick={() => setEditing(true)} className="text-muted hover:text-gold transition-colors flex-shrink-0">
           <Edit2 size={13} />
         </button>
