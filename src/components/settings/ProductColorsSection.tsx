@@ -83,6 +83,7 @@ export function ProductColorsSection() {
       <p className="text-xs text-muted mb-5">
         הצבעים שיוצעו ללקוחות בעמוד כל מוצר באתר. הזינו קוד צבע HEX (למשל <span className="ltr">#61615F</span>).
         סמנו {'"'}עם מסגרת{'"'} לצבעים בהירים כמו לבן או בז׳ כדי שהעיגול ייראה ברור.
+        צבע שסימנתם כ{'"'}אזל{'"'} לא יוצג באתר.
       </p>
 
       {/* List */}
@@ -164,6 +165,7 @@ function ColorRow({
   const [name, setName] = useState(color.name_he)
   const [hex, setHex]   = useState(color.hex)
   const [border, setBorder] = useState(color.has_border)
+  const [active, setActive] = useState(color.is_active !== false)
 
   // Debounce save
   const timer = useRef<NodeJS.Timeout | null>(null)
@@ -173,7 +175,10 @@ function ColorRow({
   }
 
   return (
-    <div className="grid grid-cols-[auto_1fr_120px_auto_auto] gap-2 items-center bg-cream/40 dark:bg-navy-deeper/50 rounded-xl px-2 py-1.5">
+    <div className={cn(
+      'grid grid-cols-[auto_1fr_120px_auto_auto_auto] gap-2 items-center bg-cream/40 dark:bg-navy-deeper/50 rounded-xl px-2 py-1.5 transition-opacity',
+      !active && 'opacity-55'
+    )}>
       <HexPicker
         value={hex}
         onChange={h => { setHex(h); schedule({ hex: h.toUpperCase() }) }}
@@ -199,6 +204,22 @@ function ColorRow({
         />
         מסגרת
       </label>
+      <button
+        onClick={() => { const next = !active; setActive(next); onUpdate({ is_active: next }) }}
+        className={cn(
+          'flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium whitespace-nowrap transition-colors',
+          active
+            ? 'bg-green-50 text-green-700 hover:bg-green-100 dark:bg-green-900/30 dark:text-green-400'
+            : 'bg-cream-dark/50 text-muted hover:bg-cream-dark dark:bg-navy-light dark:text-muted'
+        )}
+        title={active ? 'במלאי — מוצג באתר' : 'אזל — לא מוצג באתר'}
+      >
+        <span className={cn(
+          'w-1.5 h-1.5 rounded-full',
+          active ? 'bg-green-500' : 'bg-muted/50'
+        )} />
+        {active ? 'זמין' : 'אזל'}
+      </button>
       <button
         onClick={onDelete}
         className="w-7 h-7 flex items-center justify-center text-muted hover:text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
