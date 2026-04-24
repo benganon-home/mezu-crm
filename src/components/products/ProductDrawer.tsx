@@ -30,6 +30,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
   const [materials, setMaterials]     = useState(product?.materials || '')
   const [careInstructions, setCareInstructions] = useState(product?.care_instructions || '')
   const [basePrice, setBasePrice]     = useState(product?.base_price?.toString() || '')
+  const [salePrice, setSalePrice]     = useState(product?.sale_price != null ? String(product.sale_price) : '')
   const [category, setCategory]       = useState(product?.category || '')
   const [newCategory, setNewCategory] = useState('')
   const [addingCategory, setAddingCategory] = useState(false)
@@ -148,6 +149,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
       materials: materials.trim() || null,
       care_instructions: careInstructions.trim() || null,
       base_price: parseFloat(basePrice) || 0,
+      sale_price: salePrice.trim() === '' ? null : (parseFloat(salePrice) || null),
       category: category || null,
       is_active: isActive,
       is_popular: isPopular,
@@ -439,6 +441,34 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
                 dir="ltr"
               />
             </div>
+          </div>
+
+          {/* Sale price */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="label">מחיר מבצע (₪)</div>
+              {(() => {
+                const base = parseFloat(basePrice) || 0
+                const sale = parseFloat(salePrice) || 0
+                if (base > 0 && sale > 0 && sale < base) {
+                  const pct = Math.round((1 - sale / base) * 100)
+                  return <span className="text-xs font-medium text-red-600 dark:text-red-400">חסכון {pct}%</span>
+                }
+                return null
+              })()}
+            </div>
+            <input
+              className="input w-full ltr"
+              placeholder="השאר ריק ללא מבצע"
+              value={salePrice}
+              onChange={e => setSalePrice(e.target.value)}
+              type="number"
+              min="0"
+              dir="ltr"
+            />
+            <p className="text-[11px] text-muted mt-1">
+              אם מוגדר וקטן ממחיר הבסיס, יוחל אחוז הנחה זהה על כל המידות ויוצג באתר כמחיר מוצלב.
+            </p>
           </div>
 
           {/* Short description */}
