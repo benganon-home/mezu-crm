@@ -12,6 +12,7 @@ interface Popup {
   body: string | null
   cta_text: string | null
   cta_product_id: string | null
+  cta_category_id: string | null
   is_active: boolean
   show_after_seconds: number
   display_order: number
@@ -23,21 +24,30 @@ interface MiniProduct {
   images: string[] | null
 }
 
+interface MiniCategory {
+  id: string
+  name_he: string
+  slug: string | null
+}
+
 export function PopupsSection() {
-  const [popups, setPopups]     = useState<Popup[]>([])
-  const [products, setProducts] = useState<MiniProduct[]>([])
-  const [loading, setLoading]   = useState(true)
-  const [editing, setEditing]   = useState<Popup | null>(null)
-  const [saving, setSaving]     = useState(false)
+  const [popups, setPopups]       = useState<Popup[]>([])
+  const [products, setProducts]   = useState<MiniProduct[]>([])
+  const [categories, setCategories] = useState<MiniCategory[]>([])
+  const [loading, setLoading]     = useState(true)
+  const [editing, setEditing]     = useState<Popup | null>(null)
+  const [saving, setSaving]       = useState(false)
 
   const load = async () => {
     setLoading(true)
-    const [pRes, prodRes] = await Promise.all([
+    const [pRes, prodRes, catRes] = await Promise.all([
       fetch('/api/popups').then(r => r.json()),
       fetch('/api/products').then(r => r.json()),
+      fetch('/api/product-categories').then(r => r.json()),
     ])
     setPopups(Array.isArray(pRes) ? pRes : [])
     setProducts(Array.isArray(prodRes) ? prodRes.map((p: any) => ({ id: p.id, name: p.name, images: p.images })) : [])
+    setCategories(Array.isArray(catRes) ? catRes.map((c: any) => ({ id: c.id, name_he: c.name_he, slug: c.slug })) : [])
     setLoading(false)
   }
 
@@ -51,6 +61,7 @@ export function PopupsSection() {
       body: '',
       cta_text: '',
       cta_product_id: null,
+      cta_category_id: null,
       is_active: true,
       show_after_seconds: 3,
       display_order: popups.length,
@@ -111,7 +122,13 @@ export function PopupsSection() {
       ) : (
         <div className="space-y-2">
           {popups.map(p => {
-            const product = p.cta_product_id ? products.find(x => x.id === p.cta_product_id) : null
+            const product  = p.cta_product_id  ? products.find(x => x.id === p.cta_product_id)   : null
+            const category = p.cta_category_id ? categories.find(x => x.id === p.cta_category_id) : null
+            const linkLabel = product
+              ? `→ מוצר: ${product.name}`
+              : category
+                ? `→ קטגוריה: ${category.name_he}`
+                : p.cta_text || 'ללא כפתור'
             return (
               <div key={p.id} className={cn(
                 'flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors',
@@ -129,7 +146,7 @@ export function PopupsSection() {
                 <button onClick={() => setEditing(p)} className="flex-1 min-w-0 text-right">
                   <div className="text-sm font-medium truncate">{p.title || '(ללא כותרת)'}</div>
                   <div className="text-xs text-muted truncate">
-                    {product ? `→ ${product.name}` : p.cta_text || 'ללא כפתור'}
+                    {linkLabel}
                   </div>
                 </button>
 
@@ -156,6 +173,7 @@ export function PopupsSection() {
         <PopupEditor
           popup={editing}
           products={products}
+          categories={categories}
           saving={saving}
           onChange={setEditing}
           onClose={() => setEditing(null)}
@@ -167,10 +185,11 @@ export function PopupsSection() {
 }
 
 function PopupEditor({
-  popup, products, saving, onChange, onClose, onSave,
+  popup, products, categories, saving, onChange, onClose, onSave,
 }: {
   popup: Popup
   products: MiniProduct[]
+  categories: MiniCategory[]
   saving: boolean
   onChange: (p: Popup) => void
   onClose: () => void
@@ -180,10 +199,18 @@ function PopupEditor({
   const [uploading, setUploading] = useState(false)
   const [search, setSearch]       = useState('')
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [linkKind, setLinkKind]   = useState<'product' | 'category'>(
+    popup.cta_category_id ? 'category' : 'product'
+  )
 
   const selectedProduct = useMemo(
     () => popup.cta_product_id ? products.find(p => p.id === popup.cta_product_id) : null,
     [popup.cta_product_id, products],
+  )
+
+  const selectedCategory = useMemo(
+    () => popup.cta_category_id ? categories.find(c => c.id === popup.cta_category_id) : null,
+    [popup.cta_category_id, categories],
   )
 
   const filteredProducts = useMemo(() => {
@@ -191,6 +218,24 @@ function PopupEditor({
     const q = search.trim().toLowerCase()
     return products.filter(p => p.name.toLowerCase().includes(q)).slice(0, 30)
   }, [search, products])
+
+  const filteredCategories = useMemo(() => {
+    if (!search.trim()) return categories
+    const q = search.trim().toLowerCase()
+    return categories.filter(c => c.name_he.toLowerCase().includes(q))
+  }, [search, categories])
+
+  const switchLinkKind = (kind: 'product' | 'category') => {
+    setLinkKind(kind)
+    setSearch('')
+    setPickerOpen(false)
+    // Clear the opposite field so only one is set
+    if (kind === 'product') {
+      onChange({ ...popup, cta_category_id: null })
+    } else {
+      onChange({ ...popup, cta_product_id: null })
+    }
+  }
 
   const uploadImage = async (file: File) => {
     setUploading(true)
@@ -288,47 +333,92 @@ function PopupEditor({
           placeholder="לדוגמה: לצפייה במוצר"
         />
 
-        {/* Product picker */}
-        <label className="label block mb-1.5">כפתור מקשר למוצר</label>
-        {selectedProduct ? (
-          <div className="flex items-center gap-2 border border-line rounded-lg px-3 py-2 mb-4">
-            {selectedProduct.images?.[0] && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={selectedProduct.images[0]} alt="" className="w-8 h-8 object-cover rounded" />
-            )}
-            <span className="flex-1 text-sm truncate">{selectedProduct.name}</span>
-            <button
-              onClick={() => onChange({ ...popup, cta_product_id: null })}
-              className="text-muted hover:text-red-500"
-            >
-              <X size={14} />
-            </button>
-          </div>
-        ) : (
+        {/* CTA link target */}
+        <label className="label block mb-1.5">כפתור מקשר ל־</label>
+        <div className="flex gap-1 mb-2 p-0.5 rounded-lg bg-cream-dark/40 dark:bg-navy-light/40">
           <button
-            onClick={() => setPickerOpen(v => !v)}
-            className="w-full border border-line rounded-lg px-3 py-2 text-right text-sm text-muted hover:text-ink hover:border-gold transition-colors mb-2"
+            type="button"
+            onClick={() => switchLinkKind('product')}
+            className={cn(
+              'flex-1 text-xs py-1.5 rounded-md transition-colors',
+              linkKind === 'product' ? 'bg-white dark:bg-navy font-medium shadow-sm' : 'text-muted'
+            )}
           >
-            <Search size={13} className="inline me-2" />
-            בחר מוצר...
+            מוצר
           </button>
+          <button
+            type="button"
+            onClick={() => switchLinkKind('category')}
+            className={cn(
+              'flex-1 text-xs py-1.5 rounded-md transition-colors',
+              linkKind === 'category' ? 'bg-white dark:bg-navy font-medium shadow-sm' : 'text-muted'
+            )}
+          >
+            קטגוריה
+          </button>
+        </div>
+
+        {linkKind === 'product' ? (
+          selectedProduct ? (
+            <div className="flex items-center gap-2 border border-line rounded-lg px-3 py-2 mb-4">
+              {selectedProduct.images?.[0] && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={selectedProduct.images[0]} alt="" className="w-8 h-8 object-cover rounded" />
+              )}
+              <span className="flex-1 text-sm truncate">{selectedProduct.name}</span>
+              <button
+                onClick={() => onChange({ ...popup, cta_product_id: null })}
+                className="text-muted hover:text-red-500"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setPickerOpen(v => !v)}
+              className="w-full border border-line rounded-lg px-3 py-2 text-right text-sm text-muted hover:text-ink hover:border-gold transition-colors mb-2"
+            >
+              <Search size={13} className="inline me-2" />
+              בחר מוצר...
+            </button>
+          )
+        ) : (
+          selectedCategory ? (
+            <div className="flex items-center gap-2 border border-line rounded-lg px-3 py-2 mb-4">
+              <span className="flex-1 text-sm truncate">{selectedCategory.name_he}</span>
+              <button
+                onClick={() => onChange({ ...popup, cta_category_id: null })}
+                className="text-muted hover:text-red-500"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setPickerOpen(v => !v)}
+              className="w-full border border-line rounded-lg px-3 py-2 text-right text-sm text-muted hover:text-ink hover:border-gold transition-colors mb-2"
+            >
+              <Search size={13} className="inline me-2" />
+              בחר קטגוריה...
+            </button>
+          )
         )}
 
-        {pickerOpen && !selectedProduct && (
+        {pickerOpen && linkKind === 'product' && !selectedProduct && (
           <div className="mb-4 border border-line rounded-lg bg-cream-dark/30 dark:bg-navy-light/40 p-2">
             <input
               autoFocus
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="חיפוש..."
+              placeholder="חיפוש מוצר..."
               className="input w-full mb-2 !text-sm"
             />
             <div className="max-h-48 overflow-y-auto space-y-1">
               {filteredProducts.map(p => (
                 <button
                   key={p.id}
-                  onClick={() => { onChange({ ...popup, cta_product_id: p.id }); setPickerOpen(false); setSearch('') }}
+                  onClick={() => { onChange({ ...popup, cta_product_id: p.id, cta_category_id: null }); setPickerOpen(false); setSearch('') }}
                   className="w-full flex items-center gap-2 text-right px-2 py-1.5 rounded hover:bg-gold/10 text-sm"
                 >
                   {p.images?.[0] && (
@@ -340,6 +430,33 @@ function PopupEditor({
               ))}
               {filteredProducts.length === 0 && (
                 <div className="text-xs text-muted text-center py-3">לא נמצאו מוצרים</div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {pickerOpen && linkKind === 'category' && !selectedCategory && (
+          <div className="mb-4 border border-line rounded-lg bg-cream-dark/30 dark:bg-navy-light/40 p-2">
+            <input
+              autoFocus
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="חיפוש קטגוריה..."
+              className="input w-full mb-2 !text-sm"
+            />
+            <div className="max-h-48 overflow-y-auto space-y-1">
+              {filteredCategories.map(c => (
+                <button
+                  key={c.id}
+                  onClick={() => { onChange({ ...popup, cta_category_id: c.id, cta_product_id: null }); setPickerOpen(false); setSearch('') }}
+                  className="w-full flex items-center gap-2 text-right px-2 py-1.5 rounded hover:bg-gold/10 text-sm"
+                >
+                  <span className="flex-1 truncate">{c.name_he}</span>
+                </button>
+              ))}
+              {filteredCategories.length === 0 && (
+                <div className="text-xs text-muted text-center py-3">לא נמצאו קטגוריות</div>
               )}
             </div>
           </div>
