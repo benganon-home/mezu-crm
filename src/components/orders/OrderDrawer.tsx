@@ -63,6 +63,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const [shipBuilding, setShipBuilding]         = useState(parsed.building)
   const [shipFloor, setShipFloor]               = useState(parsed.floor)
   const [shipApt, setShipApt]                   = useState(parsed.apartment)
+  const [shipNotes, setShipNotes]               = useState('')
   const [creatingShipment, setCreatingShipment] = useState(false)
   const [shipmentError, setShipmentError]       = useState<string | null>(null)
   const [trackingEvents, setTrackingEvents]     = useState<any[] | null>(null)
@@ -326,12 +327,13 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
-          order_id: order.id,
-          city:     shipCity.trim(),
-          street:   shipStreet.trim(),
-          building: shipBuilding.trim(),
-          floor:    shipFloor.trim(),
-          apartment: shipApt.trim(),
+          order_id:       order.id,
+          city:           shipCity.trim(),
+          street:         shipStreet.trim(),
+          building:       shipBuilding.trim(),
+          floor:          shipFloor.trim(),
+          apartment:      shipApt.trim(),
+          shipping_notes: shipNotes.trim(),
         }),
       })
       const data = await res.json()
@@ -705,6 +707,12 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
                       <input className="input text-sm" placeholder="קומה" value={shipFloor} onChange={e => setShipFloor(e.target.value)} />
                       <input className="input text-sm" placeholder="דירה" value={shipApt} onChange={e => setShipApt(e.target.value)} />
                     </div>
+                    <textarea
+                      className="input text-sm min-h-[60px] resize-none"
+                      placeholder="הערות למשלוח (יודפסו על המדבקה)"
+                      value={shipNotes}
+                      onChange={e => setShipNotes(e.target.value)}
+                    />
                     {shipmentError && (
                       <div className="text-xs text-red-500 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">{shipmentError}</div>
                     )}

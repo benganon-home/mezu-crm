@@ -15,7 +15,7 @@ function getSupabaseAdmin() {
 
 export async function POST(req: Request) {
   try {
-    const { order_id, city, street, building, floor, apartment } = await req.json()
+    const { order_id, city, street, building, floor, apartment, shipping_notes } = await req.json()
     if (!order_id) return NextResponse.json({ error: 'order_id חסר' }, { status: 400 })
     if (!city || !street) return NextResponse.json({ error: 'עיר ורחוב הם שדות חובה' }, { status: 400 })
 
@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       phone:     customer?.phone || '',
       email:     customer?.email || '',
       reference: order_id,
-      remarks:   order.notes   || '',
+      remarks:   shipping_notes || '',
     })
 
     const { error: updateErr } = await supabase
