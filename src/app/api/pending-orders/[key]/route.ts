@@ -8,16 +8,19 @@ function getAdmin() {
   )
 }
 
-// DELETE /api/pending-orders/[key] — discard (no real payment)
+// DELETE /api/pending-orders/[key] — tombstone the pending order so it stays
+// hidden even if Make.com re-fires the same phone (which would otherwise
+// re-insert via upsert).
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: { key: string } }
 ) {
-  await getAdmin()
+  const { error } = await getAdmin()
     .from('pending_orders')
-    .delete()
+    .update({ dismissed_at: new Date().toISOString() })
     .eq('key', params.key)
 
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })
 }
 
@@ -44,7 +47,7 @@ export async function POST(
 
   await getAdmin()
     .from('pending_orders')
-    .delete()
+    .update({ dismissed_at: new Date().toISOString() })
     .eq('key', params.key)
 
   const order = await webhookRes.json()

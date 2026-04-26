@@ -37,6 +37,7 @@ export function PendingOrdersBanner({ onOrderAdded }: { onOrderAdded: () => void
   const [records, setRecords]     = useState<PendingRecord[]>([])
   const [loading, setLoading]     = useState(true)
   const [busy, setBusy]           = useState<string | null>(null)
+  const [errors, setErrors]       = useState<Record<string, string>>({})
 
   useEffect(() => {
     fetch('/api/pending-orders')
@@ -49,6 +50,7 @@ export function PendingOrdersBanner({ onOrderAdded }: { onOrderAdded: () => void
 
   const handleAdd = async (r: PendingRecord) => {
     setBusy(r.key)
+    setErrors(prev => { const { [r.key]: _, ...rest } = prev; return rest })
     const res = await fetch(`/api/pending-orders/${encodeURIComponent(r.key)}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -72,14 +74,23 @@ export function PendingOrdersBanner({ onOrderAdded }: { onOrderAdded: () => void
     if (res.ok) {
       setRecords(prev => prev.filter(x => x.key !== r.key))
       onOrderAdded()
+    } else {
+      const err = await res.json().catch(() => ({}))
+      setErrors(prev => ({ ...prev, [r.key]: err.error || `שגיאה ${res.status}` }))
     }
   }
 
   const handleDelete = async (key: string) => {
     setBusy(key)
-    await fetch(`/api/pending-orders/${encodeURIComponent(key)}`, { method: 'DELETE' })
+    setErrors(prev => { const { [key]: _, ...rest } = prev; return rest })
+    const res = await fetch(`/api/pending-orders/${encodeURIComponent(key)}`, { method: 'DELETE' })
     setBusy(null)
-    setRecords(prev => prev.filter(x => x.key !== key))
+    if (res.ok) {
+      setRecords(prev => prev.filter(x => x.key !== key))
+    } else {
+      const err = await res.json().catch(() => ({}))
+      setErrors(prev => ({ ...prev, [key]: err.error || `שגיאה במחיקה (${res.status})` }))
+    }
   }
 
   return (
@@ -106,9 +117,15 @@ export function PendingOrdersBanner({ onOrderAdded }: { onOrderAdded: () => void
         <tbody>
           {records.map(r => {
             const isBusy = busy === r.key
+            const error  = errors[r.key]
             return (
               <tr key={r.key} className="border-b last:border-0 border-cream-dark dark:border-navy-light hover:bg-cream/50 dark:hover:bg-navy-light/20">
-                <td className="px-4 py-3 font-medium">{r.data.customer_name || '—'}</td>
+                <td className="px-4 py-3 font-medium">
+                  {r.data.customer_name || '—'}
+                  {error && (
+                    <div className="text-[11px] text-red-500 mt-1 font-normal">{error}</div>
+                  )}
+                </td>
                 <td className="px-4 py-3 text-muted ltr">{r.key}</td>
                 <td className="px-4 py-3 text-muted">{productCount(r.data)} פריטים</td>
                 <td className="px-4 py-3 font-medium text-gold ltr">

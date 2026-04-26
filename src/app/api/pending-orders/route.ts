@@ -10,6 +10,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('pending_orders')
     .select('*')
+    .is('dismissed_at', null)
     .order('inserted_at', { ascending: true })
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
