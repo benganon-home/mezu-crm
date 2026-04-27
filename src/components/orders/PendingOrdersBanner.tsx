@@ -40,7 +40,7 @@ export function PendingOrdersBanner({ onOrderAdded }: { onOrderAdded: () => void
   const [errors, setErrors]       = useState<Record<string, string>>({})
 
   useEffect(() => {
-    fetch('/api/pending-orders')
+    fetch('/api/pending-orders', { cache: 'no-store' })
       .then(r => r.ok ? r.json() : [])
       .then(setRecords)
       .finally(() => setLoading(false))
