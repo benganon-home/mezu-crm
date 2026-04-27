@@ -80,6 +80,13 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const [editAddress, setEditAddress]       = useState(order.delivery_address || '')
   const [savingAddress, setSavingAddress]   = useState(false)
 
+  // Manual total-price override
+  const [priceLocked, setPriceLocked] = useState<boolean>(!!order.total_price_locked)
+  const [storedTotal, setStoredTotal] = useState<number>(order.total_price ?? 0)
+  const [editingTotal, setEditingTotal] = useState(false)
+  const [editTotal, setEditTotal]       = useState<string>('')
+  const [savingTotal, setSavingTotal]   = useState(false)
+
   // Items state (local copy for optimistic updates)
   const [items, setItems] = useState<OrderItem[]>(order.items || [])
 
@@ -117,8 +124,9 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
     return { appliedRule: result.appliedRule, finalTotal: result.finalTotal }
   }, [items, salesRules, autoTotal])
 
-  // Patch order total whenever items or rule changes
+  // Patch order total whenever items or rule changes — unless price is manually locked.
   const patchTotal = async (updatedItems: OrderItem[]) => {
+    if (priceLocked) return
     const ruleItems = updatedItems.map(i => ({ model: i.model, size: i.size, price: i.price }))
     const { finalTotal: newTotal } = applySalesRules(ruleItems, salesRules)
     await fetch(`/api/orders/${order.id}`, {
@@ -126,6 +134,36 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ total_price: newTotal }),
     })
+    setStoredTotal(newTotal)
+  }
+
+  // Save manual override
+  const saveManualTotal = async () => {
+    const v = parseFloat(editTotal)
+    if (isNaN(v) || v < 0) return
+    setSavingTotal(true)
+    await fetch(`/api/orders/${order.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ total_price: v, total_price_locked: true }),
+    })
+    setStoredTotal(v)
+    setPriceLocked(true)
+    setEditingTotal(false)
+    setSavingTotal(false)
+  }
+
+  // Reset to auto-calculated
+  const resetManualTotal = async () => {
+    const ruleItems = items.map(i => ({ model: i.model, size: i.size, price: i.price }))
+    const { finalTotal: newTotal } = applySalesRules(ruleItems, salesRules)
+    await fetch(`/api/orders/${order.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ total_price: newTotal, total_price_locked: false }),
+    })
+    setStoredTotal(newTotal)
+    setPriceLocked(false)
   }
 
   // ── General order save ────────────────────────────────────────
@@ -563,7 +601,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
 
             {/* Total + rule */}
             <div className="mt-3 pt-3 border-t border-cream-dark dark:border-navy-light flex flex-col gap-2">
-              {matchingRule && (
+              {matchingRule && !priceLocked && (
                 <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-3 py-2">
                   <div className="text-xs font-medium text-emerald-700 dark:text-emerald-400">מבצע: {matchingRule.name}</div>
                   <div className="text-xs text-emerald-600">
@@ -573,14 +611,60 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
                   </div>
                 </div>
               )}
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center gap-2">
                 <span className="text-sm text-muted">סה״כ לתשלום</span>
-                <div className="text-right">
-                  {matchingRule && autoTotal !== finalTotal && (
-                    <div className="text-xs text-muted line-through ltr">{formatPrice(autoTotal)}</div>
-                  )}
-                  <span className="text-lg font-semibold text-gold ltr">{formatPrice(finalTotal)}</span>
-                </div>
+
+                {editingTotal ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      autoFocus
+                      value={editTotal}
+                      onChange={e => setEditTotal(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') saveManualTotal() }}
+                      className="input text-sm ltr w-24 text-right"
+                      placeholder="₪"
+                    />
+                    <button
+                      onClick={saveManualTotal}
+                      disabled={savingTotal}
+                      className="btn-primary text-xs px-3 py-1.5 flex items-center gap-1 disabled:opacity-50"
+                    >
+                      <Check size={12} />שמור
+                    </button>
+                    <button
+                      onClick={() => setEditingTotal(false)}
+                      className="btn-secondary text-xs px-3 py-1.5"
+                    >
+                      ביטול
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-right flex items-center gap-2">
+                    {priceLocked ? (
+                      <>
+                        <span className="text-[10px] bg-gold/15 text-gold px-1.5 py-0.5 rounded-full font-medium">מחיר מותאם</span>
+                        <button
+                          onClick={resetManualTotal}
+                          className="text-[10px] text-muted hover:text-gold underline"
+                          title="חזור לחישוב אוטומטי"
+                        >
+                          איפוס
+                        </button>
+                      </>
+                    ) : matchingRule && autoTotal !== finalTotal && (
+                      <span className="text-xs text-muted line-through ltr">{formatPrice(autoTotal)}</span>
+                    )}
+                    <button
+                      onClick={() => { setEditTotal(String(priceLocked ? storedTotal : finalTotal)); setEditingTotal(true) }}
+                      className="text-lg font-semibold text-gold ltr hover:opacity-80 transition-opacity"
+                      title="לחץ לעריכת מחיר ידני"
+                    >
+                      {formatPrice(priceLocked ? storedTotal : finalTotal)}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

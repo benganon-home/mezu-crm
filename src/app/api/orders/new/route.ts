@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
-  const { customer: customerData, order: orderData, items, total_price_override } = await req.json()
+  const { customer: customerData, order: orderData, items, total_price_override, total_price_locked } = await req.json()
 
   // Normalize phone to 0XX format
   const cleanPhone = customerData.phone.replace(/\D/g, '')
@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
       delivery_address: orderData.delivery_type === 'delivery' ? (orderData.delivery_address || null) : null,
       notes:            orderData.notes || null,
       total_price:      totalPrice,
+      total_price_locked: !!total_price_locked,
       source:           'manual',
     })
     .select('id')

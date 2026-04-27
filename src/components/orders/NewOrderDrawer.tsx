@@ -61,6 +61,8 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
   const [notes, setNotes]               = useState('')
   const [saving, setSaving]             = useState(false)
   const [error, setError]               = useState<string | null>(null)
+  const [manualTotal, setManualTotal]   = useState<string>('')
+  const [editingTotal, setEditingTotal] = useState(false)
 
   const autoTotal = items.reduce((s, i) => s + (parseFloat(i.price) || 0) * i.qty, 0)
 
@@ -186,6 +188,9 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
     setSaving(true)
     setError(null)
     try {
+      const manualVal = parseFloat(manualTotal)
+      const hasManual = manualTotal.trim() !== '' && !isNaN(manualVal) && manualVal >= 0
+      const overrideVal = hasManual ? manualVal : (matchingRule ? finalTotal : null)
       const res = await fetch('/api/orders/new', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -196,7 +201,8 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
             const row = { ...rest, price: parseFloat(rest.price) || 0 }
             return Array.from({ length: qty }, () => ({ ...row }))
           }),
-          total_price_override: matchingRule ? finalTotal : null,
+          total_price_override: overrideVal,
+          total_price_locked:   hasManual,
         }),
       })
       const data = await res.json()
@@ -433,9 +439,50 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
                   </div>
                 </div>
               )}
-              <div className="flex items-center justify-between bg-navy/5 dark:bg-cream/5 rounded-lg px-4 py-3 border border-navy/10 dark:border-cream/10">
+              <div className="flex items-center justify-between bg-navy/5 dark:bg-cream/5 rounded-lg px-4 py-3 border border-navy/10 dark:border-cream/10 gap-3">
                 <span className="text-sm text-muted">סה״כ לתשלום</span>
-                <span className="text-2xl font-semibold text-gold ltr">{formatPrice(finalTotal)}</span>
+
+                {editingTotal ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      autoFocus
+                      value={manualTotal}
+                      onChange={e => setManualTotal(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') setEditingTotal(false) }}
+                      className="input text-lg ltr w-28 text-right font-semibold text-gold"
+                      placeholder={String(finalTotal)}
+                    />
+                    <button
+                      onClick={() => setEditingTotal(false)}
+                      className="btn-secondary text-xs px-3 py-1.5"
+                    >
+                      אישור
+                    </button>
+                    {manualTotal && (
+                      <button
+                        onClick={() => { setManualTotal(''); setEditingTotal(false) }}
+                        className="text-[11px] text-muted hover:text-red-500 underline"
+                      >
+                        איפוס
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    {manualTotal && !isNaN(parseFloat(manualTotal)) && (
+                      <span className="text-[10px] bg-gold/15 text-gold px-1.5 py-0.5 rounded-full font-medium">מחיר מותאם</span>
+                    )}
+                    <button
+                      onClick={() => setEditingTotal(true)}
+                      title="לחץ לעריכת מחיר ידני"
+                      className="text-2xl font-semibold text-gold ltr hover:opacity-80 transition-opacity"
+                    >
+                      {formatPrice(manualTotal && !isNaN(parseFloat(manualTotal)) ? parseFloat(manualTotal) : finalTotal)}
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

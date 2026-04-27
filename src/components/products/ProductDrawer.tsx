@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { X, Plus, Trash2, Upload, AlertTriangle, Check, Copy } from 'lucide-react'
-import { Product, ProductSize } from '@/types'
+import { Product, ProductSize, ProductColor } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
@@ -42,7 +42,22 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
   const [stlFile, setStlFile]         = useState(product?.stl_file || '')
   const [uploadingStl, setUploadingStl] = useState(false)
   const [images, setImages]           = useState<string[]>(product?.images || [])
+  const [imageColors, setImageColors] = useState<string[]>(() => {
+    const arr = product?.image_colors || []
+    const imgs = product?.images || []
+    return imgs.map((_, i) => arr[i] || '')
+  })
+  const [allColors, setAllColors]     = useState<ProductColor[]>([])
   const [sizes, setSizes]             = useState<ProductSize[]>(product?.sizes || [])
+
+  useEffect(() => {
+    fetch('/api/product-colors')
+      .then(r => r.ok ? r.json() : [])
+      .then((rows: ProductColor[]) => {
+        if (Array.isArray(rows)) setAllColors(rows.filter(c => c.is_active))
+      })
+      .catch(() => {})
+  }, [])
 
   // Auto-generate slug from name (unless manually edited)
   const autoSlug = (text: string) =>
@@ -121,6 +136,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
       if (err) throw err
       const { data } = supabase.storage.from('product-images').getPublicUrl(path)
       setImages(prev => [...prev, data.publicUrl])
+      setImageColors(prev => [...prev, ''])
     } catch (e: any) {
       setUploadError(e?.message || 'שגיאה בהעלאת תמונה')
     } finally {
@@ -134,7 +150,19 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
     e.target.value = ''
   }
 
-  const removeImage = (url: string) => setImages(prev => prev.filter(u => u !== url))
+  const removeImageAt = (idx: number) => {
+    setImages(prev => prev.filter((_, i) => i !== idx))
+    setImageColors(prev => prev.filter((_, i) => i !== idx))
+  }
+
+  const setImageColorAt = (idx: number, colorName: string) => {
+    setImageColors(prev => {
+      const next = [...prev]
+      while (next.length < images.length) next.push('')
+      next[idx] = colorName
+      return next
+    })
+  }
 
   const handleSave = async () => {
     if (!name.trim()) return
@@ -158,6 +186,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
       stl_file: stlFile || null,
       display_order: parseInt(displayOrder) || 0,
       images,
+      image_colors: imageColors.slice(0, images.length),
       sizes,
       colors: product?.colors || [],
     }
@@ -199,6 +228,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
       category: product.category,
       is_active: true,
       images: product.images,
+      image_colors: product.image_colors || [],
       sizes: product.sizes,
       colors: product.colors,
     }
@@ -259,20 +289,50 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
           <div>
             <div className="label mb-2">תמונות</div>
             <div className="grid grid-cols-3 gap-2">
-              {images.map((url, i) => (
-                <div key={i} className="relative group aspect-square rounded-xl overflow-hidden bg-cream-dark dark:bg-navy-light">
-                  <img src={url} alt="" className="w-full h-full object-cover" />
-                  <button
-                    onClick={() => removeImage(url)}
-                    className="absolute top-1.5 left-1.5 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    <Trash2 size={11} className="text-white" />
-                  </button>
-                  {i === 0 && (
-                    <div className="absolute bottom-1 right-1 text-[10px] bg-navy/70 text-cream px-1.5 py-0.5 rounded-full">ראשי</div>
-                  )}
-                </div>
-              ))}
+              {images.map((url, i) => {
+                const tagged = allColors.find(c => c.name_he === imageColors[i])
+                return (
+                  <div key={i} className="relative group aspect-square rounded-xl overflow-hidden bg-cream-dark dark:bg-navy-light">
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => removeImageAt(i)}
+                      className="absolute top-1.5 left-1.5 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 size={11} className="text-white" />
+                    </button>
+                    {i === 0 && (
+                      <div className="absolute top-1.5 right-1.5 text-[10px] bg-navy/70 text-cream px-1.5 py-0.5 rounded-full">ראשי</div>
+                    )}
+
+                    {/* Color badge — visible when a color is tagged */}
+                    {tagged && (
+                      <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1 bg-white/95 backdrop-blur px-1.5 py-0.5 rounded-full text-[10px] font-medium text-navy shadow-sm">
+                        <span
+                          className={cn(
+                            'w-2.5 h-2.5 rounded-full shrink-0',
+                            tagged.has_border && 'border border-navy/30'
+                          )}
+                          style={{ background: tagged.hex }}
+                        />
+                        <span className="leading-none">{tagged.name_he}</span>
+                      </div>
+                    )}
+
+                    {/* Color picker — bottom-left, full width on hover/touch */}
+                    <select
+                      value={imageColors[i] || ''}
+                      onChange={e => setImageColorAt(i, e.target.value)}
+                      title="צבע התמונה"
+                      className="absolute bottom-1.5 left-1.5 text-[10px] bg-white/95 backdrop-blur border border-cream-dark dark:border-navy-light rounded-full px-2 py-0.5 text-navy max-w-[60%] truncate focus:outline-none focus:ring-1 focus:ring-gold"
+                    >
+                      <option value="">בלי צבע</option>
+                      {allColors.map(c => (
+                        <option key={c.id} value={c.name_he}>{c.name_he}</option>
+                      ))}
+                    </select>
+                  </div>
+                )
+              })}
 
               {/* Upload button */}
               <button

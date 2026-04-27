@@ -42,6 +42,7 @@ export interface Product {
   sizes: ProductSize[]
   colors: string[]
   images: string[]
+  image_colors?: string[]
   category?: string | null
   category_id?: string | null
   is_active: boolean
@@ -175,6 +176,7 @@ export interface Order {
   delivery_address?: string | null
   source: OrderSource
   total_price: number
+  total_price_locked?: boolean
   is_pinned: boolean
   has_delivery_note: boolean
   tracking_number?: string | null
