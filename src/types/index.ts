@@ -143,6 +143,7 @@ export interface ProductColor {
   name_he: string
   hex: string
   has_border: boolean
+  has_dots?: boolean
   display_order: number
   is_active: boolean
   created_at: string

@@ -5,6 +5,7 @@ import { X, Plus, Trash2, Upload, AlertTriangle, Check, Copy } from 'lucide-reac
 import { Product, ProductSize, ProductColor } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { dottedStyle } from '@/lib/colorPattern'
 import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
 
 const DEFAULT_CATEGORIES = ['מזוזות', 'שלטי בית', 'ברכות', 'אחר']
@@ -309,10 +310,10 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
                       <div className="absolute bottom-1.5 right-1.5 flex items-center gap-1 bg-white/95 backdrop-blur px-1.5 py-0.5 rounded-full text-[10px] font-medium text-navy shadow-sm">
                         <span
                           className={cn(
-                            'w-2.5 h-2.5 rounded-full shrink-0',
+                            'w-2.5 h-2.5 rounded-full shrink-0 overflow-hidden',
                             tagged.has_border && 'border border-navy/30'
                           )}
-                          style={{ background: tagged.hex }}
+                          style={dottedStyle(tagged.hex, tagged.has_dots)}
                         />
                         <span className="leading-none">{tagged.name_he}</span>
                       </div>

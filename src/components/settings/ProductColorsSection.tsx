@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Palette, Plus, Trash2, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react'
 import type { ProductColor } from '@/types'
 import { cn } from '@/lib/utils'
+import { dottedStyle } from '@/lib/colorPattern'
 
 // Simple HEX validator
 const hexRe = /^#[0-9A-Fa-f]{6}$/
@@ -17,6 +18,7 @@ export function ProductColorsSection() {
   const [newName, setNewName] = useState('')
   const [newHex, setNewHex]   = useState('#CCCCCC')
   const [newBorder, setNewBorder] = useState(false)
+  const [newDots, setNewDots]     = useState(false)
 
   const [error, setError] = useState<string | null>(null)
 
@@ -45,6 +47,7 @@ export function ProductColorsSection() {
         name_he:       newName.trim(),
         hex:           newHex.toUpperCase(),
         has_border:    newBorder,
+        has_dots:      newDots,
         display_order: maxOrder + 1,
         is_active:     true,
       }),
@@ -55,6 +58,7 @@ export function ProductColorsSection() {
     setNewName('')
     setNewHex('#CCCCCC')
     setNewBorder(false)
+    setNewDots(false)
     load()
   }
 
@@ -144,7 +148,7 @@ export function ProductColorsSection() {
       <div className="border-t border-cream-dark dark:border-navy-light pt-4">
         <div className="label mb-2">צבע חדש</div>
         <div className="grid grid-cols-[auto_1fr_120px_auto] gap-2 items-center">
-          <HexPicker value={newHex} onChange={setNewHex} border={newBorder} />
+          <HexPicker value={newHex} onChange={setNewHex} border={newBorder} dots={newDots} />
           <input
             className="input text-sm"
             placeholder="שם בעברית"
@@ -168,15 +172,26 @@ export function ProductColorsSection() {
           </button>
         </div>
 
-        <label className="flex items-center gap-2 text-xs text-muted mt-3 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={newBorder}
-            onChange={e => setNewBorder(e.target.checked)}
-            className="rounded accent-gold"
-          />
-          עם מסגרת (לצבעים בהירים)
-        </label>
+        <div className="flex items-center gap-5 flex-wrap mt-3">
+          <label className="flex items-center gap-2 text-xs text-muted cursor-pointer">
+            <input
+              type="checkbox"
+              checked={newBorder}
+              onChange={e => setNewBorder(e.target.checked)}
+              className="rounded accent-gold"
+            />
+            עם מסגרת (לצבעים בהירים)
+          </label>
+          <label className="flex items-center gap-2 text-xs text-muted cursor-pointer">
+            <input
+              type="checkbox"
+              checked={newDots}
+              onChange={e => setNewDots(e.target.checked)}
+              className="rounded accent-gold"
+            />
+            מנומר (אפקט שיש)
+          </label>
+        </div>
 
         {error && (
           <div className="flex items-center gap-2 text-xs text-red-600 mt-3">
@@ -204,6 +219,7 @@ function ColorRow({
   const [name, setName] = useState(color.name_he)
   const [hex, setHex]   = useState(color.hex)
   const [border, setBorder] = useState(color.has_border)
+  const [dots, setDots]     = useState(!!color.has_dots)
   const [active, setActive] = useState(color.is_active !== false)
 
   // Debounce save
@@ -215,7 +231,7 @@ function ColorRow({
 
   return (
     <div className={cn(
-      'grid grid-cols-[auto_auto_1fr_120px_auto_auto_auto] gap-2 items-center bg-cream/40 dark:bg-navy-deeper/50 rounded-xl px-2 py-1.5 transition-opacity',
+      'grid grid-cols-[auto_auto_1fr_120px_auto_auto_auto_auto] gap-2 items-center bg-cream/40 dark:bg-navy-deeper/50 rounded-xl px-2 py-1.5 transition-opacity',
       !active && 'opacity-55'
     )}>
       {/* Reorder arrows */}
@@ -241,6 +257,7 @@ function ColorRow({
         value={hex}
         onChange={h => { setHex(h); schedule({ hex: h.toUpperCase() }) }}
         border={border}
+        dots={dots}
       />
       <input
         className="input text-sm border-transparent bg-transparent focus:border-gold"
@@ -261,6 +278,15 @@ function ColorRow({
           className="accent-gold"
         />
         מסגרת
+      </label>
+      <label className="flex items-center gap-1 text-[10px] text-muted whitespace-nowrap cursor-pointer px-1" title="מציג ניקודים עדינים על הצבע — לשיש או חומר מנומר">
+        <input
+          type="checkbox"
+          checked={dots}
+          onChange={e => { setDots(e.target.checked); onUpdate({ has_dots: e.target.checked }) }}
+          className="accent-gold"
+        />
+        מנומר
       </label>
       <button
         onClick={() => { const next = !active; setActive(next); onUpdate({ is_active: next }) }}
@@ -290,14 +316,15 @@ function ColorRow({
 
 // ─── Combined color preview + native picker ─────────────────────
 
-function HexPicker({ value, onChange, border }: { value: string; onChange: (v: string) => void; border?: boolean }) {
+function HexPicker({ value, onChange, border, dots }: { value: string; onChange: (v: string) => void; border?: boolean; dots?: boolean }) {
+  const safe = hexRe.test(value) ? value : '#DDDDDD'
   return (
     <label
       className={cn(
-        'relative h-9 w-9 rounded-full cursor-pointer block',
+        'relative h-9 w-9 rounded-full cursor-pointer block overflow-hidden',
         border ? 'border border-cream-dark dark:border-navy-light' : ''
       )}
-      style={{ backgroundColor: hexRe.test(value) ? value : '#DDD' }}
+      style={dottedStyle(safe, !!dots)}
     >
       <input
         type="color"
