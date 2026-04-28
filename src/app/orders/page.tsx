@@ -10,7 +10,6 @@ import { OrderDrawer } from '@/components/orders/OrderDrawer'
 import { NewOrderDrawer } from '@/components/orders/NewOrderDrawer'
 import { BulkStatusBar } from '@/components/orders/BulkStatusBar'
 import { OrderRow } from '@/components/orders/OrderRow'
-import { PendingOrdersBanner } from '@/components/orders/PendingOrdersBanner'
 import { ExportModal } from '@/components/orders/ExportModal'
 
 const DEFAULT_STATUSES: OrderStatus[] = ['received', 'preparing', 'ready', 'cancelled']
@@ -347,9 +346,6 @@ export default function OrdersPage() {
       </div>
 
       {showExport && <ExportModal onClose={() => setShowExport(false)} />}
-
-      {/* Pending orders from DataStore (paid but no phone match) */}
-      <PendingOrdersBanner onOrderAdded={fetchOrders} />
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
