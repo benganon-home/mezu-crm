@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Palette, Plus, Trash2, GripVertical, AlertTriangle } from 'lucide-react'
+import { Palette, Plus, Trash2, AlertTriangle, ChevronUp, ChevronDown } from 'lucide-react'
 import type { ProductColor } from '@/types'
 import { cn } from '@/lib/utils'
 
@@ -74,6 +74,36 @@ export function ProductColorsSection() {
     await fetch(`/api/product-colors/${id}`, { method: 'DELETE' })
   }
 
+  // Move a color one step earlier (up) or later (down) in the visual order.
+  // The list shown to customers in the store reads right-to-left top-to-bottom,
+  // so "up" here = earlier (rightmost on the storefront).
+  const moveColor = async (id: string, dir: -1 | 1) => {
+    const i = colors.findIndex(c => c.id === id)
+    const j = i + dir
+    if (i < 0 || j < 0 || j >= colors.length) return
+
+    const next = [...colors]
+    ;[next[i], next[j]] = [next[j], next[i]]
+    // Re-derive display_order from the new array index so values stay 0..N-1
+    next.forEach((c, idx) => { c.display_order = idx })
+    setColors(next)
+
+    // Persist both swapped rows. If they had identical display_order before,
+    // resetting via index removes any prior collisions for free.
+    await Promise.all([
+      fetch(`/api/product-colors/${next[i].id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ display_order: i }),
+      }),
+      fetch(`/api/product-colors/${next[j].id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ display_order: j }),
+      }),
+    ])
+  }
+
   return (
     <div className="surface p-5">
       <div className="flex items-center gap-2 mb-4">
@@ -84,6 +114,7 @@ export function ProductColorsSection() {
         הצבעים שיוצעו ללקוחות בעמוד כל מוצר באתר. הזינו קוד צבע HEX (למשל <span className="ltr">#61615F</span>).
         סמנו {'"'}עם מסגרת{'"'} לצבעים בהירים כמו לבן או בז׳ כדי שהעיגול ייראה ברור.
         צבע שסימנתם כ{'"'}אזל{'"'} לא יוצג באתר.
+        סדר התצוגה ניתן לשינוי באמצעות החיצים — הצבע הראשון ברשימה יוצג ראשון מימין באתר.
       </p>
 
       {/* List */}
@@ -91,12 +122,16 @@ export function ProductColorsSection() {
         <div className="text-sm text-muted">טוען...</div>
       ) : (
         <div className="flex flex-col gap-2 mb-5">
-          {colors.map(c => (
+          {colors.map((c, i) => (
             <ColorRow
               key={c.id}
               color={c}
+              isFirst={i === 0}
+              isLast={i === colors.length - 1}
               onUpdate={patch => updateColor(c.id, patch)}
               onDelete={() => removeColor(c.id)}
+              onMoveUp={() => moveColor(c.id, -1)}
+              onMoveDown={() => moveColor(c.id, 1)}
             />
           ))}
           {colors.length === 0 && (
@@ -156,11 +191,15 @@ export function ProductColorsSection() {
 // ─── Single color row ──────────────────────────────────────────
 
 function ColorRow({
-  color, onUpdate, onDelete,
+  color, onUpdate, onDelete, onMoveUp, onMoveDown, isFirst, isLast,
 }: {
-  color:    ProductColor
-  onUpdate: (patch: Partial<ProductColor>) => void
-  onDelete: () => void
+  color:      ProductColor
+  isFirst:    boolean
+  isLast:     boolean
+  onUpdate:   (patch: Partial<ProductColor>) => void
+  onDelete:   () => void
+  onMoveUp:   () => void
+  onMoveDown: () => void
 }) {
   const [name, setName] = useState(color.name_he)
   const [hex, setHex]   = useState(color.hex)
@@ -176,9 +215,28 @@ function ColorRow({
 
   return (
     <div className={cn(
-      'grid grid-cols-[auto_1fr_120px_auto_auto_auto] gap-2 items-center bg-cream/40 dark:bg-navy-deeper/50 rounded-xl px-2 py-1.5 transition-opacity',
+      'grid grid-cols-[auto_auto_1fr_120px_auto_auto_auto] gap-2 items-center bg-cream/40 dark:bg-navy-deeper/50 rounded-xl px-2 py-1.5 transition-opacity',
       !active && 'opacity-55'
     )}>
+      {/* Reorder arrows */}
+      <div className="flex flex-col -gap-px">
+        <button
+          onClick={onMoveUp}
+          disabled={isFirst}
+          title="העבר למעלה"
+          className="w-5 h-4 flex items-center justify-center text-muted hover:text-gold disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+        >
+          <ChevronUp size={12} />
+        </button>
+        <button
+          onClick={onMoveDown}
+          disabled={isLast}
+          title="העבר למטה"
+          className="w-5 h-4 flex items-center justify-center text-muted hover:text-gold disabled:opacity-25 disabled:cursor-not-allowed transition-colors"
+        >
+          <ChevronDown size={12} />
+        </button>
+      </div>
       <HexPicker
         value={hex}
         onChange={h => { setHex(h); schedule({ hex: h.toUpperCase() }) }}
