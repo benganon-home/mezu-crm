@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
-  ShoppingBag, Users, Bell, BarChart2, Settings, Package, Layers,
+  ShoppingBag, Users, Bell, BarChart2, Settings, Package, Layers, Receipt,
   Menu, X, ChevronsLeft
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { href: '/products',    icon: Package,     label: 'מוצרים'   },
   { href: '/categories', icon: Layers,      label: 'קטגוריות' },
   { href: '/reminders',  icon: Bell,        label: 'תזכורות'  },
+  { href: '/expenses',  icon: Receipt,     label: 'הוצאות'   },
   { href: '/analytics', icon: BarChart2,   label: 'אנליטיקס' },
   { href: '/settings',  icon: Settings,    label: 'הגדרות'   },
 ] as const

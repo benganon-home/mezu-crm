@@ -150,3 +150,104 @@ from orders o
 join customers c on c.id = o.customer_id
 left join order_items i on i.order_id = o.id
 group by o.id, c.id;
+
+-- ─── EXPENSES (הוצאות עסקיות) ────────────────────────────────
+-- CRM is the source of truth. Each row is one invoice/receipt.
+-- Historical rows imported from accountant's export (Excel) preserve
+-- their external_serial/external_personal_number so re-imports are idempotent.
+
+create table if not exists expense_categories (
+  id            uuid primary key default uuid_generate_v4(),
+  name_he       text unique not null,
+  color         text default '#9490B8',
+  display_order int default 100,
+  is_active     boolean default true,
+  created_at    timestamptz default now()
+);
+
+-- Seed core categories (idempotent)
+insert into expense_categories (name_he, color, display_order) values
+  ('שיווק',         '#E879A6', 10),
+  ('טלקום',         '#7AA8E8', 20),
+  ('משרד',          '#6C5CE7', 30),
+  ('משלוחים',       '#F59E0B', 40),
+  ('חשבונות',       '#22C55E', 50),
+  ('כלים-תוכנה',    '#06B6D4', 60),
+  ('נסיעות',        '#A855F7', 70),
+  ('ספקים',         '#EAB308', 80),
+  ('אחר',           '#9490B8', 999)
+on conflict (name_he) do nothing;
+
+create table if not exists expenses (
+  id                       uuid primary key default uuid_generate_v4(),
+  document_date            date,                     -- תאריך מסמך — actual invoice date (sort key)
+  recorded_at              date,                     -- תאריך יצירה — when the source system received it
+  vendor                   text not null,            -- שם ספק
+  category_id              uuid references expense_categories(id) on delete set null,
+  amount                   numeric(12,2),            -- סכום (nullable for archived/duplicate-suspect)
+  vat_amount               numeric(12,2),            -- mp״מ (nullable; can be auto-derived from amount)
+  invoice_number           text,                     -- מספר מסמך (real number only)
+  status                   text not null default 'active',  -- active | archived | duplicate_suspect
+  duplicate_of_serial      text,                     -- when "חשוד ככפול עם מ.ס. X"
+  external_serial          text,                     -- מספר סידורי
+  external_personal_number text,                     -- מספור אישי
+  invoice_url              text,                     -- PDF in Storage
+  payment_method           text,                     -- אשראי | העברה | מזומן | הוראת קבע
+  notes                    text,                     -- הערות
+  sent_to_accountant_at    timestamptz,              -- last time the WA share was triggered
+  created_at               timestamptz default now(),
+  updated_at               timestamptz default now()
+);
+
+create index if not exists expenses_document_date_idx on expenses (document_date desc);
+create index if not exists expenses_vendor_idx        on expenses (vendor);
+create index if not exists expenses_status_idx        on expenses (status);
+create index if not exists expenses_category_idx      on expenses (category_id);
+-- idempotent re-import: same external_serial → existing row updates, never duplicates
+create unique index if not exists expenses_external_serial_uniq
+  on expenses (external_serial) where external_serial is not null;
+
+create trigger expenses_updated_at before update on expenses for each row execute function update_updated_at();
+
+alter table expenses           enable row level security;
+alter table expense_categories enable row level security;
+create policy "auth_only" on expenses           for all using (auth.role() = 'authenticated');
+create policy "auth_only" on expense_categories for all using (auth.role() = 'authenticated');
+
+-- ─── RECURRING EXPENSE TEMPLATES ─────────────────────────────
+-- "I expect Y₪ from vendor X every month around day D" → drives the
+-- "missing expenses" alert when we hit day D and nothing matched.
+create table if not exists recurring_expenses (
+  id                     uuid primary key default uuid_generate_v4(),
+  vendor                 text not null,
+  category_id            uuid references expense_categories(id) on delete set null,
+  expected_amount        numeric(12,2),       -- nullable when amount varies
+  expected_day_of_month  int,                 -- 1-31, nullable for "monthly, no specific day"
+  cadence                text not null default 'monthly',  -- monthly | quarterly | yearly
+  active_from            date,
+  active_until           date,
+  is_active              boolean default true,
+  notes                  text,
+  created_at             timestamptz default now(),
+  updated_at             timestamptz default now()
+);
+
+create trigger recurring_expenses_updated_at before update on recurring_expenses for each row execute function update_updated_at();
+
+alter table recurring_expenses enable row level security;
+create policy "auth_only" on recurring_expenses for all using (auth.role() = 'authenticated');
+
+-- ─── ACCOUNTANT CONTACT (single-row settings) ────────────────
+-- Stored in app_settings as a key/value blob to avoid one-off tables.
+create table if not exists app_settings (
+  key        text primary key,
+  value      jsonb not null,
+  updated_at timestamptz default now()
+);
+alter table app_settings enable row level security;
+create policy "auth_only" on app_settings for all using (auth.role() = 'authenticated');
+
+-- Storage bucket for expense PDFs (run separately in Supabase dashboard):
+-- insert into storage.buckets (id, name, public) values ('expense-invoices', 'expense-invoices', false);
+-- create policy "auth_upload" on storage.objects for insert with check (bucket_id = 'expense-invoices' and auth.role() = 'authenticated');
+-- create policy "auth_read"   on storage.objects for select using   (bucket_id = 'expense-invoices' and auth.role() = 'authenticated');

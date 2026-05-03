@@ -266,6 +266,67 @@ export const ITEM_COLOR_MAP: Record<string, { hex: string; border?: boolean }> =
   'לבן שלג':           { hex: '#FFFFFF', border: true },
 }
 
+// ─── Expenses (הוצאות) ───────────────────────────────────────────────────────
+
+export type ExpenseStatus = 'active' | 'archived' | 'duplicate_suspect'
+export type ExpenseCadence = 'monthly' | 'quarterly' | 'yearly'
+
+export interface ExpenseCategory {
+  id: string
+  name_he: string
+  color: string
+  display_order: number
+  is_active: boolean
+  created_at?: string
+}
+
+export interface Expense {
+  id: string
+  document_date?: string | null
+  recorded_at?: string | null
+  vendor: string
+  category_id?: string | null
+  amount?: number | null
+  vat_amount?: number | null
+  invoice_number?: string | null
+  status: ExpenseStatus
+  duplicate_of_serial?: string | null
+  external_serial?: string | null
+  external_personal_number?: string | null
+  invoice_url?: string | null
+  payment_method?: string | null
+  notes?: string | null
+  sent_to_accountant_at?: string | null
+  created_at: string
+  updated_at: string
+  // joined
+  category?: ExpenseCategory | null
+}
+
+export interface RecurringExpense {
+  id: string
+  vendor: string
+  category_id?: string | null
+  expected_amount?: number | null
+  expected_day_of_month?: number | null
+  cadence: ExpenseCadence
+  active_from?: string | null
+  active_until?: string | null
+  is_active: boolean
+  notes?: string | null
+  created_at: string
+  updated_at: string
+  // joined / computed
+  category?: ExpenseCategory | null
+  is_missing_this_month?: boolean
+}
+
+export const EXPENSE_STATUS_LABELS: Record<ExpenseStatus, string> = {
+  active:             'פעיל',
+  archived:           'בארכיון',
+  duplicate_suspect:  'חשוד ככפול',
+}
+
 // ─── API response types ───────────────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {

@@ -9,6 +9,7 @@ import { ProductColorsSection } from '@/components/settings/ProductColorsSection
 import { CouponsSection } from '@/components/settings/CouponsSection'
 import { BannersSection } from '@/components/settings/BannersSection'
 import { PopupsSection } from '@/components/settings/PopupsSection'
+import { AccountantSection } from '@/components/settings/AccountantSection'
 
 const DEFAULT_TEMPLATES = {
   ready:   'שלום {שם}, ההזמנה שלך מ-MEZU מוכנה! 🎉 נשמח לתאם משלוח / איסוף 🙏',
@@ -98,6 +99,9 @@ export default function SettingsPage() {
           </button>
         </div>
       </div>
+
+      {/* Accountant — used by /expenses WhatsApp share */}
+      <AccountantSection />
 
       {/* Sales Rules */}
       <SalesRulesSection />
