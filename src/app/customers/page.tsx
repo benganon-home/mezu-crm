@@ -87,6 +87,7 @@ export default function CustomersPage() {
 
       {/* Table */}
       <div className="surface overflow-hidden">
+        <div className="table-scroll">
         <table className="crm-table">
           <thead>
             <tr>
@@ -154,6 +155,7 @@ export default function CustomersPage() {
             ))}
           </tbody>
         </table>
+        </div>
 
         {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-2.5 border-t border-cream-dark dark:border-navy-light text-xs text-muted">

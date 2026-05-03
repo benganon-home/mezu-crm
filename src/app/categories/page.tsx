@@ -201,7 +201,7 @@ function CategoryForm({
 
   return (
     <div className="surface p-5 flex flex-col gap-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <div className="label mb-1.5">שם הקטגוריה *</div>
           <input
@@ -273,7 +273,7 @@ function CategoryForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <div className="label mb-1.5">סדר תצוגה</div>
           <input

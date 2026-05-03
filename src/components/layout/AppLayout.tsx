@@ -128,7 +128,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           </button>
         </div>
 
-        <div className="p-5 md:p-7 w-full">
+        <div className="p-3 sm:p-5 md:p-7 w-full">
           {children}
         </div>
       </main>

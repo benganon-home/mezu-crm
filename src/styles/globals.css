@@ -259,4 +259,25 @@ h3 { font-size: 16px; font-weight: 500; }
     width: 100vw;
     right: -100vw;
   }
+
+  /* Tighter table cells so all columns fit better on small screens */
+  .crm-table th,
+  .crm-table td {
+    padding: 8px 10px;
+  }
+
+  /* Smaller h1 to leave room for action buttons in page headers */
+  h1 { font-size: 18px; }
+}
+
+/* ─── Mobile horizontal-scroll wrapper for wide tables ──────── */
+/* Usage: wrap a <table class="crm-table"> in <div class="table-scroll">. */
+/* Below md, scrolls horizontally. Forces a min-width so all columns      */
+/* render at desktop sizing — user pans across to see everything.         */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.table-scroll > .crm-table {
+  min-width: 720px;
 }

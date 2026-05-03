@@ -109,8 +109,8 @@ export default function ProductsPage() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex gap-2 items-center">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-2 md:flex-row md:gap-2 md:items-center">
+        <div className="relative md:flex-1">
           <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
             className="input pr-9 w-full"
@@ -119,15 +119,15 @@ export default function ProductsPage() {
             onChange={e => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-1.5 items-center shrink-0">
+        <div className="flex gap-1.5 items-center overflow-x-auto pb-0.5 md:shrink-0 md:overflow-visible md:pb-0">
           {CATEGORIES.map(c => (
-            <button key={c} onClick={() => setCategory(c)} className={cn('chip-btn', category === c && 'chip-btn-active')}>{c}</button>
+            <button key={c} onClick={() => setCategory(c)} className={cn('chip-btn whitespace-nowrap', category === c && 'chip-btn-active')}>{c}</button>
           ))}
-          <button onClick={() => setShowInactive(v => !v)} className={cn('chip-btn', showInactive && 'chip-btn-active')}>לא פעילים</button>
+          <button onClick={() => setShowInactive(v => !v)} className={cn('chip-btn whitespace-nowrap', showInactive && 'chip-btn-active')}>לא פעילים</button>
         </div>
 
         {/* View toggle */}
-        <div className="flex items-center border border-cream-dark dark:border-navy-light rounded-lg overflow-hidden shrink-0">
+        <div className="flex items-center self-start md:self-auto border border-cream-dark dark:border-navy-light rounded-lg overflow-hidden shrink-0">
           <button
             onClick={() => setView('grid')}
             className={cn('p-2 transition-colors', view === 'grid' ? 'bg-navy text-cream dark:bg-gold dark:text-navy' : 'text-muted hover:text-navy dark:hover:text-cream')}
@@ -201,22 +201,26 @@ export default function ProductsPage() {
 
       {!loading && filtered.length > 0 && view === 'list' && (
         <div className="surface overflow-hidden">
-          {/* List header */}
-          <div className="flex items-center gap-4 px-4 py-2 border-b border-cream-dark dark:border-navy-light bg-cream dark:bg-navy-dark text-[11px] font-medium text-muted">
-            <div className="w-12 shrink-0" />
-            <div className="flex-1">שם המוצר</div>
-            <div className="w-[90px] shrink-0">קטגוריה</div>
-            <div className="w-[180px] shrink-0">מידות ומחירים</div>
-            <div className="w-[72px] shrink-0" />
+          <div className="overflow-x-auto">
+            <div className="min-w-[640px]">
+              {/* List header */}
+              <div className="flex items-center gap-4 px-4 py-2 border-b border-cream-dark dark:border-navy-light bg-cream dark:bg-navy-dark text-[11px] font-medium text-muted">
+                <div className="w-12 shrink-0" />
+                <div className="flex-1">שם המוצר</div>
+                <div className="w-[90px] shrink-0">קטגוריה</div>
+                <div className="w-[180px] shrink-0">מידות ומחירים</div>
+                <div className="w-[72px] shrink-0" />
+              </div>
+              {filtered.map(p => (
+                <ProductListRow
+                  key={p.id}
+                  product={p}
+                  onEdit={() => openEdit(p)}
+                  onDuplicate={() => duplicateProduct(p)}
+                />
+              ))}
+            </div>
           </div>
-          {filtered.map(p => (
-            <ProductListRow
-              key={p.id}
-              product={p}
-              onEdit={() => openEdit(p)}
-              onDuplicate={() => duplicateProduct(p)}
-            />
-          ))}
         </div>
       )}
 
