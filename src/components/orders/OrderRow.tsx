@@ -123,7 +123,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                   </span>
                 )}
                 {item.sign_text && (
-                  <span className="text-gold font-medium truncate max-w-[140px]">"{item.sign_text.replace('\n', '>')}"</span>
+                  <span className="text-gold font-medium truncate max-w-[140px]">{`"${item.sign_text.replace('\n', '>')}"`}</span>
                 )}
                 {item.font && (
                   <span style={{ fontFamily: `'${item.font}', sans-serif` }}>{item.font}</span>
