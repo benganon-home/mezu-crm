@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { Plus, Search, Upload, ChevronDown, FileText, ExternalLink, MessageCircle, AlertTriangle, Repeat } from 'lucide-react'
-import { Expense, ExpenseCategory, ExpenseStatus, EXPENSE_STATUS_LABELS, RecurringExpense } from '@/types'
+import { Expense, ExpenseCategory, ExpenseStatus, EXPENSE_STATUS_LABELS } from '@/types'
 import { formatPrice, formatDate, buildWaLink, cn } from '@/lib/utils'
 import { ExpenseDrawer } from '@/components/expenses/ExpenseDrawer'
 import { ImportXlsxModal } from '@/components/expenses/ImportXlsxModal'
@@ -30,7 +30,9 @@ export default function ExpensesPage() {
   const [expenses, setExpenses]       = useState<Expense[]>([])
   const [count, setCount]             = useState(0)
   const [categories, setCategories]   = useState<ExpenseCategory[]>([])
-  const [missing, setMissing]         = useState<RecurringExpense[]>([])
+  const [missingCount, setMissingCount] = useState(0)
+  const [missingPreview, setMissingPreview] = useState<string[]>([])
+  const [missingHighCount, setMissingHighCount] = useState(0)
   const [accountantPhone, setAccountantPhone] = useState<string>('')
 
   const [loading, setLoading]         = useState(true)
@@ -50,10 +52,20 @@ export default function ExpensesPage() {
   }, [])
 
   const fetchMissing = useCallback(async () => {
-    const res = await fetch('/api/expenses/missing')
+    const res = await fetch('/api/expenses/gaps')
     if (res.ok) {
       const json = await res.json()
-      setMissing(json.data || [])
+      const gaps: Array<{ vendor: string; confidence: string }> = json.gaps || []
+      setMissingCount(gaps.length)
+      setMissingHighCount(gaps.filter(g => g.confidence === 'high').length)
+      // Distinct top vendors for the banner preview
+      const seen = new Set<string>()
+      const preview: string[] = []
+      for (const g of gaps) {
+        if (!seen.has(g.vendor)) { seen.add(g.vendor); preview.push(g.vendor) }
+        if (preview.length === 3) break
+      }
+      setMissingPreview(preview)
     }
   }, [])
 
@@ -183,14 +195,24 @@ export default function ExpensesPage() {
       </div>
 
       {/* Missing alert banner */}
-      {missing.length > 0 && (
-        <Link href="/expenses/missing" className="surface px-4 py-3 flex items-center gap-3 border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100/70 dark:hover:bg-amber-900/30 transition-colors">
-          <AlertTriangle size={18} className="text-amber-600 shrink-0" />
+      {missingCount > 0 && (
+        <Link href="/expenses/missing" className={cn(
+          'surface px-4 py-3 flex items-center gap-3 transition-colors',
+          missingHighCount > 0
+            ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 hover:bg-red-100/70 dark:hover:bg-red-900/30'
+            : 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100/70 dark:hover:bg-amber-900/30',
+        )}>
+          <AlertTriangle size={18} className={missingHighCount > 0 ? 'text-red-600 shrink-0' : 'text-amber-600 shrink-0'} />
           <div className="flex-1 text-sm">
-            <span className="font-medium text-amber-900 dark:text-amber-200">{missing.length} הוצאות חסרות החודש</span>
-            <span className="text-amber-700/80 dark:text-amber-300/80"> — {missing.slice(0, 3).map(m => m.vendor).join(', ')}{missing.length > 3 ? '...' : ''}</span>
+            <span className={cn('font-medium', missingHighCount > 0 ? 'text-red-900 dark:text-red-200' : 'text-amber-900 dark:text-amber-200')}>
+              {missingCount} פוטנציאליות הוצאות חסרות
+              {missingHighCount > 0 && ` (${missingHighCount} בטוח)`}
+            </span>
+            <span className={missingHighCount > 0 ? 'text-red-700/80 dark:text-red-300/80' : 'text-amber-700/80 dark:text-amber-300/80'}>
+              {' — '}{missingPreview.join(', ')}{missingCount > missingPreview.length ? '...' : ''}
+            </span>
           </div>
-          <ExternalLink size={14} className="text-amber-600" />
+          <ExternalLink size={14} className={missingHighCount > 0 ? 'text-red-600' : 'text-amber-600'} />
         </Link>
       )}
 
