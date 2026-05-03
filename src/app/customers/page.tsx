@@ -85,9 +85,56 @@ export default function CustomersPage() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="surface overflow-hidden">
-        <div className="table-scroll">
+      {/* Mobile cards */}
+      <div className="md:hidden flex flex-col gap-2">
+        {loading && <div className="text-center py-8 text-muted text-sm">טוען...</div>}
+        {!loading && customers.length === 0 && (
+          <div className="text-center py-8 text-muted text-sm">לא נמצאו לקוחות</div>
+        )}
+        {customers.map(c => (
+          <div
+            key={c.id}
+            onClick={() => setActive(c)}
+            className="surface px-3 py-3 flex items-start gap-3 active:bg-gold/5"
+          >
+            <div className="w-10 h-10 rounded-full bg-navy/10 dark:bg-cream/10 flex items-center justify-center flex-shrink-0 text-sm font-semibold text-navy dark:text-cream">
+              {c.name.charAt(0)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-sm truncate">{c.name}</div>
+              <div className="flex items-center gap-1 mt-0.5">
+                <span className="ltr text-xs text-muted" onClick={e => e.stopPropagation()}>{formatPhone(c.phone)}</span>
+                <CopyButton text={c.phone} />
+              </div>
+              {c.address && (
+                <div className="text-[11px] text-muted mt-1 truncate">{c.address}</div>
+              )}
+              <div className="flex items-center gap-3 mt-1.5 text-[11px] text-muted">
+                <span>{c.total_orders ?? 0} הזמנות</span>
+                <span className="ltr font-medium text-gold">{formatPrice(c.total_spent ?? 0)}</span>
+                {c.last_order_at && (
+                  <span className="ltr">{formatDate(c.last_order_at)}</span>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+              <a
+                href={buildWaLink(c.phone, `שלום ${c.name}, `)}
+                target="_blank"
+                rel="noreferrer"
+                className="text-muted hover:text-[#25D366] transition-colors p-1"
+                title="WhatsApp"
+              >
+                <MessageCircle size={17} strokeWidth={1.5} />
+              </a>
+              <ChevronLeft size={14} className="text-muted" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block surface overflow-hidden">
         <table className="crm-table">
           <thead>
             <tr>
@@ -155,24 +202,23 @@ export default function CustomersPage() {
             ))}
           </tbody>
         </table>
-        </div>
+      </div>
 
-        {/* Pagination */}
-        <div className="flex items-center justify-between px-4 py-2.5 border-t border-cream-dark dark:border-navy-light text-xs text-muted">
-          <span>מציג {customers.length} מתוך {count}</span>
-          <div className="flex gap-1">
-            {Array.from({ length: Math.ceil(count / 60) }, (_, i) => i + 1).slice(0, 7).map(p => (
-              <button
-                key={p}
-                onClick={() => setPage(p)}
-                className={cn('w-7 h-7 rounded text-xs',
-                  page === p ? 'bg-navy text-cream dark:bg-gold dark:text-navy' : 'hover:bg-cream dark:hover:bg-navy-light'
-                )}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
+      {/* Pagination — shared */}
+      <div className="surface flex items-center justify-between px-4 py-2.5 text-xs text-muted">
+        <span>מציג {customers.length} מתוך {count}</span>
+        <div className="flex gap-1">
+          {Array.from({ length: Math.ceil(count / 60) }, (_, i) => i + 1).slice(0, 7).map(p => (
+            <button
+              key={p}
+              onClick={() => setPage(p)}
+              className={cn('w-7 h-7 rounded text-xs',
+                page === p ? 'bg-navy text-cream dark:bg-gold dark:text-navy' : 'hover:bg-cream dark:hover:bg-navy-light'
+              )}
+            >
+              {p}
+            </button>
+          ))}
         </div>
       </div>
 

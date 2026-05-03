@@ -438,10 +438,10 @@ export default function OrdersPage() {
 
       {/* Orders */}
       <div className="surface overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="md:overflow-x-auto">
 
-        {/* Sticky column headers */}
-        <div className="sticky top-0 z-10 text-[11px] font-medium text-muted border-b border-cream-dark dark:border-navy-light bg-cream dark:bg-navy-dark min-w-[820px]">
+        {/* Sticky column headers — desktop only */}
+        <div className="hidden md:block sticky top-0 z-10 text-[11px] font-medium text-muted border-b border-cream-dark dark:border-navy-light bg-cream dark:bg-navy-dark md:min-w-[820px]">
           <div className="flex mx-2">
             <div className="w-[260px] shrink-0 px-4 py-2.5 border-l border-cream-dark dark:border-navy-light">
               פרטי ההזמנה
@@ -460,12 +460,12 @@ export default function OrdersPage() {
           </div>
         </div>
 
-        {loading && <div className="text-center py-12 text-muted text-sm min-w-[820px]">טוען...</div>}
+        {loading && <div className="text-center py-12 text-muted text-sm md:min-w-[820px]">טוען...</div>}
         {!loading && paginatedOrders.length === 0 && (
-          <div className="text-center py-12 text-muted text-sm min-w-[820px]">לא נמצאו הזמנות</div>
+          <div className="text-center py-12 text-muted text-sm md:min-w-[820px]">לא נמצאו הזמנות</div>
         )}
 
-        <div className="flex flex-col gap-2 p-2 bg-[#EEEDF5] dark:bg-navy-deeper min-w-[820px]">
+        <div className="flex flex-col gap-2 p-2 bg-[#EEEDF5] dark:bg-navy-deeper md:min-w-[820px]">
           {paginatedOrders.map(order => (
             <OrderRow
               key={order.id}

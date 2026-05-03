@@ -36,7 +36,121 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
 
   return (
     <>
-    <div className="flex min-h-[80px] rounded-lg border border-cream-dark dark:border-navy-light/60 overflow-hidden bg-white dark:bg-navy-dark">
+    {/* ──────────────── Mobile card (hidden on desktop) ──────────── */}
+    <div className="md:hidden rounded-lg border border-cream-dark dark:border-navy-light/60 overflow-hidden bg-white dark:bg-navy-dark">
+
+      {/* Customer header (tap → drawer) */}
+      <div
+        onClick={onClick}
+        className="px-3 py-3 flex items-start gap-3 cursor-pointer active:bg-gold/10"
+      >
+        <div className="w-10 h-10 rounded-full bg-navy/10 dark:bg-cream/10 flex items-center justify-center flex-shrink-0 text-sm font-semibold text-navy dark:text-cream select-none">
+          {getInitials(customer?.name || '')}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1.5 text-[10px] text-muted tabular-nums leading-none">
+            {formatDateShort(order.created_at)}
+            {order.is_pinned && <Pin size={9} className="text-gold" />}
+          </div>
+          <div className="font-medium text-sm truncate mt-0.5">{customer?.name}</div>
+          <div className="ltr text-xs text-muted">{customer?.phone}</div>
+          <div className="flex items-start gap-1.5 text-[11px] text-muted mt-1">
+            {order.delivery_type === 'delivery'
+              ? <Truck size={11} strokeWidth={1.5} className="mt-0.5 shrink-0" />
+              : <Home  size={11} strokeWidth={1.5} className="mt-0.5 shrink-0" />
+            }
+            <span className="truncate">{order.delivery_type === 'pickup' ? 'איסוף עצמי' : (order.delivery_address || '—')}</span>
+          </div>
+          {order.notes && (
+            <div className="flex items-start gap-1.5 text-[11px] text-muted mt-1">
+              <StickyNote size={11} className="text-gold mt-0.5 shrink-0" strokeWidth={1.5} />
+              <span className="truncate">{order.notes}</span>
+            </div>
+          )}
+        </div>
+        <div className="ltr text-base font-semibold text-gold tabular-nums shrink-0">
+          {formatPrice(items.reduce((s, i) => s + (i.price || 0), 0))}
+        </div>
+      </div>
+
+      {/* Items list */}
+      {items.length === 0 && (
+        <div className="px-3 py-3 text-xs text-muted/50 border-t border-cream-dark/50 dark:border-navy-light/30">—</div>
+      )}
+      {items.map((item, idx) => {
+        const colorEntry = item.color ? ITEM_COLOR_MAP[item.color] : null
+        const isSelected = selectedItemIds.has(item.id)
+        return (
+          <div
+            key={item.id}
+            onClick={e => onToggleItem(item.id, e)}
+            className={cn(
+              'flex items-start gap-2.5 px-3 py-2.5 border-t border-cream-dark/50 dark:border-navy-light/30 cursor-pointer active:bg-gold/10',
+              isSelected && 'bg-gold/10 dark:bg-gold/10',
+            )}
+          >
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => {}}
+              className="mt-1 accent-gold pointer-events-none shrink-0"
+            />
+            <div className="w-11 h-11 rounded-lg bg-cream-dark/60 dark:bg-navy-light/30 flex items-center justify-center overflow-hidden shrink-0">
+              {item.product?.images?.[0]
+                ? <img src={item.product.images[0]} alt={item.item_name} className="w-full h-full object-cover" />
+                : <ImageIcon size={16} className="text-muted/30" strokeWidth={1.5} />
+              }
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start gap-2">
+                <div className="flex-1 min-w-0 text-sm">
+                  <span className="font-medium text-navy dark:text-cream/90">{item.item_name}</span>
+                  {item.size && <span className="text-muted"> · {item.size} ס״מ</span>}
+                  {item.model && <span className="text-muted"> · {item.model}</span>}
+                </div>
+                <span className="ltr text-sm font-medium tabular-nums shrink-0">
+                  {item.price > 0 ? formatPrice(item.price) : '—'}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[11px] text-muted">
+                {item.color && (
+                  <span className="flex items-center gap-1">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full border border-black/15 inline-block"
+                      style={{ backgroundColor: colorEntry?.hex ?? '#C8C5D8' }}
+                    />
+                    {item.color}
+                  </span>
+                )}
+                {item.sign_text && (
+                  <span className="text-gold font-medium truncate max-w-[140px]">"{item.sign_text.replace('\n', '>')}"</span>
+                )}
+                {item.font && (
+                  <span style={{ fontFamily: `'${item.font}', sans-serif` }}>{item.font}</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 mt-2" onClick={e => e.stopPropagation()}>
+                <ItemStatusDropdown
+                  itemId={item.id}
+                  status={item.status}
+                  onStatusChange={onItemStatusChange}
+                />
+                <button
+                  onClick={e => handleDeleteItem(item, e)}
+                  disabled={deletingId === item.id}
+                  className="ml-auto text-muted/40 hover:text-red-500 active:text-red-500 transition-colors disabled:opacity-30 p-1"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })}
+    </div>
+
+    {/* ──────────────── Desktop table row (hidden on mobile) ─────── */}
+    <div className="hidden md:flex min-h-[80px] rounded-lg border border-cream-dark dark:border-navy-light/60 overflow-hidden bg-white dark:bg-navy-dark">
 
       {/* ── Right panel: order info ───────────────────────── */}
       <div
