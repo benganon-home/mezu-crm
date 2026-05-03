@@ -993,6 +993,7 @@ function EditableItemCard({
   const [editSize, setEditSize]       = useState(item.size || '')
   const [editColor, setEditColor]     = useState(item.color || '')
   const [editSignText, setEditSignText] = useState(item.sign_text || '')
+  const [editApartmentNumber, setEditApartmentNumber] = useState(item.apartment_number || '')
   const [editFont, setEditFont]       = useState(item.font || '')
   const [editPrice, setEditPrice]     = useState(String(item.price || 0))
   const [inlinePrice, setInlinePrice] = useState(String(item.price || 0))
@@ -1023,14 +1024,15 @@ function EditableItemCard({
   const handleSave = async () => {
     setSaving(true)
     await onSave({
-      item_name:  editProduct?.name || item.item_name,
-      model:      editProduct?.category || item.model,
-      product_id: editProduct?.id || item.product_id,
-      size:       editSize || null,
-      color:      editColor || null,
-      sign_text:  editSignText || null,
-      font:       editFont || null,
-      price:      parseFloat(editPrice) || 0,
+      item_name:        editProduct?.name || item.item_name,
+      model:            editProduct?.category || item.model,
+      product_id:       editProduct?.id || item.product_id,
+      size:             editSize || null,
+      color:            editColor || null,
+      sign_text:        editSignText || null,
+      apartment_number: editApartmentNumber.trim() || null,
+      font:             editFont || null,
+      price:            parseFloat(editPrice) || 0,
     })
     setSaving(false)
     setEditing(false)
@@ -1058,6 +1060,11 @@ function EditableItemCard({
           {item.sign_text && (
             <div className="text-xs text-gold mt-0.5 font-medium">
               {item.sign_text.includes('\n') ? item.sign_text.replace('\n', '›') : item.sign_text}
+            </div>
+          )}
+          {item.apartment_number && (
+            <div className="mt-1 inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 font-medium ltr">
+              דירה {item.apartment_number}
             </div>
           )}
         </div>
@@ -1131,6 +1138,16 @@ function EditableItemCard({
       <ColorPicker value={editColor} onChange={setEditColor} />
 
       <input className="input text-sm" placeholder="טקסט על השלט" value={editSignText} onChange={e => setEditSignText(e.target.value)} maxLength={20} />
+
+      <input
+        className="input text-sm ltr"
+        placeholder="מס׳ דירה (אם רלוונטי)"
+        value={editApartmentNumber}
+        onChange={e => setEditApartmentNumber(e.target.value.replace(/[^0-9]/g, '').slice(0, 4))}
+        inputMode="numeric"
+        maxLength={4}
+        dir="ltr"
+      />
 
       <div className="relative">
         <select className="input text-sm w-full appearance-none pr-3 pl-7" value={editFont} onChange={e => setEditFont(e.target.value)}>

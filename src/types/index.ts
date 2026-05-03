@@ -160,6 +160,7 @@ export interface OrderItem {
   font?: string | null
   sign_type?: string | null
   size?: string | null
+  apartment_number?: string | null
   price: number
   status: OrderStatus
   created_at: string

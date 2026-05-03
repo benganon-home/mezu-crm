@@ -125,6 +125,11 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                 {item.sign_text && (
                   <span className="text-gold font-medium truncate max-w-[140px]">{`"${item.sign_text.replace('\n', '>')}"`}</span>
                 )}
+                {item.apartment_number && (
+                  <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 font-medium ltr">
+                    דירה {item.apartment_number}
+                  </span>
+                )}
                 {item.font && (
                   <span style={{ fontFamily: `'${item.font}', sans-serif` }}>{item.font}</span>
                 )}
@@ -280,17 +285,24 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                 ) : <span className="text-muted/40">—</span>}
               </div>
 
-              {/* טקסט */}
-              <div className="w-[120px] shrink-0 px-2 py-3.5 flex items-center gap-1" onClick={e => e.stopPropagation()}>
+              {/* טקסט + מס׳ דירה */}
+              <div className="w-[120px] shrink-0 px-2 py-3.5 flex flex-col gap-0.5" onClick={e => e.stopPropagation()}>
                 {item.sign_text
-                  ? <>
+                  ? <div className="flex items-center gap-1">
                       <span className="text-gold font-medium truncate">
                         {item.sign_text.replace('\n', '>')}
                       </span>
                       <CopyButton text={item.sign_text} />
-                    </>
+                    </div>
                   : <span className="text-muted/40 font-normal">—</span>
                 }
+                {item.apartment_number && (
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 font-medium ltr">
+                      דירה {item.apartment_number}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* פונט */}
