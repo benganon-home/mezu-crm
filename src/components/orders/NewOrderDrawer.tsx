@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { X, Plus, Minus, Trash2, Search, CheckCircle2, UserPlus, ChevronRight } from 'lucide-react'
 import { Customer, Product, ProductSize, SalesRule, ITEM_COLOR_MAP, FONTS } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
+import { applySalesRules } from '@/lib/sales-rules'
 import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -66,47 +67,30 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
 
   const autoTotal = items.reduce((s, i) => s + (parseFloat(i.price) || 0) * i.qty, 0)
 
-  const matchingRule = useMemo(() => {
-    if (items.length === 0) return null
-    return salesRules.find(rule =>
-      rule.conditions.every(cond => {
-        const count = items
-          .filter(i => i.model === cond.category && (!cond.size || i.size === cond.size))
-          .reduce((s, i) => s + i.qty, 0)
-        return count >= cond.min_qty
-      })
-    ) ?? null
+  // Run the same shared engine as the server. Expand each line by qty into
+  // per-unit rows, find every matching rule, sum savings → finalTotal.
+  // Server re-runs this in /api/orders/new so even a stale client is safe;
+  // we mirror it here purely for the live preview in the drawer.
+  const ruleResult = useMemo(() => {
+    if (items.length === 0) {
+      return { finalTotal: 0, appliedRules: [] as Array<{ rule: SalesRule; savings: number }> }
+    }
+    const expanded = items.flatMap(it =>
+      Array.from({ length: it.qty }, () => ({
+        model: it.model || null,
+        size:  it.size  || null,
+        price: parseFloat(it.price) || 0,
+      }))
+    )
+    const result = applySalesRules(expanded, salesRules)
+    return {
+      finalTotal:   result.finalTotal,
+      appliedRules: result.appliedRules.map(ar => ({ rule: ar.rule, savings: ar.savings })),
+    }
   }, [items, salesRules])
 
-  const finalTotal = useMemo(() => {
-    if (!matchingRule) return autoTotal
-    if (matchingRule.discount_type === 'fixed_total') {
-      // Bundle price applies only to the min_qty items per condition.
-      // Extra items beyond the bundle keep their full price.
-      let extrasTotal = 0
-      // Track how many units each condition "consumes"
-      const consumed: Record<string, number> = {}
-      for (const cond of matchingRule.conditions) {
-        const key = `${cond.category}|${cond.size || ''}`
-        consumed[key] = cond.min_qty
-      }
-      for (const item of items) {
-        const key = `${item.model}|${item.size || ''}`
-        const keyNoSize = `${item.model}|`
-        const condKey = consumed[key] !== undefined ? key : consumed[keyNoSize] !== undefined ? keyNoSize : null
-        if (condKey && consumed[condKey] > 0) {
-          const used = Math.min(item.qty, consumed[condKey])
-          consumed[condKey] -= used
-          const extraQty = item.qty - used
-          if (extraQty > 0) extrasTotal += (parseFloat(item.price) || 0) * extraQty
-        } else {
-          extrasTotal += (parseFloat(item.price) || 0) * item.qty
-        }
-      }
-      return matchingRule.discount_value + extrasTotal
-    }
-    return autoTotal * (1 - matchingRule.discount_value / 100)
-  }, [matchingRule, autoTotal, items])
+  const matchingRule = ruleResult.appliedRules[0]?.rule ?? null
+  const finalTotal   = ruleResult.appliedRules.length > 0 ? ruleResult.finalTotal : autoTotal
 
   // Phone lookup with debounce
   const searchCustomer = useCallback(async (raw: string) => {
@@ -422,20 +406,26 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
           {/* ── Total summary ── */}
           {items.length > 0 && (
             <div className="flex flex-col gap-2">
-              {matchingRule && (
-                <div className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-4 py-2.5">
-                  <div>
-                    <div className="text-xs font-medium text-emerald-700 dark:text-emerald-400">מבצע פעיל: {matchingRule.name}</div>
-                    <div className="text-xs text-emerald-600 mt-0.5">
-                      {matchingRule.discount_type === 'percent'
-                        ? `הנחה של ${matchingRule.discount_value}% · חיסכון של ${formatPrice(autoTotal - finalTotal)}`
-                        : `מחיר חבילה קבוע`
-                      }
+              {ruleResult.appliedRules.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  {ruleResult.appliedRules.map(({ rule, savings }) => (
+                    <div key={rule.id} className="flex items-center justify-between bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-lg px-4 py-2.5">
+                      <div>
+                        <div className="text-xs font-medium text-emerald-700 dark:text-emerald-400">מבצע פעיל: {rule.name}</div>
+                        <div className="text-xs text-emerald-600 mt-0.5">
+                          {rule.discount_type === 'percent'
+                            ? `הנחה של ${rule.discount_value}% · חיסכון של ${formatPrice(savings)}`
+                            : `מחיר חבילה קבוע · חיסכון של ${formatPrice(savings)}`}
+                        </div>
+                      </div>
+                      <div className="text-right ltr text-emerald-700 dark:text-emerald-400 font-semibold">
+                        −{formatPrice(savings)}
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right ltr">
-                    <div className="text-xs text-muted line-through">{formatPrice(autoTotal)}</div>
-                    <div className="text-lg font-semibold text-emerald-700 dark:text-emerald-400">{formatPrice(finalTotal)}</div>
+                  ))}
+                  <div className="flex items-center justify-between text-xs text-muted px-4">
+                    <span>סה״כ לפני הנחות: <span className="line-through">{formatPrice(autoTotal)}</span></span>
+                    <span className="font-semibold text-emerald-700 dark:text-emerald-400">סה״כ אחרי: {formatPrice(finalTotal)}</span>
                   </div>
                 </div>
               )}
