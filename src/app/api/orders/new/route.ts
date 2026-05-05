@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { applySalesRules } from '@/lib/sales-rules'
+import type { SalesRule } from '@/types'
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
@@ -34,9 +36,43 @@ export async function POST(req: NextRequest) {
     customerId = newCustomer.id
   }
 
-  // 2. Total price from items (or override from discount rule)
-  const itemsTotal = (items || []).reduce((s: number, i: any) => s + (Number(i.price) || 0), 0)
-  const totalPrice = total_price_override != null ? Number(total_price_override) : itemsTotal
+  // 2. Apply sales rules server-side. Defense against three failure modes:
+  //    a) Client cached rules from before someone toggled is_active off in settings
+  //    b) Client never sent total_price_override (older client, or manual override skipped)
+  //    c) Future endpoints/integrations posting straight to /api/orders/new
+  // The user's manual override (total_price_locked=true) always wins — preserves
+  // the "I just want this exact total" escape hatch on the drawer.
+  const itemsForRules = (items || []).map((i: any) => ({
+    model: i.model || null,
+    size:  i.size  || null,
+    price: Number(i.price) || 0,
+  }))
+
+  const { data: rulesData } = await supabase
+    .from('sales_rules')
+    .select('*')
+    .eq('is_active', true)
+
+  const ruleResult = applySalesRules(itemsForRules, (rulesData ?? []) as SalesRule[])
+
+  // Distribute discount-adjusted prices back onto the original items (parallel arrays).
+  // applySalesRules mutated `itemsForRules` in place when a rule matched.
+  const adjustedItems = (items || []).map((i: any, idx: number) => ({
+    ...i,
+    price: ruleResult.appliedRule ? itemsForRules[idx].price : (Number(i.price) || 0),
+  }))
+
+  // Total: manual override (locked) > server-applied rule > raw sum
+  let totalPrice: number
+  if (total_price_locked && total_price_override != null) {
+    totalPrice = Number(total_price_override)
+  } else if (ruleResult.appliedRule) {
+    totalPrice = ruleResult.finalTotal
+  } else if (total_price_override != null) {
+    totalPrice = Number(total_price_override)
+  } else {
+    totalPrice = ruleResult.autoTotal
+  }
 
   // 3. Create order
   const { data: order, error: orderErr } = await supabase
@@ -56,12 +92,12 @@ export async function POST(req: NextRequest) {
 
   if (orderErr) return NextResponse.json({ error: orderErr.message }, { status: 400 })
 
-  // 4. Create items
-  if (items && items.length > 0) {
+  // 4. Create items (with rule-adjusted prices when applicable)
+  if (adjustedItems.length > 0) {
     const { error: itemsErr } = await supabase
       .from('order_items')
       .insert(
-        items.map((i: any) => ({
+        adjustedItems.map((i: any) => ({
           order_id:   order.id,
           product_id: i.product_id || null,
           item_name:  i.item_name || 'פריט',
