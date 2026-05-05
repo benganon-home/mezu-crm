@@ -109,6 +109,8 @@ create policy "auth_only" on orders     for all using (auth.role() = 'authentica
 create policy "auth_only" on order_items for all using (auth.role() = 'authenticated');
 create policy "auth_only" on reminders  for all using (auth.role() = 'authenticated');
 create policy "auth_only" on sales_rules for all using (auth.role() = 'authenticated');
+-- Storefront (anon) needs to read active rules to render bundle savings in cart.
+create policy "public_read_active_rules" on sales_rules for select using (is_active = true);
 
 -- ─── PRODUCTS ────────────────────────────────────────────────
 create table if not exists products (
