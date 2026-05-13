@@ -56,12 +56,24 @@ export default function FinancePage() {
   const [months, setMonths]   = useState(12)
   const [vatMode, setVatMode] = useState<'net' | 'gross'>('net')
   const [refresh, setRefresh] = useState(0)   // bump to refetch summary after edits
+  const [error, setError]     = useState<string | null>(null)
 
   useEffect(() => {
     setLoading(true)
+    setError(null)
     fetch(`/api/finance/summary?months=${months}`)
-      .then(r => r.json())
-      .then(setData)
+      .then(async r => {
+        if (!r.ok) {
+          const txt = await r.text().catch(() => '')
+          throw new Error(`שגיאת שרת (${r.status})${txt ? ': ' + txt.slice(0, 120) : ''}`)
+        }
+        return r.json()
+      })
+      .then(json => {
+        if (json?.error) throw new Error(json.error)
+        setData(json)
+      })
+      .catch(e => setError(e?.message || 'שגיאה בטעינת נתונים'))
       .finally(() => setLoading(false))
   }, [months, refresh])
 
@@ -86,11 +98,27 @@ export default function FinancePage() {
     return Math.max(...values, 1)
   }, [data, vatMode])
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <div className="flex flex-col gap-5">
         <div className="page-header"><h1>הכנסות מול הוצאות</h1></div>
         <div className="text-center py-20 text-muted text-sm">טוען...</div>
+      </div>
+    )
+  }
+
+  if (error || !data) {
+    return (
+      <div className="flex flex-col gap-5">
+        <div className="page-header"><h1>הכנסות מול הוצאות</h1></div>
+        <div className="surface px-4 py-6 text-center text-sm text-red-600 dark:text-red-300">
+          {error || 'אין נתונים להציג'}
+          <div className="mt-3">
+            <button onClick={() => setRefresh(r => r + 1)} className="btn-secondary text-xs">
+              נסה שוב
+            </button>
+          </div>
+        </div>
       </div>
     )
   }

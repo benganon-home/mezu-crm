@@ -50,10 +50,25 @@ export async function GET(req: NextRequest) {
   const fromIso   = monthStart(fromMonth)
   const toIso     = monthStart(nextMonth(toMonth)) // exclusive
 
-  // ── Orders revenue + COGS (single pass) ────────────────────────
+  // ── Orders + COGS ──────────────────────────────────────────────
+  // Three separate queries kept simple. The original 3-level nested join
+  // (orders → order_items → products) blew past Vercel's 30s lambda timeout
+  // on 290 orders × ~2.5 items each. PostgREST expands nested joins by
+  // making roundtrips per parent row, so the cost is multiplicative.
+  // In-memory join over Map<product_id, unit_cost> finishes in <1s.
+  const { data: products, error: pErr0 } = await supabase
+    .from('products')
+    .select('id, unit_cost')
+
+  if (pErr0) return NextResponse.json({ error: pErr0.message }, { status: 500 })
+
+  const costByProductId = new Map<string, number>(
+    (products || []).map(p => [p.id, Number(p.unit_cost || 0)])
+  )
+
   const { data: ordersRaw, error: oErr } = await supabase
     .from('orders')
-    .select(`id, created_at, total_price, items:order_items(product_id, price, products:products(unit_cost))`)
+    .select(`id, created_at, total_price, items:order_items(product_id, price)`)
     .gte('created_at', fromIso)
     .lt('created_at', toIso)
 
@@ -111,7 +126,7 @@ export async function GET(req: NextRequest) {
     })
   }
 
-  // Orders → revenue + cogs
+  // Orders → revenue + cogs (in-memory join against products map)
   for (const o of (ordersRaw || []) as any[]) {
     const m = ymKey(new Date(o.created_at))
     const b = buckets.get(m)
@@ -120,7 +135,7 @@ export async function GET(req: NextRequest) {
     b.revenue_gross += rev
     b.orders_count  += 1
     for (const it of o.items || []) {
-      const uc = Number(it?.products?.unit_cost || 0)
+      const uc = it?.product_id ? (costByProductId.get(it.product_id) || 0) : 0
       b.cogs_gross += uc
     }
   }
