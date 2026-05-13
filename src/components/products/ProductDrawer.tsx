@@ -32,6 +32,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
   const [careInstructions, setCareInstructions] = useState(product?.care_instructions || '')
   const [basePrice, setBasePrice]     = useState(product?.base_price?.toString() || '')
   const [salePrice, setSalePrice]     = useState(product?.sale_price != null ? String(product.sale_price) : '')
+  const [unitCost, setUnitCost]       = useState(product?.unit_cost != null ? String(product.unit_cost) : '')
   const [category, setCategory]       = useState(product?.category || '')
   const [newCategory, setNewCategory] = useState('')
   const [addingCategory, setAddingCategory] = useState(false)
@@ -179,6 +180,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
       care_instructions: careInstructions.trim() || null,
       base_price: parseFloat(basePrice) || 0,
       sale_price: salePrice.trim() === '' ? null : (parseFloat(salePrice) || null),
+      unit_cost:  unitCost.trim() === ''  ? 0    : (parseFloat(unitCost)  || 0),
       category: category || null,
       is_active: isActive,
       is_popular: isPopular,
@@ -529,6 +531,35 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
             />
             <p className="text-[11px] text-muted mt-1">
               אם מוגדר וקטן ממחיר הבסיס, יוחל אחוז הנחה זהה על כל המידות ויוצג באתר כמחיר מוצלב.
+            </p>
+          </div>
+
+          {/* Unit cost — used for COGS in /finance */}
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <div className="label">עלות יחידה (₪)</div>
+              {(() => {
+                const base = parseFloat(basePrice) || 0
+                const cost = parseFloat(unitCost) || 0
+                if (base > 0 && cost > 0 && cost < base) {
+                  const margin = Math.round(((base - cost) / base) * 100)
+                  return <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">מרווח {margin}%</span>
+                }
+                return null
+              })()}
+            </div>
+            <input
+              className="input w-full ltr"
+              placeholder="עלות חומרי גלם וייצור ליחידה"
+              value={unitCost}
+              onChange={e => setUnitCost(e.target.value)}
+              type="number"
+              min="0"
+              step="0.01"
+              dir="ltr"
+            />
+            <p className="text-[11px] text-muted mt-1">
+              משמש לחישוב רווחיות בעמוד &quot;רווח/הפסד&quot;. לא מוצג ללקוחות.
             </p>
           </div>
 

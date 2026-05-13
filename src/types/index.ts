@@ -39,6 +39,7 @@ export interface Product {
   description?: string | null
   base_price: number
   sale_price?: number | null
+  unit_cost?: number | null
   sizes: ProductSize[]
   colors: string[]
   images: string[]
