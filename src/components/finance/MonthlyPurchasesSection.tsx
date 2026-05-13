@@ -48,10 +48,15 @@ export function MonthlyPurchasesSection({ month, vatMode, onTotalChange }: Props
   useEffect(() => { fetchRows() }, [fetchRows])
   useEffect(() => { fetchCategories() }, [fetchCategories])
 
-  // Tell parent the total (gross) so /finance can show it in the period summary.
+  // Tell parent the total (gross) so /finance can refresh the summary card.
+  // Debounced to once every 2s so rapid inline edits don't fan out into
+  // dozens of /api/finance/summary calls (which scans 12 months of data).
   useEffect(() => {
-    const total = rows.reduce((s, r) => s + (Number(r.quantity) || 0) * (Number(r.unit_price) || 0), 0)
-    onTotalChange?.(total)
+    const t = setTimeout(() => {
+      const total = rows.reduce((s, r) => s + (Number(r.quantity) || 0) * (Number(r.unit_price) || 0), 0)
+      onTotalChange?.(total)
+    }, 2000)
+    return () => clearTimeout(t)
   }, [rows, onTotalChange])
 
   const handleCopy = async () => {

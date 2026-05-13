@@ -16,6 +16,14 @@ import { createClient } from '@/lib/supabase/server'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 30
+// Cache the response at Vercel's edge for 60s. A P&L doesn't change minute
+// to minute — anyone refreshing within a minute gets the cached payload,
+// which means zero DB reads for that request. Critical for the Supabase
+// Disk IO budget: this single endpoint scans 12 months of orders + items
+// + expenses + monthly_purchases, easily the heaviest read in the CRM.
+const CACHE_HEADERS = {
+  'Cache-Control': 'private, s-maxage=60, stale-while-revalidate=300',
+}
 
 const VAT_DIVISOR = 1.18
 
@@ -230,7 +238,7 @@ export async function GET(req: NextRequest) {
       profit_net:    round2(sum.profit_net),
       margin_pct:    sum.revenue_net > 0 ? round2((sum.profit_net / sum.revenue_net) * 100) : 0,
     },
-  })
+  }, { headers: CACHE_HEADERS })
 }
 
 function round2(n: number): number {
