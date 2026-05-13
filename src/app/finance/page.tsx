@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { TrendingUp, TrendingDown, Minus, ChevronDown } from 'lucide-react'
 import { formatPrice, cn } from '@/lib/utils'
+import { MonthlyPurchasesSection } from '@/components/finance/MonthlyPurchasesSection'
 
 interface CatBreakdown {
   id:    string | null
@@ -54,6 +55,7 @@ export default function FinancePage() {
   const [loading, setLoading] = useState(true)
   const [months, setMonths]   = useState(12)
   const [vatMode, setVatMode] = useState<'net' | 'gross'>('net')
+  const [refresh, setRefresh] = useState(0)   // bump to refetch summary after edits
 
   useEffect(() => {
     setLoading(true)
@@ -61,7 +63,7 @@ export default function FinancePage() {
       .then(r => r.json())
       .then(setData)
       .finally(() => setLoading(false))
-  }, [months])
+  }, [months, refresh])
 
   const pick = (gross: number, net: number) => vatMode === 'net' ? net : gross
   const suffix = vatMode === 'net' ? 'ללא מע״מ' : 'כולל מע״מ'
@@ -200,6 +202,13 @@ export default function FinancePage() {
           })}
         </div>
       </div>
+
+      {/* Manually-tracked monthly purchases — fold into the same expense totals on the API side */}
+      <MonthlyPurchasesSection
+        month={cur.month}
+        vatMode={vatMode}
+        onTotalChange={() => setRefresh(r => r + 1)}
+      />
 
       {/* Category breakdown this month */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

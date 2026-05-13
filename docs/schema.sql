@@ -243,6 +243,28 @@ create policy "auth_only" on recurring_expenses for all using (auth.role() = 'au
 
 -- ─── ACCOUNTANT CONTACT (single-row settings) ────────────────
 -- Stored in app_settings as a key/value blob to avoid one-off tables.
+-- Manually-tracked monthly purchase items for the /finance hub.
+-- One row per item per month; rows in successive months are independent so
+-- prices can vary. The /api/monthly-purchases/copy endpoint duplicates the
+-- prior month's rows into the target month so the user only edits deltas.
+create table if not exists monthly_purchases (
+  id            uuid primary key default uuid_generate_v4(),
+  month         text not null,                  -- 'YYYY-MM'
+  name          text not null,
+  category_id   uuid references expense_categories(id) on delete set null,
+  quantity      numeric(10,2) default 1,
+  unit_price    numeric(10,2) default 0,
+  notes         text,
+  display_order int default 100,
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now()
+);
+create index if not exists monthly_purchases_month_idx on monthly_purchases (month);
+create trigger monthly_purchases_updated_at before update on monthly_purchases
+  for each row execute function update_updated_at();
+alter table monthly_purchases enable row level security;
+create policy "auth_only" on monthly_purchases for all using (auth.role() = 'authenticated');
+
 create table if not exists app_settings (
   key        text primary key,
   value      jsonb not null,

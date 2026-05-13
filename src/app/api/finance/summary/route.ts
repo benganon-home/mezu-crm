@@ -59,7 +59,7 @@ export async function GET(req: NextRequest) {
 
   if (oErr) return NextResponse.json({ error: oErr.message }, { status: 500 })
 
-  // ── Expenses (active only, by document_date) ──────────────────
+  // ── Expenses (active invoices, by document_date) ──────────────
   const { data: expRaw, error: eErr } = await supabase
     .from('expenses')
     .select(`document_date, amount, category:expense_categories(id, name_he, color)`)
@@ -69,6 +69,15 @@ export async function GET(req: NextRequest) {
     .not('amount', 'is', null)
 
   if (eErr) return NextResponse.json({ error: eErr.message }, { status: 500 })
+
+  // ── Monthly purchase items (manually tracked, not invoiced) ──
+  const { data: purchRaw, error: pErr } = await supabase
+    .from('monthly_purchases')
+    .select(`month, quantity, unit_price, category:expense_categories(id, name_he, color)`)
+    .gte('month', fromMonth)
+    .lte('month', toMonth)
+
+  if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 })
 
   // ── Build monthly buckets ──────────────────────────────────────
   type CatBreakdown = { id: string | null; name: string; color: string; total: number }
@@ -128,6 +137,22 @@ export async function GET(req: NextRequest) {
     const catId = e.category?.id ?? 'none'
     const catName = e.category?.name_he ?? 'ללא קטגוריה'
     const catColor = e.category?.color ?? '#9490B8'
+    const catMap = catMaps.get(m)!
+    const cur = catMap.get(catId) || { id: catId === 'none' ? null : catId, name: catName, color: catColor, total: 0 }
+    cur.total += amt
+    catMap.set(catId, cur)
+  }
+
+  // Monthly purchases → fold into the same expense totals + categories.
+  // Source: each row's month string directly (no date parsing).
+  for (const p of (purchRaw || []) as any[]) {
+    const m = p.month
+    const b = buckets.get(m); if (!b) continue
+    const amt = Number(p.quantity || 0) * Number(p.unit_price || 0)
+    b.expenses_gross += amt
+    const catId = p.category?.id ?? 'none'
+    const catName = p.category?.name_he ?? 'ללא קטגוריה'
+    const catColor = p.category?.color ?? '#9490B8'
     const catMap = catMaps.get(m)!
     const cur = catMap.get(catId) || { id: catId === 'none' ? null : catId, name: catName, color: catColor, total: 0 }
     cur.total += amt
