@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { X, Plus, Minus, Trash2, Search, CheckCircle2, UserPlus, ChevronRight } from 'lucide-react'
-import { Customer, Product, ProductSize, SalesRule, ITEM_COLOR_MAP, FONTS } from '@/types'
+import { Customer, Product, ProductSize, SalesRule, FONTS } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
 import { applySalesRules } from '@/lib/sales-rules'
 import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
@@ -27,7 +27,12 @@ interface Props {
   onCreated: (order: any) => void
 }
 
-const COLORS = Object.entries(ITEM_COLOR_MAP)
+// Colors are fetched at runtime from product_colors so new colors added in
+// Settings → צבעי מוצרים appear automatically. The legacy ITEM_COLOR_MAP is
+// kept only as a fallback for old item names that no longer match any
+// active color (e.g. retired shades on historical orders).
+interface ColorOption { name_he: string; hex: string; has_border: boolean }
+
 const PREFERRED_ORDER = ['מזוזות', 'שלטי בית', 'ברכות', 'אקססוריז']
 
 function makeItem(item_name = '', model = '', size = '', price = ''): NewItem {
@@ -48,12 +53,21 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
 
   // Products catalog
   const [catalog, setCatalog]           = useState<Product[]>([])
+  const [colors, setColors]             = useState<ColorOption[]>([])
   const [pickingSize, setPickingSize]   = useState<Product | null>(null)
   const [salesRules, setSalesRules]     = useState<SalesRule[]>([])
 
   useEffect(() => {
     fetch('/api/products').then(r => r.json()).then(d => setCatalog(Array.isArray(d) ? d.filter(p => p.is_active) : []))
     fetch('/api/sales-rules').then(r => r.json()).then(d => setSalesRules(Array.isArray(d) ? d.filter((r: SalesRule) => r.is_active) : []))
+    fetch('/api/product-colors').then(r => r.json()).then(d => {
+      const list = Array.isArray(d) ? d : []
+      setColors(list.filter((c: any) => c.is_active).map((c: any) => ({
+        name_he:    c.name_he,
+        hex:        c.hex,
+        has_border: !!c.has_border,
+      })))
+    })
   }, [])
 
   // Order state
@@ -355,6 +369,7 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
                 <ItemCard
                   key={item._id}
                   item={item}
+                  colors={colors}
                   onChange={(f, v) => updateItem(item._id, f, v)}
                   onQtyChange={(q) => setItems(p => p.map(i => i._id === item._id ? { ...i, qty: q } : i))}
                   onRemove={() => removeItem(item._id)}
@@ -507,11 +522,13 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
 
 function ItemCard({
   item,
+  colors,
   onChange,
   onQtyChange,
   onRemove,
 }: {
   item: NewItem
+  colors: ColorOption[]
   onChange: (field: keyof NewItem, value: string) => void
   onQtyChange: (qty: number) => void
   onRemove: () => void
@@ -581,18 +598,19 @@ function ItemCard({
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs text-muted flex-shrink-0">צבע:</span>
         <div className="flex gap-1.5 flex-wrap">
-          {COLORS.map(([name, cfg]) => (
+          {colors.map(c => (
             <button
-              key={name}
-              onClick={() => onChange('color', item.color === name ? '' : name)}
-              title={name}
+              key={c.name_he}
+              onClick={() => onChange('color', item.color === c.name_he ? '' : c.name_he)}
+              title={c.name_he}
               className={cn(
-                'w-6 h-6 rounded-full flex-shrink-0 transition-all hover:scale-110 border border-black/15',
-                item.color === name
+                'w-6 h-6 rounded-full flex-shrink-0 transition-all hover:scale-110',
+                c.has_border ? 'border border-black/20' : 'border border-black/15',
+                item.color === c.name_he
                   ? 'ring-2 ring-gold ring-offset-2 scale-110'
                   : 'hover:border-black/30'
               )}
-              style={{ backgroundColor: cfg.hex }}
+              style={{ backgroundColor: c.hex }}
             />
           ))}
         </div>
