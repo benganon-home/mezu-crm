@@ -67,17 +67,24 @@ const HEADER_ALIASES: Record<string, string> = {
   'שם לקוח':            'client_name',
   'שם הלקוח':           'client_name',
   'לקוח':               'client_name',
+  'שם פרטי':            '_first_name',  // combined with _last_name below
+  'שם משפחה':           '_last_name',
   'טלפון':              'client_phone',
   'נייד':               'client_phone',
   'מייל':               'client_email',
   'דוא״ל':              'client_email',
   'אימייל':             'client_email',
   '4 אחרונות':          'card_last4',
+  '4 ספרות אחרונות':    'card_last4',
+  'ארבע ספרות אחרונות': 'card_last4',
   'כרטיס':              'card_last4',
   'סטטוס':              'status',
   'מצב':                'status',
+  'תשובת חברת אשראי':   'status',
+  'תשובה':              'status',
   'הזמנה':              'order_ref',
   'מס׳ הזמנה':          'order_ref',
+  'מס הזמנה':           'order_ref',
 }
 
 function normalizeHeader(h: string): string {
@@ -182,12 +189,18 @@ export async function POST(req: NextRequest) {
     const date   = ddmmyyyyToIso(r.date || '')
     const amount = parseAmount(r.amount || '')
     if (!id || !date || amount == null) { skipped++; continue }
+
+    // Compose full name from first/last when the CSV splits them
+    const fullName = (r.client_name?.trim())
+      || [r._first_name?.trim(), r._last_name?.trim()].filter(Boolean).join(' ').trim()
+      || null
+
     toUpsert.push({
       id,
       date,
       time:         r.time?.trim() || null,
       amount,
-      client_name:  r.client_name?.trim() || null,
+      client_name:  fullName,
       client_phone: r.client_phone?.trim() || null,
       client_email: r.client_email?.trim() || null,
       card_last4:   r.card_last4?.replace(/[^0-9]/g, '').slice(-4) || null,
