@@ -1,23 +1,29 @@
 // GET /api/hyp/transactions?from=YYYY-MM-DD&to=YYYY-MM-DD
 //
-// Fetches every transaction on the HYP merchant account in the date range,
-// then joins back against the orders table so the UI can show three buckets:
+// Reads from the `hyp_transactions` table (populated by /api/hyp/import)
+// and reconciles against the orders table. Returns three buckets:
 //   - matched     → HYP txn with a corresponding order row
-//   - hyp_only    → HYP txn with no matching order (phone payments, manual links, etc.)
-//   - orders_only → orders with invoice_id but no matching HYP txn (data drift)
+//   - hyp_only    → HYP txn with no matching order
+//   - orders_only → orders with invoice_id but no matching HYP txn
 //
-// Caching: 5 min edge cache. HYP doesn't change history, and the panel is
-// only viewed by admins, so the IO load on Supabase is negligible.
+// HYP's online API doesn't expose a transaction-list endpoint on our
+// merchant config, so this view depends on the user importing the CSV
+// they download from the HYP merchant portal. Idempotent — re-uploading
+// updates existing rows by transaction id.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { listTransactions } from '@/lib/yaadpay'
 
 export const dynamic = 'force-dynamic'
-export const maxDuration = 30
 
 function ymKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function addDay(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  const next = new Date(y, m - 1, d + 1)
+  return ymKey(next)
 }
 
 export async function GET(req: NextRequest) {
@@ -31,64 +37,64 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'from/to must be YYYY-MM-DD' }, { status: 400 })
   }
 
-  const hyp = await listTransactions({ from, to })
-  if (!hyp.ok) {
-    return NextResponse.json({ error: hyp.error, raw: hyp.raw, endpoint: hyp.endpoint }, { status: 502 })
-  }
-
-  // Pull the orders that have HYP invoice IDs in the same range
   const supabase = createClient()
-  const { data: orders, error: oErr } = await supabase
-    .from('orders')
-    .select('id, order_number, created_at, total_price, invoice_id, customer:customers(name)')
-    .gte('created_at', from)
-    .lt('created_at', addDay(to))
-    .not('invoice_id', 'is', null)
+
+  const [{ data: hyp, error: hErr }, { data: orders, error: oErr }] = await Promise.all([
+    supabase
+      .from('hyp_transactions')
+      .select('*')
+      .gte('date', from)
+      .lte('date', to)
+      .order('date', { ascending: false }),
+    supabase
+      .from('orders')
+      .select('id, order_number, created_at, total_price, invoice_id, customer:customers(name)')
+      .gte('created_at', from)
+      .lt('created_at', addDay(to))
+      .not('invoice_id', 'is', null),
+  ])
+
+  if (hErr) return NextResponse.json({ error: hErr.message }, { status: 500 })
   if (oErr) return NextResponse.json({ error: oErr.message }, { status: 500 })
 
-  // Build the join. Match priority: invoice_id ↔ transaction id, fallback order_ref ↔ order_number.
-  const ordersByTxn = new Map((orders || []).map((o: any) => [String(o.invoice_id), o]))
-  const ordersByOrderNum = new Map((orders || []).map((o: any) => [String(o.order_number || '').slice(0, 8), o]))
+  const hypTxns = hyp || []
+  const orderList = orders || []
 
-  const matched:    Array<{ hyp: any; order: any }> = []
-  const hypOnly:    Array<{ hyp: any }>             = []
-  const seenOrders: Set<string>                     = new Set()
+  // Reconcile by invoice_id (primary), then order_ref ↔ order_number (fallback)
+  const ordersByTxn = new Map(orderList.map((o: any) => [String(o.invoice_id), o]))
+  const ordersByOrderNum = new Map(orderList.map((o: any) => [String(o.order_number || '').slice(0, 8), o]))
 
-  for (const t of hyp.transactions) {
+  const matched:   Array<{ hyp: any; order: any }> = []
+  const hypOnly:   any[]                           = []
+  const seenOrderIds: Set<string>                  = new Set()
+
+  for (const t of hypTxns) {
     let o = ordersByTxn.get(t.id)
     if (!o && t.order_ref) o = ordersByOrderNum.get(String(t.order_ref).slice(0, 8))
     if (o) {
       matched.push({ hyp: t, order: o })
-      seenOrders.add(o.id)
+      seenOrderIds.add(o.id)
     } else {
-      hypOnly.push({ hyp: t })
+      hypOnly.push(t)
     }
   }
 
-  const ordersOnly = (orders || []).filter((o: any) => !seenOrders.has(o.id))
+  const ordersOnly = orderList.filter((o: any) => !seenOrderIds.has(o.id))
 
   const totals = {
-    hyp_total:    hyp.transactions.reduce((s, t) => s + (t.amount || 0), 0),
-    orders_total: (orders || []).reduce((s: number, o: any) => s + Number(o.total_price || 0), 0),
-    matched_count:    matched.length,
-    hyp_only_count:   hypOnly.length,
+    hyp_total:    hypTxns.reduce((s, t) => s + Number(t.amount || 0), 0),
+    orders_total: orderList.reduce((s, o: any) => s + Number(o.total_price || 0), 0),
+    matched_count:     matched.length,
+    hyp_only_count:    hypOnly.length,
     orders_only_count: ordersOnly.length,
+    hyp_imported:      hypTxns.length,
   }
 
-  return NextResponse.json(
-    {
-      from, to,
-      totals,
-      matched,
-      hyp_only:    hypOnly,
-      orders_only: ordersOnly,
-    },
-    { headers: { 'Cache-Control': 'private, s-maxage=300, stale-while-revalidate=600' } },
-  )
-}
-
-function addDay(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number)
-  const next = new Date(y, m - 1, d + 1)
-  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-${String(next.getDate()).padStart(2, '0')}`
+  return NextResponse.json({
+    from, to,
+    totals,
+    matched,
+    hyp_only:    hypOnly,
+    orders_only: ordersOnly,
+  })
 }

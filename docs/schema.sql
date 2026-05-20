@@ -243,6 +243,28 @@ create policy "auth_only" on recurring_expenses for all using (auth.role() = 'au
 
 -- ─── ACCOUNTANT CONTACT (single-row settings) ────────────────
 -- Stored in app_settings as a key/value blob to avoid one-off tables.
+-- HYP transactions imported from the merchant portal CSV. HYP doesn't expose
+-- a transaction-list API on Mezu's merchant config, so the user uploads the
+-- CSV via /api/hyp/import and the /hyp page reconciles against orders.
+create table if not exists hyp_transactions (
+  id            text primary key,
+  date          date not null,
+  time          text,
+  amount        numeric(10,2) not null,
+  client_name   text,
+  client_phone  text,
+  client_email  text,
+  card_last4    text,
+  status        text,
+  order_ref     text,
+  imported_at   timestamptz default now(),
+  raw           jsonb
+);
+create index if not exists hyp_transactions_date_idx on hyp_transactions (date desc);
+create index if not exists hyp_transactions_order_ref_idx on hyp_transactions (order_ref) where order_ref is not null;
+alter table hyp_transactions enable row level security;
+create policy "auth_only" on hyp_transactions for all using (auth.role() = 'authenticated');
+
 -- Manually-tracked monthly purchase items for the /finance hub.
 -- One row per item per month; rows in successive months are independent so
 -- prices can vary. The /api/monthly-purchases/copy endpoint duplicates the

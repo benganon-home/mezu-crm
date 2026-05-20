@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { useEffect, useState, useRef } from 'react'
+import { AlertTriangle, CheckCircle2, Upload, Loader2 } from 'lucide-react'
 import { formatPrice, formatDate, cn } from '@/lib/utils'
 
 interface HypTxn {
@@ -31,12 +31,12 @@ interface Resp {
     matched_count: number
     hyp_only_count: number
     orders_only_count: number
+    hyp_imported: number
   }
   matched:     Array<{ hyp: HypTxn; order: Order }>
-  hyp_only:    Array<{ hyp: HypTxn }>
+  hyp_only:    HypTxn[]
   orders_only: Order[]
   error?:      string
-  raw?:        string
 }
 
 function today(): string {
@@ -49,10 +49,13 @@ function monthStart(): string {
 }
 
 export default function HypReconciliationPage() {
-  const [from, setFrom]       = useState(monthStart())
-  const [to, setTo]           = useState(today())
-  const [data, setData]       = useState<Resp | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [from, setFrom]         = useState(monthStart())
+  const [to, setTo]             = useState(today())
+  const [data, setData]         = useState<Resp | null>(null)
+  const [loading, setLoading]   = useState(true)
+  const [uploading, setUploading] = useState(false)
+  const [uploadMsg, setUploadMsg] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement | null>(null)
   const [error, setError]     = useState<string | null>(null)
 
   const fetchData = () => {
@@ -78,18 +81,64 @@ export default function HypReconciliationPage() {
           <p className="text-xs text-muted mt-0.5">כל החיובים בכרטיס/אשראי מול ההזמנות במערכת</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <button
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading}
+            className="btn-secondary flex items-center gap-2 text-sm disabled:opacity-50"
+          >
+            {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} strokeWidth={1.5} />}
+            ייבוא CSV מ-HYP
+          </button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,.tsv,text/csv,text/plain"
+            className="hidden"
+            onChange={async (e) => {
+              const f = e.target.files?.[0]
+              if (!f) return
+              setUploading(true)
+              setUploadMsg(null)
+              const fd = new FormData()
+              fd.append('file', f)
+              const res = await fetch('/api/hyp/import', { method: 'POST', body: fd })
+              const json = await res.json().catch(() => ({}))
+              setUploading(false)
+              if (e.target) e.target.value = ''
+              if (!res.ok) { setUploadMsg(`שגיאה: ${json.error || res.status}`); return }
+              setUploadMsg(`יובאו ${json.imported} עסקאות${json.skipped ? ` · ${json.skipped} דולגו` : ''}`)
+              fetchData()
+            }}
+          />
           <input className="input text-sm ltr py-1.5 w-[140px]" type="date" value={from} onChange={e => setFrom(e.target.value)} dir="ltr" />
           <span className="text-muted text-xs">→</span>
           <input className="input text-sm ltr py-1.5 w-[140px]" type="date" value={to}   onChange={e => setTo(e.target.value)}   dir="ltr" />
         </div>
       </div>
 
+      {uploadMsg && (
+        <div className={cn(
+          'surface px-3 py-2 text-xs',
+          uploadMsg.startsWith('שגיאה')
+            ? 'text-red-600 dark:text-red-300'
+            : 'text-emerald-700 dark:text-emerald-300',
+        )}>
+          {uploadMsg}
+        </div>
+      )}
+
+      {data && !loading && data.totals.hyp_imported === 0 && (
+        <div className="surface px-4 py-5 text-sm text-muted">
+          <div className="font-medium text-navy dark:text-cream mb-1">עדיין לא יובאו עסקאות מ-HYP</div>
+          לחצי על &quot;ייבוא CSV מ-HYP&quot; למעלה והעלי את הקובץ שמורידים מהפאנל של HYP (מסך &quot;דוחות&quot; → &quot;עסקאות&quot; → &quot;ייצוא&quot;).
+        </div>
+      )}
+
       {loading && <div className="text-center py-12 text-muted text-sm">טוען עסקאות מ-HYP...</div>}
 
       {error && (
         <div className="surface px-4 py-4 text-sm text-red-600 dark:text-red-300">
           {error}
-          <div className="text-[11px] text-muted mt-2">בדוק שמשתני YAADPAY_MASOF / YAADPAY_KEY / YAADPAY_PASSP מוגדרים ב-Vercel.</div>
         </div>
       )}
 
@@ -110,7 +159,7 @@ export default function HypReconciliationPage() {
               title="עסקאות ב-HYP שאינן באתר"
               hint="חיובים שנעשו ידנית, בטלפון או דרך פאנל HYP — לא מקושרים לאף הזמנה במערכת"
             >
-              <Tbl rows={data.hyp_only.map(x => x.hyp)} />
+              <Tbl rows={data.hyp_only} />
             </Section>
           )}
 
