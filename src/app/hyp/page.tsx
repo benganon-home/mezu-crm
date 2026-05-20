@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { ArrowRight, AlertTriangle, CheckCircle2, ExternalLink } from 'lucide-react'
+import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { formatPrice, formatDate, cn } from '@/lib/utils'
 
 interface HypTxn {
@@ -74,12 +73,9 @@ export default function HypReconciliationPage() {
   return (
     <div className="flex flex-col gap-5">
       <div className="page-header">
-        <div className="flex items-center gap-2">
-          <Link href="/finance" className="text-muted hover:text-navy dark:hover:text-cream"><ArrowRight size={16} /></Link>
-          <div>
-            <h1>השוואת HYP</h1>
-            <p className="text-xs text-muted mt-0.5">כל החיובים בכרטיס/אשראי מול ההזמנות במערכת</p>
-          </div>
+        <div>
+          <h1>השוואת HYP</h1>
+          <p className="text-xs text-muted mt-0.5">כל החיובים בכרטיס/אשראי מול ההזמנות במערכת</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <input className="input text-sm ltr py-1.5 w-[140px]" type="date" value={from} onChange={e => setFrom(e.target.value)} dir="ltr" />
