@@ -70,6 +70,8 @@ export async function listTransactions(opts: ListOpts): Promise<ListResult | Lis
   let lastRaw = ''
   let lastEndpoint = ''
 
+  let lastCcode: string | null = null
+
   for (const c of candidates) {
     const params = new URLSearchParams({
       action:   'APISign',
@@ -93,7 +95,9 @@ export async function listTransactions(opts: ListOpts): Promise<ListResult | Lis
     lastRaw = text
 
     // Skip and try the next endpoint if HYP signals an error
-    if (text.includes('CCode=') && /CCode=([^&\s]+)/.exec(text)?.[1] !== '0') {
+    const ccodeMatch = /CCode=([^&\s]+)/.exec(text)
+    if (ccodeMatch && ccodeMatch[1] !== '0') {
+      lastCcode = ccodeMatch[1]
       continue
     }
 
@@ -170,9 +174,20 @@ export async function listTransactions(opts: ListOpts): Promise<ListResult | Lis
     }
   }
 
+  // Common CCode meanings — give the user something actionable instead of a generic parse-failure
+  const ccodeMessages: Record<string, string> = {
+    '904': 'API דוח-עסקאות לא מופעל בחשבון HYP שלך. צרי קשר עם תמיכת HYP (03-7770100) ובקשי להפעיל את GetTransLog על מסוף ' + MASOF + '.',
+    '999': 'תקלה כללית מ-HYP. נסי שוב.',
+    '101': 'פרטי האימות שגויים. בדקי YAADPAY_MASOF / YAADPAY_KEY / YAADPAY_PASSP.',
+    '907': 'אין הרשאה לפעולה הזו על המסוף הזה.',
+  }
+  const friendly = lastCcode && ccodeMessages[lastCcode]
+    ? ccodeMessages[lastCcode]
+    : `HYP החזיר תגובה לא צפויה${lastCcode ? ` (CCode=${lastCcode})` : ''}.`
+
   return {
     ok:       false,
-    error:    'HYP returned a response we could not parse. Try a smaller date range, or check creds.',
+    error:    friendly,
     raw:      lastRaw.slice(0, 2000),
     endpoint: lastEndpoint,
   }
