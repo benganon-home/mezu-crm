@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { CreditCard } from 'lucide-react'
 import { cn, formatPrice } from '@/lib/utils'
 import { MonthlyPurchasesSection } from '@/components/finance/MonthlyPurchasesSection'
 
@@ -108,6 +110,10 @@ export default function FinancePage() {
           <h1>הכנסות מול הוצאות</h1>
           <p className="text-xs text-muted mt-0.5">{monthLabelLong(cur.month)} · {suffix}</p>
         </div>
+        <div className="flex items-center gap-2 flex-wrap">
+        <Link href="/finance/hyp" className="btn-secondary flex items-center gap-2 text-sm">
+          <CreditCard size={14} strokeWidth={1.5} /> השוואת HYP
+        </Link>
         <div className="flex items-center surface px-1 py-1 rounded-full">
           {(['net', 'gross'] as const).map(m => (
             <button
@@ -118,6 +124,7 @@ export default function FinancePage() {
               {m === 'net' ? 'ללא מע״מ' : 'כולל מע״מ'}
             </button>
           ))}
+        </div>
         </div>
       </div>
 
