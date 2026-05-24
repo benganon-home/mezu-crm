@@ -260,6 +260,16 @@ h3 { font-size: 16px; font-weight: 500; }
     right: -100vw;
   }
 
+  /* iOS Safari auto-zooms ANY input/select/textarea whose effective font-size
+     is below 16px. Force the form-control baseline to 16px on mobile only so
+     focusing a field stops yanking the viewport. Desktop keeps the original
+     14px scale untouched. */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
   /* Tighter table cells so all columns fit better on small screens */
   .crm-table th,
   .crm-table td {
