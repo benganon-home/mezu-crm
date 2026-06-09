@@ -49,6 +49,9 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 text-[10px] text-muted tabular-nums leading-none">
+            {order.order_number != null && (
+              <span className="ltr font-mono font-semibold text-gold">#{order.order_number}</span>
+            )}
             {formatDateShort(order.created_at)}
             {order.is_pinned && <Pin size={9} className="text-gold" />}
           </div>
@@ -162,8 +165,11 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
         onClick={onClick}
         className="w-[260px] shrink-0 px-4 py-4 border-l border-cream-dark dark:border-navy-light/60 cursor-pointer hover:bg-gold/5 dark:hover:bg-white/3 transition-colors flex flex-col gap-2.5"
       >
-        {/* Date + pin */}
+        {/* Order number + date + pin */}
         <div className="flex items-center gap-1.5 text-xs text-muted tabular-nums">
+          {order.order_number != null && (
+            <span className="ltr font-mono font-semibold text-gold">#{order.order_number}</span>
+          )}
           {formatDateShort(order.created_at)}
           {order.is_pinned && <Pin size={10} className="text-gold" />}
         </div>

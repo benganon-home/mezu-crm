@@ -98,10 +98,12 @@ export default function OrdersPage() {
 
     if (search.trim()) {
       const q = search.trim().toLowerCase()
+      const qNum = q.replace(/^#/, '') // allow searching "#123" or "123"
       result = result.filter(o =>
         o.customer?.name?.toLowerCase().includes(q) ||
         o.customer?.phone?.includes(q) ||
-        (o.delivery_address || '').toLowerCase().includes(q)
+        (o.delivery_address || '').toLowerCase().includes(q) ||
+        (o.order_number != null && String(o.order_number).includes(qNum))
       )
     }
 
@@ -376,7 +378,7 @@ export default function OrdersPage() {
           <Search size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted" />
           <input
             className="input pr-9 w-full"
-            placeholder="חיפוש לפי שם, טלפון, כתובת..."
+            placeholder="חיפוש לפי שם, טלפון, כתובת, מס׳ הזמנה..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
