@@ -3,6 +3,101 @@
 // Hebrew is laid out right-to-left (non-cursive, so no contextual shaping needed).
 
 import * as opentype from "opentype.js";
+import polygonClipping from "polygon-clipping";
+
+type Ring = [number, number][];
+
+// Flatten an opentype glyph path into polygon rings (beziers → line segments).
+function flattenGlyph(commands: opentype.PathCommand[]): Ring[] {
+  const rings: Ring[] = [];
+  let cur: Ring = [];
+  let cx = 0,
+    cy = 0,
+    sx = 0,
+    sy = 0;
+  const quad = (x1: number, y1: number, x: number, y: number) => {
+    for (let i = 1; i <= 10; i++) {
+      const t = i / 10,
+        mt = 1 - t;
+      cur.push([mt * mt * cx + 2 * mt * t * x1 + t * t * x, mt * mt * cy + 2 * mt * t * y1 + t * t * y]);
+    }
+    cx = x;
+    cy = y;
+  };
+  const cube = (x1: number, y1: number, x2: number, y2: number, x: number, y: number) => {
+    for (let i = 1; i <= 12; i++) {
+      const t = i / 12,
+        mt = 1 - t;
+      cur.push([
+        mt * mt * mt * cx + 3 * mt * mt * t * x1 + 3 * mt * t * t * x2 + t * t * t * x,
+        mt * mt * mt * cy + 3 * mt * mt * t * y1 + 3 * mt * t * t * y2 + t * t * t * y,
+      ]);
+    }
+    cx = x;
+    cy = y;
+  };
+  for (const c of commands) {
+    if (c.type === "M") {
+      if (cur.length > 2) rings.push(cur);
+      cur = [[c.x, c.y]];
+      cx = sx = c.x;
+      cy = sy = c.y;
+    } else if (c.type === "L") {
+      cur.push([c.x, c.y]);
+      cx = c.x;
+      cy = c.y;
+    } else if (c.type === "Q") {
+      quad(c.x1, c.y1, c.x, c.y);
+    } else if (c.type === "C") {
+      cube(c.x1, c.y1, c.x2, c.y2, c.x, c.y);
+    } else if (c.type === "Z") {
+      if (cur.length > 2) rings.push(cur);
+      cur = [];
+      cx = sx;
+      cy = sy;
+    }
+  }
+  if (cur.length > 2) rings.push(cur);
+  return rings;
+}
+
+function signedArea(r: Ring): number {
+  let a = 0;
+  for (let i = 0; i < r.length; i++) {
+    const [x1, y1] = r[i];
+    const [x2, y2] = r[(i + 1) % r.length];
+    a += x1 * y2 - x2 * y1;
+  }
+  return a / 2;
+}
+
+/**
+ * Resolve a glyph to clean, non-overlapping polygons using a NONZERO fill
+ * (positive contours = fills, negative = holes), then emit as SVG path data.
+ * OpenSCAD imports SVG with EVEN-ODD, which rings glyphs whose solid sub-parts
+ * are geometrically nested (e.g. Karantina) — resolving to clean nonzero polygons
+ * makes even-odd render them solid, for every font.
+ */
+function resolveGlyphPath(gp: opentype.Path): string {
+  const rings = flattenGlyph(gp.commands);
+  const pos: Ring[][] = [];
+  const neg: Ring[][] = [];
+  for (const r of rings) {
+    const a = signedArea(r);
+    if (Math.abs(a) < 0.01) continue;
+    (a > 0 ? pos : neg).push([r]);
+  }
+  if (pos.length === 0) return gp.toPathData(2);
+  try {
+    let res = polygonClipping.union(pos[0], ...pos.slice(1));
+    if (neg.length) res = polygonClipping.difference(res, ...neg);
+    let d = "";
+    for (const poly of res) for (const ring of poly) d += "M" + ring.map((p) => p[0].toFixed(2) + "," + p[1].toFixed(2)).join("L") + "Z";
+    return d || gp.toPathData(2);
+  } catch {
+    return gp.toPathData(2); // fall back to raw outline on any clipping error
+  }
+}
 
 export interface FontDef {
   key: string;
@@ -85,7 +180,7 @@ function layoutRun(font: opentype.Font, text: string, size: number, spacing: num
   for (const c of seq) {
     const g = font.charToGlyph(c);
     const gp = g.getPath(x, baselineY, size);
-    const data = gp.toPathData(2);
+    const data = resolveGlyphPath(gp); // nonzero-resolved → renders solid in OpenSCAD
     if (data) parts.push(data);
     x += (g.advanceWidth ?? 0) * scale + spacing;
   }
