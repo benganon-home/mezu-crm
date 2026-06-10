@@ -141,7 +141,12 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                   </span>
                 )}
                 {item.sign_text && (
-                  <span className="text-gold font-medium truncate max-w-[140px]">{`"${item.sign_text.replace('\n', '>')}"`}</span>
+                  <span className="flex items-center gap-1 text-gold font-medium">
+                    <span className="truncate max-w-[120px]">{`"${item.sign_text.replace('\n', '>')}"`}</span>
+                    <button onClick={e => openSign(item, e)} title="שלט STL" className="shrink-0 hover:text-gold/70">
+                      <Box size={13} />
+                    </button>
+                  </span>
                 )}
                 {item.apartment_number && (
                   <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 font-medium ltr">
@@ -158,19 +163,10 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                   status={item.status}
                   onStatusChange={onItemStatusChange}
                 />
-                {isDoorSign(item) && (
-                  <button
-                    onClick={e => openSign(item, e)}
-                    title="שלט STL"
-                    className="ml-auto text-muted/50 hover:text-gold transition-colors p-1"
-                  >
-                    <Box size={16} />
-                  </button>
-                )}
                 <button
                   onClick={e => handleDeleteItem(item, e)}
                   disabled={deletingId === item.id}
-                  className={cn('text-muted/40 hover:text-red-500 active:text-red-500 transition-colors disabled:opacity-30 p-1', !isDoorSign(item) && 'ml-auto')}
+                  className="ml-auto text-muted/40 hover:text-red-500 active:text-red-500 transition-colors disabled:opacity-30 p-1"
                 >
                   <Trash2 size={14} />
                 </button>
@@ -323,6 +319,9 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                         {item.sign_text.replace('\n', '>')}
                       </span>
                       <CopyButton text={item.sign_text} />
+                      <button onClick={e => openSign(item, e)} title="שלט STL" className="text-muted/50 hover:text-gold transition-colors shrink-0">
+                        <Box size={13} />
+                      </button>
                     </div>
                   : <span className="text-muted/40 font-normal">—</span>
                 }
@@ -356,15 +355,8 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                 />
               </div>
 
-              {/* STL + Delete — fixed width so all rows stay aligned */}
-              <div className="flex w-[64px] shrink-0 items-center justify-center gap-3 px-2 py-3.5" onClick={e => e.stopPropagation()}>
-                <button
-                  onClick={e => openSign(item, e)}
-                  title="שלט STL"
-                  className={cn('transition-colors', isDoorSign(item) ? 'text-muted/50 hover:text-gold' : 'invisible')}
-                >
-                  <Box size={14} />
-                </button>
+              {/* Delete (unchanged) */}
+              <div className="px-3 py-3.5 shrink-0" onClick={e => e.stopPropagation()}>
                 <button
                   onClick={e => handleDeleteItem(item, e)}
                   disabled={deletingId === item.id}

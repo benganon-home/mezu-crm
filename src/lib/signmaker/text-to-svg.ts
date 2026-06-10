@@ -63,6 +63,7 @@ export async function loadFont(file: string): Promise<opentype.Font> {
 
 interface RunBox {
   d: string;
+  glyphs: string[]; // per-glyph path data (kept separate for correct SVG hole detection)
   left: number;
   right: number;
   top: number;
@@ -91,6 +92,7 @@ function layoutRun(font: opentype.Font, text: string, size: number, spacing: num
   const right = x - (seq.length ? spacing : 0);
   return {
     d: parts.join(" "),
+    glyphs: parts,
     left: originX,
     right,
     top: baselineY - ascent,
@@ -153,7 +155,7 @@ export function buildSvg(font: opentype.Font, input: CreatorInput): string {
     const baseline = cursor - m.ink.top; // ink top at `cursor`
     const startX = pad + (totalW - m.w) / 2; // center this line within the block
     const run = layoutRun(font, m.line.text, m.line.size, sp, startX, baseline);
-    if (run.d) parts.push(run.d);
+    parts.push(...run.glyphs);
     cursor += inkH;
     if (i < measured.length - 1) cursor += m.line.size * gapFactor; // gap to next line
   });
@@ -162,5 +164,9 @@ export function buildSvg(font: opentype.Font, input: CreatorInput): string {
 
   const vw = totalW + pad * 2;
   const vh = cursor + pad;
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${vw.toFixed(2)} ${vh.toFixed(2)}"><path d="${parts.join(" ")}" fill="#000000"/></svg>`;
+  // One <path> per glyph: OpenSCAD unions them (identical result) and three.js
+  // SVGLoader detects each glyph's holes correctly (a single combined path makes
+  // it nest glyphs into each other → garbled 3D preview).
+  const paths = parts.map((d) => `<path d="${d}" fill="#000000"/>`).join("");
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${vw.toFixed(2)} ${vh.toFixed(2)}">${paths}</svg>`;
 }

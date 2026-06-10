@@ -55,7 +55,7 @@ export function fontNameToKey(font: string | null | undefined): string {
  */
 export function signTextToLines(signText: string | null | undefined): CreatorLine[] {
   const parts = (signText || "")
-    .split("\n")
+    .split(/[\n>]/) // 2-line signs come as "משפחת\nאביב" or "משפחת>אביב"
     .map((s) => s.trim())
     .filter(Boolean);
 
