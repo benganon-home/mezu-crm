@@ -49,10 +49,14 @@ export default function SignEditor({ initial }: { initial?: SignEditorInitial })
       const def = FONTS.find((f) => f.key === fontKey) ?? FONTS[0];
       try {
         const font = await loadFont(def.file);
-        const svg = buildSvg(font, { lines, fontKey, letterSpacing: 0, lineSpacing });
+        const input = { lines, fontKey, letterSpacing: 0, lineSpacing };
+        // Generation/img: single combined path (full-body recess in OpenSCAD).
+        const svg = buildSvg(font, input);
         setSvgContent(svg);
+        // 3D preview: per-glyph paths (correct hole detection in three.js).
+        const previewSvg = buildSvg(font, input, { perGlyph: true });
         if (lastUrl.current) URL.revokeObjectURL(lastUrl.current);
-        const url = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+        const url = URL.createObjectURL(new Blob([previewSvg], { type: "image/svg+xml" }));
         lastUrl.current = url;
         setSvgUrl(url);
       } catch (e) {

@@ -131,7 +131,7 @@ function measureInk(font: opentype.Font, text: string, size: number): { top: num
  * block stays tight — this keeps text large and makes per-line size differences
  * clearly visible instead of being eaten by empty line spacing.
  */
-export function buildSvg(font: opentype.Font, input: CreatorInput): string {
+export function buildSvg(font: opentype.Font, input: CreatorInput, opts?: { perGlyph?: boolean }): string {
   const sp = input.letterSpacing;
   const gapFactor = (input.lineSpacing ?? 22) / 100;
   const lines = input.lines.filter((l) => l.text.trim().length > 0);
@@ -164,9 +164,12 @@ export function buildSvg(font: opentype.Font, input: CreatorInput): string {
 
   const vw = totalW + pad * 2;
   const vh = cursor + pad;
-  // One <path> per glyph: OpenSCAD unions them (identical result) and three.js
-  // SVGLoader detects each glyph's holes correctly (a single combined path makes
-  // it nest glyphs into each other → garbled 3D preview).
-  const paths = parts.map((d) => `<path d="${d}" fill="#000000"/>`).join("");
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${vw.toFixed(2)} ${vh.toFixed(2)}">${paths}</svg>`;
+  // Generation (default): ONE combined path with nonzero fill — OpenSCAD recesses
+  //   the full letter bodies (per-glyph paths make serif fonts cut as outlines only).
+  // Preview (perGlyph:true): one <path> per glyph — three.js SVGLoader detects each
+  //   glyph's holes correctly (a combined path makes it nest glyphs → garbled mesh).
+  const body = opts?.perGlyph
+    ? parts.map((d) => `<path d="${d}" fill="#000000"/>`).join("")
+    : `<path d="${parts.join(" ")}" fill="#000000"/>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${vw.toFixed(2)} ${vh.toFixed(2)}">${body}</svg>`;
 }
