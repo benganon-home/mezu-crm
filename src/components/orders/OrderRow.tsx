@@ -1,9 +1,12 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { Order, OrderItem, OrderStatus, ITEM_COLOR_MAP } from '@/types'
 import { formatDateShort, formatPrice, cn } from '@/lib/utils'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { ItemStatusDropdown } from '@/components/orders/ItemStatusDropdown'
-import { Truck, Home, Pin, StickyNote, Trash2, ImageIcon } from 'lucide-react'
+import { Truck, Home, Pin, StickyNote, Trash2, ImageIcon, Box } from 'lucide-react'
+import SignModal from '@/components/signmaker/SignModal'
+import { signTypeToModelId, signTextToLines, fontNameToKey } from '@/lib/signmaker/orders'
+import type { SignEditorInitial } from '@/components/signmaker/SignEditor'
 
 interface Props {
   order: Order
@@ -26,6 +29,18 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
   const items    = order.items || []
   const [deletingId, setDeletingId]   = useState<string | null>(null)
   const [previewImg, setPreviewImg]   = useState<{ src: string; x: number; y: number } | null>(null)
+  const [signInitial, setSignInitial] = useState<SignEditorInitial | null>(null)
+
+  const isDoorSign = (item: OrderItem) => !!item.sign_text
+  const openSign = (item: OrderItem, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSignInitial({
+      modelId: signTypeToModelId(item.item_name),
+      lines:   signTextToLines(item.sign_text),
+      fontKey: fontNameToKey(item.font),
+      name:    customer?.name || '',
+    })
+  }
 
   const handleDeleteItem = (item: OrderItem, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -143,10 +158,19 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                   status={item.status}
                   onStatusChange={onItemStatusChange}
                 />
+                {isDoorSign(item) && (
+                  <button
+                    onClick={e => openSign(item, e)}
+                    title="שלט STL"
+                    className="ml-auto text-muted/50 hover:text-gold transition-colors p-1"
+                  >
+                    <Box size={16} />
+                  </button>
+                )}
                 <button
                   onClick={e => handleDeleteItem(item, e)}
                   disabled={deletingId === item.id}
-                  className="ml-auto text-muted/40 hover:text-red-500 active:text-red-500 transition-colors disabled:opacity-30 p-1"
+                  className={cn('text-muted/40 hover:text-red-500 active:text-red-500 transition-colors disabled:opacity-30 p-1', !isDoorSign(item) && 'ml-auto')}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -332,8 +356,17 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                 />
               </div>
 
-              {/* Delete */}
-              <div className="px-3 py-3.5 shrink-0" onClick={e => e.stopPropagation()}>
+              {/* STL + Delete */}
+              <div className="flex items-center gap-2 px-3 py-3.5 shrink-0" onClick={e => e.stopPropagation()}>
+                {isDoorSign(item) && (
+                  <button
+                    onClick={e => openSign(item, e)}
+                    title="שלט STL"
+                    className="text-muted/50 hover:text-gold transition-colors"
+                  >
+                    <Box size={14} />
+                  </button>
+                )}
                 <button
                   onClick={e => handleDeleteItem(item, e)}
                   disabled={deletingId === item.id}
@@ -361,6 +394,8 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
           />
         </div>
       )}
+
+      <SignModal open={!!signInitial} onClose={() => setSignInitial(null)} initial={signInitial ?? undefined} />
 </>
   )
 }
