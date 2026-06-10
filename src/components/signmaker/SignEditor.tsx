@@ -94,7 +94,8 @@ export default function SignEditor({ initial }: { initial?: SignEditorInitial })
       const fname = (name.trim() || lines.map((l) => l.text.trim()).filter(Boolean).join(" ") || "sign").trim();
       downloadStl(bytes, fname);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "שגיאה ביצירת STL");
+      console.error("STL generation failed:", e);
+      setError("יצירת ה-STL נכשלה — נסו שוב");
     } finally {
       setBusy(false);
     }

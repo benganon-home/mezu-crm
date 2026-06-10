@@ -63,7 +63,7 @@ export async function generateStl({ modelId, svgContent, params }: GenerateInput
     `base_offset_y=${params.baseOffsetY}`,
     "-D",
     `text_offset_y=${params.textOffsetY}`,
-    "--enable=manifold",
+    "--backend=manifold", // fast + low-memory engine; CGAL (default) OOMs in the WASM heap
   ];
 
   const w = getWorker();

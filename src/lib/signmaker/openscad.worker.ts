@@ -29,7 +29,13 @@ self.onmessage = async (e: MessageEvent<Req>) => {
     instance.FS.writeFile("/base.stl", baseBytes);
     instance.FS.writeFile("/text.svg", svgContent);
     instance.FS.writeFile("/model.scad", scad);
-    const code = instance.callMain(args);
+    let code: number;
+    try {
+      code = instance.callMain(args);
+    } catch {
+      instance = null; // WASM aborted (e.g. OOM) — reset for the next run
+      throw new Error("engine-crash");
+    }
     if (code !== 0) {
       instance = null; // a bad exit can leave the runtime unusable
       throw new Error(`OpenSCAD failed (code ${code})`);
