@@ -356,17 +356,15 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                 />
               </div>
 
-              {/* STL + Delete */}
-              <div className="flex items-center gap-2 px-3 py-3.5 shrink-0" onClick={e => e.stopPropagation()}>
-                {isDoorSign(item) && (
-                  <button
-                    onClick={e => openSign(item, e)}
-                    title="שלט STL"
-                    className="text-muted/50 hover:text-gold transition-colors"
-                  >
-                    <Box size={14} />
-                  </button>
-                )}
+              {/* STL + Delete — fixed width so all rows stay aligned */}
+              <div className="flex w-[64px] shrink-0 items-center justify-center gap-3 px-2 py-3.5" onClick={e => e.stopPropagation()}>
+                <button
+                  onClick={e => openSign(item, e)}
+                  title="שלט STL"
+                  className={cn('transition-colors', isDoorSign(item) ? 'text-muted/50 hover:text-gold' : 'invisible')}
+                >
+                  <Box size={14} />
+                </button>
                 <button
                   onClick={e => handleDeleteItem(item, e)}
                   disabled={deletingId === item.id}
