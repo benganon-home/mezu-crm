@@ -1,27 +1,32 @@
-// Client-side STL generation via OpenSCAD compiled to WebAssembly.
-// Runs entirely in the browser — no server/binary. Produces output identical
-// to the desktop OpenSCAD (same template + base STL + outlined SVG).
+// Client-side STL generation via OpenSCAD-WASM running in a Web Worker, so the
+// engine init + boolean never block the UI. Output is identical to desktop OpenSCAD.
 
 import type { ModelId, SignParams } from "./models";
 import { DOORSIGN_SCAD } from "./scad";
 
-type OscadFS = {
-  writeFile: (path: string, data: string | Uint8Array) => void;
-  readFile: (path: string, opts: { encoding: "binary" }) => Uint8Array;
-};
-type OscadInstance = { FS: OscadFS; callMain: (args: string[]) => number };
-
-let instancePromise: Promise<OscadInstance> | null = null;
+let worker: Worker | null = null;
+let reqId = 0;
+const pending = new Map<number, { resolve: (b: Uint8Array) => void; reject: (e: Error) => void }>();
 const baseStlCache = new Map<ModelId, Uint8Array>();
 
-async function getInstance(): Promise<OscadInstance> {
-  if (!instancePromise) {
-    instancePromise = import("openscad-wasm-prebuilt").then(async (mod) => {
-      const oscad = await mod.createOpenSCAD({ noInitialRun: true, printErr: () => {} });
-      return oscad.getInstance() as unknown as OscadInstance;
-    });
+function getWorker(): Worker {
+  if (!worker) {
+    worker = new Worker(new URL("./openscad.worker.ts", import.meta.url), { type: "module" });
+    worker.onmessage = (e: MessageEvent<{ id: number; ok: boolean; stl?: Uint8Array; error?: string }>) => {
+      const { id, ok, stl, error } = e.data;
+      const p = pending.get(id);
+      if (!p) return;
+      pending.delete(id);
+      if (ok && stl) p.resolve(stl);
+      else p.reject(new Error(error || "generation failed"));
+    };
+    worker.onerror = () => {
+      for (const p of pending.values()) p.reject(new Error("worker error"));
+      pending.clear();
+      worker = null;
+    };
   }
-  return instancePromise;
+  return worker;
 }
 
 async function loadBaseStl(modelId: ModelId): Promise<Uint8Array> {
@@ -39,14 +44,9 @@ export interface GenerateInput {
   params: SignParams;
 }
 
-/** Generate the cut STL in-browser. Returns the STL bytes. */
+/** Generate the cut STL off-thread. Returns the STL bytes. */
 export async function generateStl({ modelId, svgContent, params }: GenerateInput): Promise<Uint8Array> {
-  const [inst, baseBytes] = await Promise.all([getInstance(), loadBaseStl(modelId)]);
-
-  inst.FS.writeFile("/base.stl", baseBytes);
-  inst.FS.writeFile("/text.svg", svgContent);
-  inst.FS.writeFile("/model.scad", DOORSIGN_SCAD);
-
+  const baseBytes = await loadBaseStl(modelId);
   const args = [
     "/model.scad",
     "-o",
@@ -66,14 +66,14 @@ export async function generateStl({ modelId, svgContent, params }: GenerateInput
     "--enable=manifold",
   ];
 
-  const code = inst.callMain(args);
-  if (code !== 0) {
-    // A non-zero exit can leave the Emscripten runtime unusable — reset for next time.
-    instancePromise = null;
-    throw new Error(`OpenSCAD failed (code ${code})`);
-  }
-  const out = inst.FS.readFile("/out.stl", { encoding: "binary" }) as Uint8Array;
-  return out;
+  const w = getWorker();
+  const id = ++reqId;
+  // Transfer a copy of the base bytes so we don't neuter the cache entry.
+  const baseCopy = new Uint8Array(baseBytes);
+  return new Promise<Uint8Array>((resolve, reject) => {
+    pending.set(id, { resolve, reject });
+    w.postMessage({ id, baseBytes: baseCopy, svgContent, scad: DOORSIGN_SCAD, args }, [baseCopy.buffer]);
+  });
 }
 
 /** Trigger a browser download of STL bytes. */

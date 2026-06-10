@@ -38,6 +38,7 @@ export default function SignEditor({ initial }: { initial?: SignEditorInitial })
   const [svgContent, setSvgContent] = useState("");
   const [svgUrl, setSvgUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [rendering, setRendering] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const lastUrl = useRef<string | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -47,6 +48,7 @@ export default function SignEditor({ initial }: { initial?: SignEditorInitial })
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
       const def = FONTS.find((f) => f.key === fontKey) ?? FONTS[0];
+      setRendering(true);
       try {
         const font = await loadFont(def.file);
         const input = { lines, fontKey, letterSpacing: 0, lineSpacing };
@@ -61,6 +63,8 @@ export default function SignEditor({ initial }: { initial?: SignEditorInitial })
         setSvgUrl(url);
       } catch (e) {
         setError(String(e));
+      } finally {
+        setRendering(false);
       }
     }, 250);
     return () => {
@@ -180,8 +184,14 @@ export default function SignEditor({ initial }: { initial?: SignEditorInitial })
 
       {/* Preview */}
       <div className="space-y-3">
-        <div className="aspect-square w-full overflow-hidden rounded-xl border border-cream-dark bg-[#F8F7FC]">
+        <div className="relative aspect-square w-full overflow-hidden rounded-xl border border-cream-dark bg-[#F8F7FC]">
           <StlPreview baseUrl={`/signmaker/${modelId}.stl`} svgUrl={svgUrl} params={params} className="h-full w-full" />
+          {(busy || rendering) && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-[#F8F7FC]/70 backdrop-blur-[1px]">
+              <span className="h-8 w-8 animate-spin rounded-full border-2 border-gold border-t-transparent" />
+              <span className="text-sm font-medium text-navy">{busy ? "מייצר STL…" : "מעדכן תצוגה…"}</span>
+            </div>
+          )}
         </div>
         <div className="flex min-h-20 items-center justify-center rounded-xl border border-cream-dark bg-white p-4">
           {svgContent ? (
