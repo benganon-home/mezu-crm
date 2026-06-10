@@ -142,7 +142,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                 )}
                 {item.sign_text && (
                   <span className="flex items-center gap-1 text-gold font-medium">
-                    <span className="truncate max-w-[120px]">{`"${item.sign_text.replace('\n', '>')}"`}</span>
+                    <span className="truncate max-w-[200px]">{`"${item.sign_text.replace('\n', '>')}"`}</span>
                     <button onClick={e => openSign(item, e)} title="שלט STL" className="shrink-0 hover:text-gold/70">
                       <Box size={13} />
                     </button>
@@ -312,7 +312,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
               </div>
 
               {/* טקסט + מס׳ דירה */}
-              <div className="w-[120px] shrink-0 px-2 py-3.5 flex flex-col gap-0.5" onClick={e => e.stopPropagation()}>
+              <div className="w-[200px] shrink-0 px-2 py-3.5 flex flex-col gap-0.5" onClick={e => e.stopPropagation()}>
                 {item.sign_text
                   ? <div className="flex items-center gap-1">
                       <span className="text-gold font-medium truncate">
