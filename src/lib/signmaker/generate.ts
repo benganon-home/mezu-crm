@@ -1,28 +1,13 @@
-// Client-side STL generation via OpenSCAD-WASM (Manifold backend). Runs on the
-// main thread (a module Web Worker can't load the embedded-data-URI WASM in this
-// Next bundle). Manifold makes a cut ~170ms, so the UI barely pauses.
+// Client-side STL generation via OpenSCAD-WASM (Manifold backend).
+// Each generation runs in its OWN throwaway Web Worker: OpenSCAD can only run
+// once per WASM instance, and a 2nd instance can't be created in the same realm,
+// so reusing anything aborts the 2nd generation. A fresh worker per call = a
+// fresh realm = a clean instance every time. Off-thread, so the UI stays smooth.
 
 import type { ModelId, SignParams } from "./models";
 import { DOORSIGN_SCAD } from "./scad";
 
-type OscadFS = {
-  writeFile: (path: string, data: string | Uint8Array) => void;
-  readFile: (path: string, opts: { encoding: "binary" }) => Uint8Array;
-};
-type OscadInstance = { FS: OscadFS; callMain: (args: string[]) => number };
-
-let instancePromise: Promise<OscadInstance> | null = null;
 const baseStlCache = new Map<ModelId, Uint8Array>();
-
-function getInstance(): Promise<OscadInstance> {
-  if (!instancePromise) {
-    instancePromise = import("openscad-wasm-prebuilt").then(async (mod) => {
-      const oscad = await mod.createOpenSCAD({ noInitialRun: true, printErr: () => {} });
-      return oscad.getInstance() as unknown as OscadInstance;
-    });
-  }
-  return instancePromise;
-}
 
 async function loadBaseStl(modelId: ModelId): Promise<Uint8Array> {
   const cached = baseStlCache.get(modelId);
@@ -39,14 +24,9 @@ export interface GenerateInput {
   params: SignParams;
 }
 
-/** Generate the cut STL in-browser. Returns the STL bytes. */
+/** Generate the cut STL in a throwaway worker. Returns the STL bytes. */
 export async function generateStl({ modelId, svgContent, params }: GenerateInput): Promise<Uint8Array> {
-  const [inst, baseBytes] = await Promise.all([getInstance(), loadBaseStl(modelId)]);
-
-  inst.FS.writeFile("/base.stl", baseBytes);
-  inst.FS.writeFile("/text.svg", svgContent);
-  inst.FS.writeFile("/model.scad", DOORSIGN_SCAD);
-
+  const baseBytes = await loadBaseStl(modelId);
   const args = [
     "/model.scad",
     "-o",
@@ -63,21 +43,26 @@ export async function generateStl({ modelId, svgContent, params }: GenerateInput
     `base_offset_y=${params.baseOffsetY}`,
     "-D",
     `text_offset_y=${params.textOffsetY}`,
-    "--backend=manifold", // fast + low-memory; CGAL (default) OOMs in the WASM heap
+    "--backend=manifold",
   ];
 
-  let code: number;
-  try {
-    code = inst.callMain(args);
-  } catch {
-    instancePromise = null; // a WASM abort leaves the runtime unusable
-    throw new Error("engine-crash");
-  }
-  if (code !== 0) {
-    instancePromise = null;
-    throw new Error(`exit-${code}`);
-  }
-  return inst.FS.readFile("/out.stl", { encoding: "binary" });
+  return new Promise<Uint8Array>((resolve, reject) => {
+    const worker = new Worker(new URL("./openscad.worker.ts", import.meta.url), { type: "module" });
+    const done = (fn: () => void) => {
+      clearTimeout(timer);
+      worker.terminate();
+      fn();
+    };
+    const timer = setTimeout(() => done(() => reject(new Error("timeout"))), 60000);
+    worker.onmessage = (e: MessageEvent<{ ok: boolean; stl?: Uint8Array; error?: string }>) => {
+      if (e.data.ok && e.data.stl) done(() => resolve(e.data.stl!));
+      else done(() => reject(new Error(e.data.error || "generation failed")));
+    };
+    worker.onerror = () => done(() => reject(new Error("worker error")));
+
+    const baseCopy = new Uint8Array(baseBytes); // transferable copy (keeps cache intact)
+    worker.postMessage({ baseBytes: baseCopy, svgContent, scad: DOORSIGN_SCAD, args }, [baseCopy.buffer]);
+  });
 }
 
 /** Trigger a browser download of STL bytes. */
