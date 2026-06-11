@@ -89,6 +89,8 @@ export default function SignEditor({ initial }: { initial?: SignEditorInitial })
     if (!svgContent) return;
     setBusy(true);
     setError(null);
+    // Let the loader overlay paint before the (first-run) WASM init blocks the thread.
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 30))));
     try {
       const bytes = await generateStl({ modelId, svgContent, params });
       const fname = (name.trim() || lines.map((l) => l.text.trim()).filter(Boolean).join(" ") || "sign").trim();
