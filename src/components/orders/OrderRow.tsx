@@ -1,9 +1,12 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { Order, OrderItem, OrderStatus, ITEM_COLOR_MAP } from '@/types'
 import { formatDateShort, formatPrice, cn } from '@/lib/utils'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { ItemStatusDropdown } from '@/components/orders/ItemStatusDropdown'
-import { Truck, Home, Pin, StickyNote, Trash2, ImageIcon } from 'lucide-react'
+import { Truck, Home, Pin, StickyNote, Trash2, ImageIcon, Box } from 'lucide-react'
+import SignModal from '@/components/signmaker/SignModal'
+import { signTypeToModelId, signTextToLines, fontNameToKey } from '@/lib/signmaker/orders'
+import type { SignEditorInitial } from '@/components/signmaker/SignEditor'
 
 interface Props {
   order: Order
@@ -26,6 +29,18 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
   const items    = order.items || []
   const [deletingId, setDeletingId]   = useState<string | null>(null)
   const [previewImg, setPreviewImg]   = useState<{ src: string; x: number; y: number } | null>(null)
+  const [signInitial, setSignInitial] = useState<SignEditorInitial | null>(null)
+
+  const isDoorSign = (item: OrderItem) => !!item.sign_text
+  const openSign = (item: OrderItem, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSignInitial({
+      modelId: signTypeToModelId(item.item_name),
+      lines:   signTextToLines(item.sign_text),
+      fontKey: fontNameToKey(item.font),
+      name:    customer?.name || '',
+    })
+  }
 
   const handleDeleteItem = (item: OrderItem, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -126,7 +141,12 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                   </span>
                 )}
                 {item.sign_text && (
-                  <span className="text-gold font-medium truncate max-w-[140px]">{`"${item.sign_text.replace('\n', '>')}"`}</span>
+                  <span className="flex items-center gap-1 text-gold font-medium">
+                    <span className="truncate max-w-[200px]">{`"${item.sign_text.replace('\n', '>')}"`}</span>
+                    <button onClick={e => openSign(item, e)} title="שלט STL" className="shrink-0 hover:text-gold/70">
+                      <Box size={13} />
+                    </button>
+                  </span>
                 )}
                 {item.apartment_number && (
                   <span className="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300 font-medium ltr">
@@ -292,13 +312,16 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
               </div>
 
               {/* טקסט + מס׳ דירה */}
-              <div className="w-[120px] shrink-0 px-2 py-3.5 flex flex-col gap-0.5" onClick={e => e.stopPropagation()}>
+              <div className="w-[200px] shrink-0 px-2 py-3.5 flex flex-col gap-0.5" onClick={e => e.stopPropagation()}>
                 {item.sign_text
                   ? <div className="flex items-center gap-1">
                       <span className="text-gold font-medium truncate">
                         {item.sign_text.replace('\n', '>')}
                       </span>
                       <CopyButton text={item.sign_text} />
+                      <button onClick={e => openSign(item, e)} title="שלט STL" className="text-muted/50 hover:text-gold transition-colors shrink-0">
+                        <Box size={13} />
+                      </button>
                     </div>
                   : <span className="text-muted/40 font-normal">—</span>
                 }
@@ -332,7 +355,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                 />
               </div>
 
-              {/* Delete */}
+              {/* Delete (unchanged) */}
               <div className="px-3 py-3.5 shrink-0" onClick={e => e.stopPropagation()}>
                 <button
                   onClick={e => handleDeleteItem(item, e)}
@@ -361,6 +384,8 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
           />
         </div>
       )}
+
+      <SignModal open={!!signInitial} onClose={() => setSignInitial(null)} initial={signInitial ?? undefined} />
 </>
   )
 }
