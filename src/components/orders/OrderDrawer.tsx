@@ -724,7 +724,10 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
                 <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl px-3 py-2.5">
                   <Truck size={15} className="text-blue-600 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-blue-800 dark:text-blue-300 ltr">{tracking}</div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm font-medium text-blue-800 dark:text-blue-300 ltr">{tracking}</span>
+                      <CopyButton text={tracking} />
+                    </div>
                     <div className="text-xs text-muted">מספר משלוח ב-Run</div>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">

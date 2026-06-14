@@ -21,8 +21,9 @@ export interface OrderJob {
 /** Sign type / item name → SignMaker model. Mirrors the CRM SIGN_MAP outputs. */
 export function signTypeToModelId(itemName: string | null | undefined): ModelId {
   const n = itemName || "";
-  if (n.includes("מסגרת")) return "frame";
+  // Check לב first: "מסגרת - עם לב" (frame WITH a heart) should map to the heart model.
   if (n.includes("לב")) return "heart";
+  if (n.includes("מסגרת")) return "frame";
   return "classic"; // קלאסי / default
 }
 
