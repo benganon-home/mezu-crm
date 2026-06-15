@@ -2,8 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { ChevronDown } from 'lucide-react'
-import { ITEM_COLOR_MAP } from '@/types'
 import { cn } from '@/lib/utils'
+import { dottedStyle } from '@/lib/colorPattern'
+import { useProductColors, resolveColor, type ColorOption } from '@/lib/productColors'
 
 interface Props {
   value: string
@@ -14,6 +15,7 @@ interface Props {
 
 export function ColorPicker({ value, onChange, placeholder = 'צבע — ללא', className }: Props) {
   const [open, setOpen] = useState(false)
+  const colors = useProductColors()
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -24,7 +26,15 @@ export function ColorPicker({ value, onChange, placeholder = 'צבע — ללא'
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  const selected = value ? ITEM_COLOR_MAP[value] : null
+  const selected = resolveColor(value, colors)
+  const known = !!value && colors.some(c => c.name_he === value)
+
+  // If the current value is a retired color missing from the active list,
+  // append it so it still renders as selected.
+  const options: ColorOption[] = [...colors]
+  if (value && !known) {
+    options.push(selected ?? { name_he: value, hex: '#CCCCCC', has_border: false, has_dots: false })
+  }
 
   return (
     <div ref={ref} className={cn('relative', className)}>
@@ -37,8 +47,8 @@ export function ColorPicker({ value, onChange, placeholder = 'צבע — ללא'
         {selected ? (
           <>
             <span
-              className="w-3.5 h-3.5 rounded-full shrink-0 border border-black/10"
-              style={{ backgroundColor: selected.hex }}
+              className={cn('w-3.5 h-3.5 rounded-full shrink-0', selected.has_border ? 'border border-black/15' : 'border border-black/10')}
+              style={dottedStyle(selected.hex, selected.has_dots)}
             />
             <span className="flex-1 text-right">{value}</span>
           </>
@@ -64,22 +74,22 @@ export function ColorPicker({ value, onChange, placeholder = 'צבע — ללא'
             <span className="flex-1">{placeholder}</span>
           </button>
 
-          {Object.entries(ITEM_COLOR_MAP).map(([name, { hex, border }]) => (
+          {options.map(({ name_he, hex, has_border, has_dots }) => (
             <button
-              key={name}
+              key={name_he}
               type="button"
-              onClick={() => { onChange(name); setOpen(false) }}
+              onClick={() => { onChange(name_he); setOpen(false) }}
               className={cn(
                 'w-full flex items-center gap-3 px-3 py-2 text-sm hover:bg-cream dark:hover:bg-navy-light/30 transition-colors text-right',
-                value === name && 'font-medium text-navy dark:text-cream bg-cream/60 dark:bg-navy-light/20'
+                value === name_he && 'font-medium text-navy dark:text-cream bg-cream/60 dark:bg-navy-light/20'
               )}
             >
               <span
-                className={cn('w-3.5 h-3.5 rounded-full shrink-0', border && 'border border-black/15')}
-                style={{ backgroundColor: hex }}
+                className={cn('w-3.5 h-3.5 rounded-full shrink-0', has_border && 'border border-black/15')}
+                style={dottedStyle(hex, has_dots)}
               />
-              <span className="flex-1">{name}</span>
-              {value === name && <span className="text-gold text-xs">✓</span>}
+              <span className="flex-1">{name_he}</span>
+              {value === name_he && <span className="text-gold text-xs">✓</span>}
             </button>
           ))}
         </div>

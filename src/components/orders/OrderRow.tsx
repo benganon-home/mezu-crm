@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { Order, OrderItem, OrderStatus, ITEM_COLOR_MAP } from '@/types'
+import { Order, OrderItem, OrderStatus } from '@/types'
 import { formatDateShort, formatPrice, cn } from '@/lib/utils'
+import { dottedStyle } from '@/lib/colorPattern'
+import { useProductColors, resolveColor } from '@/lib/productColors'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { ItemStatusDropdown } from '@/components/orders/ItemStatusDropdown'
 import { Truck, Home, Pin, StickyNote, Trash2, ImageIcon, Box } from 'lucide-react'
@@ -27,6 +29,7 @@ function getInitials(name: string): string {
 export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusChange, onDeleteItem, onClick }: Props) {
   const customer = order.customer
   const items    = order.items || []
+  const productColors = useProductColors()
   const [deletingId, setDeletingId]   = useState<string | null>(null)
   const [previewImg, setPreviewImg]   = useState<{ src: string; x: number; y: number } | null>(null)
   const [signInitial, setSignInitial] = useState<SignEditorInitial | null>(null)
@@ -96,7 +99,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
         <div className="px-3 py-3 text-xs text-muted/50 border-t border-cream-dark/50 dark:border-navy-light/30">—</div>
       )}
       {items.map((item, idx) => {
-        const colorEntry = item.color ? ITEM_COLOR_MAP[item.color] : null
+        const colorEntry = resolveColor(item.color, productColors)
         const isSelected = selectedItemIds.has(item.id)
         return (
           <div
@@ -134,8 +137,8 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                 {item.color && (
                   <span className="flex items-center gap-1">
                     <span
-                      className="w-2.5 h-2.5 rounded-full border border-black/15 inline-block"
-                      style={{ backgroundColor: colorEntry?.hex ?? '#C8C5D8' }}
+                      className={cn('w-2.5 h-2.5 rounded-full inline-block', (colorEntry?.has_border ?? true) && 'border border-black/15')}
+                      style={dottedStyle(colorEntry?.hex ?? '#C8C5D8', colorEntry?.has_dots)}
                     />
                     {item.color}
                   </span>
@@ -247,7 +250,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
           <div className="px-4 py-4 text-xs text-muted/50">—</div>
         )}
         {items.map((item, idx) => {
-          const colorEntry = item.color ? ITEM_COLOR_MAP[item.color] : null
+          const colorEntry = resolveColor(item.color, productColors)
           const isSelected = selectedItemIds.has(item.id)
 
           return (
