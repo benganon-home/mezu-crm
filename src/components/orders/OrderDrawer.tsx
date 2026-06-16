@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { X, MessageCircle, Edit2, Plus, Trash2, Package, AlertTriangle, Check, ChevronDown, FileText, Loader2, ExternalLink, Search, Truck, Printer, RefreshCw } from 'lucide-react'
+import { X, MessageCircle, Edit2, Plus, Trash2, Package, AlertTriangle, Check, ChevronDown, FileText, Loader2, ExternalLink, Search, Truck, Printer, RefreshCw, Copy } from 'lucide-react'
 import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG, ITEM_COLOR_MAP, FONTS, Product, ProductSize, SalesRule } from '@/types'
 import { formatDate, formatPrice, cn } from '@/lib/utils'
 import { applySalesRules } from '@/lib/sales-rules'
@@ -68,6 +68,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const [shipmentError, setShipmentError]       = useState<string | null>(null)
   const [trackingEvents, setTrackingEvents]     = useState<any[] | null>(null)
   const [loadingTracking, setLoadingTracking]   = useState(false)
+  const [copiedCustomerMsg, setCopiedCustomerMsg] = useState(false)
 
   // Customer editing
   const [editingCustomer, setEditingCustomer] = useState(false)
@@ -404,6 +405,45 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const waReady   = customer ? getWaLink(customer, 'order_ready',   { itemSummary: items.map(i => i.item_name).join(', ') }) : '#'
   const waShipped = customer ? getWaLink(customer, 'order_shipped',  { trackingNumber: tracking, invoiceUrl: invoiceUrl || undefined }) : '#'
   const waInvoice = customer && invoiceUrl ? getInvoiceWaLink(customer, invoiceUrl) : null
+
+  // ── Copy a ready-to-send message with the customer's order page + status ──
+  const STORE_URL = (process.env.NEXT_PUBLIC_STORE_URL || 'https://mezu.co.il').replace(/\/$/, '')
+  const orderPageUrl = `${STORE_URL}/order/${order.id}`
+
+  const copyCustomerMessage = async () => {
+    // Make sure we have the latest shipping status to embed in the message.
+    let events = trackingEvents
+    if (tracking && events == null) {
+      try {
+        const res  = await fetch(`/api/shipments/${tracking}/tracking`)
+        const data = await res.json()
+        events = res.ok ? (data.events || []) : []
+        setTrackingEvents(events)
+      } catch { events = [] }
+    }
+
+    let statusLine: string
+    if (tracking) {
+      const last = events && events[0]?.desc
+      statusLine = last
+        ? `📦 סטטוס משלוח עדכני: ${last}`
+        : `📦 ההזמנה נשלחה — אפשר לעקוב בקישור.`
+    } else {
+      statusLine = `נעדכן אתכם ברגע שההזמנה תישלח 🙏`
+    }
+
+    const msg =
+      `שלום ${customer?.name || ''} 😊\n` +
+      `אפשר לעקוב אחרי ההזמנה שלך מ-MEZU בקישור הבא — כולל סטטוס המשלוח:\n` +
+      `${orderPageUrl}\n\n` +
+      `${statusLine}`
+
+    try {
+      await navigator.clipboard.writeText(msg)
+      setCopiedCustomerMsg(true)
+      setTimeout(() => setCopiedCustomerMsg(false), 1800)
+    } catch { /* clipboard unavailable */ }
+  }
 
   return (
     <>
@@ -951,6 +991,11 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
               className="flex items-center justify-center gap-2 bg-navy hover:bg-navy-light dark:bg-cream dark:text-navy text-cream rounded-lg py-2.5 text-sm font-medium transition-colors">
               <Package size={15} /> עדכון משלוח
             </a>
+            <button onClick={copyCustomerMessage}
+              className="flex items-center justify-center gap-2 bg-gold hover:opacity-90 text-white rounded-lg py-2.5 text-sm font-medium transition-colors">
+              {copiedCustomerMsg ? <Check size={15} /> : <Copy size={15} />}
+              {copiedCustomerMsg ? 'ההודעה הועתקה!' : 'העתקת הודעה ללקוח + קישור מעקב'}
+            </button>
           </div>
 
           {/* Meta */}
