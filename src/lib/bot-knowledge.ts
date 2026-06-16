@@ -14,9 +14,9 @@ function admin() {
 // values — the bot states them to customers as fact, so they must be correct.
 // Key = mezuzah size label (as in the catalog), value = matching klaf size.
 const KLAF_SIZES: Record<string, string> = {
-  // "16": "קלף 12 ס״מ",
-  // "18": "קלף 15 ס״מ",
-  // "24": "קלף 20 ס״מ",
+  "16": "קלף 12 ס״מ",
+  "18": "קלף 15 ס״מ",
+  "24": "קלף 20 ס״מ",
 };
 
 function klafText(): string {
