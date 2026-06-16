@@ -25,6 +25,11 @@ interface WaMessage {
   text?: { body: string };
 }
 
+interface WaContact {
+  wa_id: string;
+  profile?: { name?: string };
+}
+
 export async function POST(request: Request) {
   const raw = await request.text();
   if (!verifySignature(raw, request.headers.get("x-hub-signature-256"))) {
@@ -38,13 +43,17 @@ export async function POST(request: Request) {
     return new Response("ok", { status: 200 });
   }
 
-  // Collect incoming text messages from the webhook payload.
+  // Collect incoming text messages + sender names from the webhook payload.
   const messages: WaMessage[] = [];
+  const names = new Map<string, string>(); // wa_id -> profile name
   const entries = (body as { entry?: unknown[] }).entry ?? [];
   for (const entry of entries) {
     const changes = (entry as { changes?: unknown[] }).changes ?? [];
     for (const change of changes) {
-      const value = (change as { value?: { messages?: WaMessage[] } }).value;
+      const value = (change as { value?: { messages?: WaMessage[]; contacts?: WaContact[] } }).value;
+      for (const c of value?.contacts ?? []) {
+        if (c.wa_id && c.profile?.name) names.set(c.wa_id, c.profile.name);
+      }
       for (const m of value?.messages ?? []) messages.push(m);
     }
   }
@@ -55,8 +64,9 @@ export async function POST(request: Request) {
       .filter((m) => m.type === "text" && m.text?.body && m.from)
       .map(async (m) => {
         try {
-          const reply = await botReply(m.from, m.text!.body);
-          await sendWhatsAppText(m.from, reply);
+          const reply = await botReply(m.from, m.text!.body, names.get(m.from) ?? null);
+          // reply === null means a human is handling this chat — stay silent.
+          if (reply) await sendWhatsAppText(m.from, reply);
         } catch (e) {
           console.error("WA bot error", e);
           await sendWhatsAppText(m.from, "מצטערים, יש תקלה זמנית. נסו שוב בעוד מספר דקות 🙏").catch(() => {});

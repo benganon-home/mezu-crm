@@ -11,6 +11,8 @@ import { findOrders, lookupOrders, type CustomerOrders } from "./order-lookup";
 import { getBusinessKnowledge } from "./bot-knowledge";
 import { toLocalPhone } from "./wa-cloud";
 import { formatDateShort } from "./utils";
+import { getEffectiveStatus, upsertInbound, escalate } from "./wa-conversations";
+import { sendHumanAlert } from "./wa-alert";
 
 function admin() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -91,6 +93,19 @@ const TOOLS: Anthropic.Tool[] = [
       },
     },
   },
+  {
+    name: "escalate_to_human",
+    description:
+      "העבר/י את השיחה לנציג אנושי. השתמש/י בזה כאשר: הלקוח מבקש במפורש לדבר עם אדם/נציג; " +
+      "או שמדובר בתלונה, בעיה רגישה, בקשה מיוחדת או משהו שאינך יכול/ה לפתור מהמידע הקיים. " +
+      "לאחר הקריאה — הודע/י ללקוח בעדינות שנציג יחזור אליו בהקדם.",
+    input_schema: {
+      type: "object",
+      properties: {
+        reason: { type: "string", description: "סיבת ההעברה בקצרה (לשימוש פנימי)" },
+      },
+    },
+  },
 ];
 
 // ─── System prompt ────────────────────────────────────────────────────────
@@ -119,9 +134,16 @@ const SYSTEM = `את/ה בוט שירות לקוחות של MEZU — עסק שמ
 - אם אין לך מידע — אמור/אמרי בכנות שאין לך אותו ושאפשר לפנות לנציג אנושי.
 - אל תבקש/י פרטים אישיים רגישים.`;
 
-export async function botReply(fromWaId: string, text: string): Promise<string> {
+export async function botReply(fromWaId: string, text: string, senderName?: string | null): Promise<string | null> {
   const key = process.env.ANTHROPIC_API_KEY;
   const senderPhone = toLocalPhone(fromWaId);
+
+  // Conversation state: if a human is handling (or it's already escalated), the
+  // bot stays silent so it doesn't talk over the owner. Record the message and
+  // flag it unread so it surfaces in the CRM inbox.
+  const status = await getEffectiveStatus(fromWaId);
+  await upsertInbound(fromWaId, text, senderName ?? null, status !== "bot");
+  if (status !== "bot") return null;
 
   // Without an API key, fall back to a plain templated reply (sender's orders).
   if (!key) {
@@ -160,6 +182,12 @@ export async function botReply(fromWaId: string, text: string): Promise<string> 
       for (const block of resp.content) {
         if (block.type === "tool_use" && block.name === "lookup_orders") {
           results.push({ type: "tool_result", tool_use_id: block.id, content: await runLookup(block.input, senderPhone) });
+        } else if (block.type === "tool_use" && block.name === "escalate_to_human") {
+          // Flag for a human, alert the owner, and let the model write the
+          // hand-off message to the customer in the same turn.
+          await escalate(fromWaId);
+          await sendHumanAlert(fromWaId, senderName ?? null, text);
+          results.push({ type: "tool_result", tool_use_id: block.id, content: "השיחה סומנה והועברה לנציג אנושי. הודע/י ללקוח בעדינות שניצור קשר בהקדם." });
         }
       }
       messages.push({ role: "user", content: results });

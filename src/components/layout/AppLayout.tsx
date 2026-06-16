@@ -5,12 +5,13 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   ShoppingBag, Users, Bell, BarChart2, Settings, Package, Layers, Receipt, Scale, CreditCard,
-  Menu, X, ChevronsLeft, Box
+  Menu, X, ChevronsLeft, Box, MessageCircle
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
   { href: '/orders',    icon: ShoppingBag, label: 'הזמנות'   },
+  { href: '/conversations', icon: MessageCircle, label: 'וואטסאפ' },
   { href: '/customers', icon: Users,       label: 'לקוחות'   },
   { href: '/products',    icon: Package,     label: 'מוצרים'   },
   { href: '/signmaker',  icon: Box,         label: 'שלטים'    },
@@ -90,7 +91,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             return (
               <Link
                 key={href}
-                href={href}
+                href={href as any}
                 onClick={() => setMobileOpen(false)}
                 title={collapsed ? label : undefined}
                 className={cn(
