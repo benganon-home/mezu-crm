@@ -83,7 +83,12 @@ export async function POST(request: Request) {
         // null means a human is handling this chat — stay silent.
         if (!reply) return;
         if (reply.kind === "list") {
-          await sendWhatsAppList(m.from, reply.menu.body, reply.menu.button, reply.menu.rows);
+          const ok = await sendWhatsAppList(m.from, reply.menu.body, reply.menu.button, reply.menu.rows);
+          if (!ok) {
+            // Fallback to a plain-text menu so navigation still works.
+            const lines = reply.menu.rows.map((r) => `• ${r.title}`).join("\n");
+            await sendWhatsAppText(m.from, `${reply.menu.body}\n\n${lines}\n\nכתבו לי את שם האפשרות או שאלו אותי ישירות 🤍`);
+          }
         } else {
           await sendWhatsAppText(m.from, reply.text);
         }

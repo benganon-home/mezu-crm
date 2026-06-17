@@ -37,19 +37,24 @@ export interface ListRow {
   description?: string; // max 72 chars
 }
 
-/** Send an interactive list message (a single "menu" button that opens a row picker). */
+/**
+ * Send an interactive list message (a single "menu" button that opens a row
+ * picker). Returns true on success, false on failure (so the caller can fall
+ * back to plain text). WhatsApp field limits: button <=20, row title <=24,
+ * row description <=72 — we trim defensively to avoid #131009 rejections.
+ */
 export async function sendWhatsAppList(
   to: string,
   body: string,
   button: string,
   rows: ListRow[],
   sectionTitle = "תפריט",
-): Promise<void> {
+): Promise<boolean> {
   const token = process.env.WHATSAPP_TOKEN;
   const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   if (!token || !phoneId) {
     console.error("WhatsApp env missing (WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID)");
-    return;
+    return false;
   }
   const res = await fetch(`${GRAPH}/${phoneId}/messages`, {
     method: "POST",
@@ -61,16 +66,16 @@ export async function sendWhatsAppList(
       type: "interactive",
       interactive: {
         type: "list",
-        body: { text: body },
+        body: { text: body.slice(0, 1024) },
         action: {
-          button, // max 20 chars
+          button: button.slice(0, 20),
           sections: [
             {
-              title: sectionTitle,
+              title: sectionTitle.slice(0, 24),
               rows: rows.map((r) => ({
-                id: r.id,
-                title: r.title,
-                ...(r.description ? { description: r.description } : {}),
+                id: r.id.slice(0, 200),
+                title: r.title.slice(0, 24),
+                ...(r.description ? { description: r.description.slice(0, 72) } : {}),
               })),
             },
           ],
@@ -78,7 +83,20 @@ export async function sendWhatsAppList(
       },
     }),
   });
-  if (!res.ok) console.error("WhatsApp list send failed", res.status, await res.text().catch(() => ""));
+  if (!res.ok) {
+    // Log the concise Graph error (code + message) — the full blob gets
+    // truncated in log viewers, so surface the useful part.
+    let detail = "";
+    try {
+      const j = (await res.json()) as { error?: { code?: number; message?: string } };
+      detail = `${j.error?.code ?? ""} ${j.error?.message ?? ""}`.trim();
+    } catch {
+      detail = await res.text().catch(() => "");
+    }
+    console.error(`WhatsApp list send failed ${res.status}: ${detail}`);
+    return false;
+  }
+  return true;
 }
 
 /** Verify Meta's X-Hub-Signature-256 against the raw request body. Skipped if no app secret. */
