@@ -205,6 +205,7 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
   const messages: Anthropic.MessageParam[] = [...history, { role: "user", content: text }];
 
   let finalText = "";
+  let escalated = false;
   for (let turn = 0; turn < 4; turn++) {
     const resp = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
@@ -226,7 +227,8 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
           // hand-off message to the customer in the same turn.
           await escalate(fromWaId);
           await sendHumanAlert(fromWaId, senderName ?? null, text);
-          results.push({ type: "tool_result", tool_use_id: block.id, content: "השיחה סומנה והועברה לנציג אנושי. הודע/י ללקוח בעדינות שניצור קשר בהקדם, וציין/י שבכל רגע אפשר לחזור לשיחה עם נציג ה-AI על-ידי כתיבת \"בוט\"." });
+          escalated = true;
+          results.push({ type: "tool_result", tool_use_id: block.id, content: "השיחה סומנה והועברה לנציג אנושי. כתוב/כתבי ללקוח הודעה קצרה וחמה שניצור קשר בהקדם. אל תזכיר/י את המילה \"בוט\" — שורת הסבר על חזרה לבוט תתווסף אוטומטית בסוף." });
         }
       }
       messages.push({ role: "user", content: results });
@@ -238,6 +240,12 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
   }
 
   finalText = finalText || "מצטערים, לא הצלחנו לעבד את הבקשה כרגע. נסו שוב מאוחר יותר.";
+
+  // On hand-off to a human, always append the "type בוט to return" hint so the
+  // customer knows how to come back to the AI rep (deterministic, not LLM-reliant).
+  if (escalated) {
+    finalText += '\n\nרוצים לחזור אליי? כתבו לי "בוט" ואשמח להמשיך לעזור 🤍';
+  }
 
   // Persist this turn to memory (plain text only — keeps history light).
   await saveMessages(fromWaId, [
