@@ -3,7 +3,7 @@
 //  POST — incoming customer messages → bot reply with order/shipping status.
 
 import { sendWhatsAppText, verifySignature } from "@/lib/wa-cloud";
-import { botReply } from "@/lib/wa-bot";
+import { botReply, recordTurn } from "@/lib/wa-bot";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +66,11 @@ export async function POST(request: Request) {
         try {
           const reply = await botReply(m.from, m.text!.body, names.get(m.from) ?? null);
           // reply === null means a human is handling this chat — stay silent.
-          if (reply) await sendWhatsAppText(m.from, reply);
+          if (reply) {
+            const ok = await sendWhatsAppText(m.from, reply);
+            // Only commit the turn to memory if it was actually delivered.
+            if (ok) await recordTurn(m.from, m.text!.body, reply);
+          }
         } catch (e) {
           console.error("WA bot error", e);
           await sendWhatsAppText(m.from, "מצטערים, יש תקלה זמנית. נסו שוב בעוד מספר דקות 🙏").catch(() => {});

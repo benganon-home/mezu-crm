@@ -9,13 +9,13 @@ export function toLocalPhone(raw: string): string {
   return (raw || "").replace(/\D/g, "").replace(/^972/, "0");
 }
 
-/** Send a plain-text WhatsApp message to a wa_id (e.g. "972501234567"). */
-export async function sendWhatsAppText(to: string, body: string): Promise<void> {
+/** Send a plain-text WhatsApp message to a wa_id (e.g. "972501234567"). Returns true on success. */
+export async function sendWhatsAppText(to: string, body: string): Promise<boolean> {
   const token = process.env.WHATSAPP_TOKEN;
   const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   if (!token || !phoneId) {
     console.error("WhatsApp env missing (WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID)");
-    return;
+    return false;
   }
   const res = await fetch(`${GRAPH}/${phoneId}/messages`, {
     method: "POST",
@@ -28,7 +28,11 @@ export async function sendWhatsAppText(to: string, body: string): Promise<void> 
       text: { preview_url: true, body },
     }),
   });
-  if (!res.ok) console.error("WhatsApp send failed", res.status, await res.text().catch(() => ""));
+  if (!res.ok) {
+    console.error("WhatsApp send failed", res.status, await res.text().catch(() => ""));
+    return false;
+  }
+  return true;
 }
 
 /** Verify Meta's X-Hub-Signature-256 against the raw request body. Skipped if no app secret. */

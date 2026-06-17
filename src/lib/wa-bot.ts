@@ -41,6 +41,18 @@ async function saveMessages(waId: string, entries: { role: "user" | "assistant";
   } catch { /* memory is best-effort */ }
 }
 
+/**
+ * Persist a delivered turn to conversation memory. Call this ONLY after the
+ * reply was actually sent — so a failed send doesn't leave the bot "thinking"
+ * it answered (which previously also suppressed the first-message intro).
+ */
+export async function recordTurn(waId: string, userText: string, botText: string): Promise<void> {
+  await saveMessages(waId, [
+    { role: "user", content: userText },
+    { role: "assistant", content: botText },
+  ]);
+}
+
 // ─── Order lookup tool ────────────────────────────────────────────────────
 function formatGroups(groups: CustomerOrders[]): string {
   if (!groups.length) return "לא נמצאו הזמנות תואמות.";
@@ -152,7 +164,9 @@ const SYSTEM = `את/ה נציג/ת ה-AI של MEZU — עסק שמייצר פר
 function isReturnToBot(text: string): boolean {
   const t = (text || "").trim();
   if (t.length > 24) return false;
-  return /בוט/.test(t) || /חזרה לנציג|חזרה לצ['׳]?אט/.test(t);
+  // Match "בוט" only as a standalone word (avoid false positives like בוטיק/רובוט),
+  // plus a few explicit return phrases.
+  return /(^|\s)(בוט|לבוט)(\s|$|[.!?,])/.test(t) || /חזרה ל(בוט|נציג)|חזור לבוט|חזרה לצ['׳]?אט/.test(t);
 }
 
 export async function botReply(fromWaId: string, text: string, senderName?: string | null): Promise<string | null> {
@@ -169,12 +183,8 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
   if (status !== "bot" && isReturnToBot(text)) {
     await setStatus(fromWaId, "bot");
     await upsertInbound(fromWaId, text, senderName ?? null, false);
-    const reply = "חזרתם לשיחה עם נציג ה-AI של MEZU 🤍 במה אפשר לעזור?";
-    await saveMessages(fromWaId, [
-      { role: "user", content: text },
-      { role: "assistant", content: reply },
-    ]);
-    return reply;
+    // Memory is recorded by the caller after a successful send (see recordTurn).
+    return "חזרתם לשיחה עם נציג ה-AI של MEZU 🤍 במה אפשר לעזור?";
   }
 
   await upsertInbound(fromWaId, text, senderName ?? null, status !== "bot");
@@ -247,11 +257,7 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
     finalText += '\n\nרוצים לחזור אליי? כתבו לי "בוט" ואשמח להמשיך לעזור 🤍';
   }
 
-  // Persist this turn to memory (plain text only — keeps history light).
-  await saveMessages(fromWaId, [
-    { role: "user", content: text },
-    { role: "assistant", content: finalText },
-  ]);
-
+  // Memory is recorded by the caller after a successful send (see recordTurn) —
+  // so a failed delivery doesn't leave the bot "thinking" it already replied.
   return finalText;
 }
