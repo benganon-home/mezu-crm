@@ -9,7 +9,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { findOrders, lookupOrders, type CustomerOrders } from "./order-lookup";
 import { getBusinessKnowledge } from "./bot-knowledge";
-import { toLocalPhone } from "./wa-cloud";
+import { toLocalPhone, type ListRow } from "./wa-cloud";
 import { formatDateShort } from "./utils";
 import { getEffectiveStatus, upsertInbound, escalate, setStatus } from "./wa-conversations";
 import { sendHumanAlert } from "./wa-alert";
@@ -144,6 +144,35 @@ const SYSTEM = `את/ה נציג/ת ה-AI של MEZU — עסק שמייצר פר
 - אם אין לך מידע — אמור/אמרי בכנות שאין לך אותו ושאפשר לפנות לנציג אנושי.
 - אל תבקש/י פרטים אישיים רגישים.`;
 
+// ─── Navigation menu (WhatsApp interactive list) ───────────────────────────
+const MENU_BUTTON = "תפריט";
+const MENU_ROWS: ListRow[] = [
+  { id: "track",    title: "📦 מעקב הזמנה",      description: "סטטוס ההזמנה והמשלוח שלך" },
+  { id: "products", title: "🛍️ מוצרים ומחירים",  description: "מחירים, צבעים, מידות וקטלוג" },
+  { id: "shipping", title: "🚚 משלוחים ומדיניות", description: "זמני אספקה, עלויות ומדיניות" },
+  { id: "human",    title: "💬 מעבר לנציג אנושי", description: "נשמח לחבר אתכם לנציג שלנו" },
+];
+const INTRO_BODY =
+  "היי! 🤍 אני נציג ה-AI של MEZU — אשמח לעזור ולענות על רוב השאלות.\nבחרו מהתפריט למטה, או פשוט כתבו לי כאן מה תרצו לדעת.";
+
+// When a customer taps a menu row, the webhook maps its id to one of these
+// queries and feeds it back through the normal bot flow.
+export const MENU_QUERIES: Record<string, string> = {
+  track:    "מה הסטטוס של ההזמנה שלי?",
+  products: "ספרו לי על המוצרים, המחירים, הצבעים והמידות",
+  shipping: "מה מדיניות המשלוחים וזמני האספקה?",
+  human:    "אני רוצה לעבור לנציג אנושי",
+};
+
+export interface BotMenu { body: string; button: string; rows: ListRow[] }
+export type BotReply =
+  | { kind: "text"; text: string }
+  | { kind: "list"; menu: BotMenu }
+  | null;
+
+const txt = (text: string): BotReply => ({ kind: "text", text });
+const menu = (body: string): BotReply => ({ kind: "list", menu: { body, button: MENU_BUTTON, rows: MENU_ROWS } });
+
 /** Short "take me back to the AI rep" message (used to leave human-handoff mode). */
 function isReturnToBot(text: string): boolean {
   const t = (text || "").trim();
@@ -151,7 +180,7 @@ function isReturnToBot(text: string): boolean {
   return /בוט/.test(t) || /חזרה לנציג|חזרה לצ['׳]?אט/.test(t);
 }
 
-export async function botReply(fromWaId: string, text: string, senderName?: string | null): Promise<string | null> {
+export async function botReply(fromWaId: string, text: string, senderName?: string | null): Promise<BotReply> {
   const key = process.env.ANTHROPIC_API_KEY;
   const senderPhone = toLocalPhone(fromWaId);
 
@@ -170,30 +199,43 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
       { role: "user", content: text },
       { role: "assistant", content: reply },
     ]);
-    return reply;
+    return txt(reply);
   }
 
   await upsertInbound(fromWaId, text, senderName ?? null, status !== "bot");
   if (status !== "bot") return null;
 
+  const history = await loadHistory(fromWaId);
+
+  // First message in the conversation → greet and show the navigation menu.
+  // Deterministic so the intro stays on-brand (no asterisks, controlled emoji).
+  if (history.length === 0) {
+    await saveMessages(fromWaId, [
+      { role: "user", content: text },
+      { role: "assistant", content: INTRO_BODY },
+    ]);
+    return menu(INTRO_BODY);
+  }
+
+  // "תפריט" / "menu" anytime → resend the navigation menu.
+  if (/^(תפריט|menu)$/i.test(text.trim())) {
+    return menu("בחרו מהתפריט 🤍");
+  }
+
   // Without an API key, fall back to a plain templated reply (sender's orders).
   if (!key) {
     const { customerName, orders } = await lookupOrders(senderPhone);
-    if (!customerName) return "שלום! לא מצאנו הזמנות למספר הזה. אנא ודאו שאתם כותבים מהמספר שאיתו בוצעה ההזמנה, או שלחו מספר הזמנה.";
-    if (orders.length === 0) return `שלום ${customerName}! לא נמצאו הזמנות במערכת.`;
-    return `שלום ${customerName}! 🙂 נמצאו ${orders.length} הזמנות. לפרטים מלאים נסו שוב מאוחר יותר.`;
+    if (!customerName) return txt("שלום! לא מצאנו הזמנות למספר הזה. אנא ודאו שאתם כותבים מהמספר שאיתו בוצעה ההזמנה, או שלחו מספר הזמנה.");
+    if (orders.length === 0) return txt(`שלום ${customerName}! לא נמצאו הזמנות במערכת.`);
+    return txt(`שלום ${customerName}! 🙂 נמצאו ${orders.length} הזמנות. לפרטים מלאים נסו שוב מאוחר יותר.`);
   }
 
   let knowledge = "";
   try { knowledge = await getBusinessKnowledge(); } catch { /* non-fatal */ }
-  const history = await loadHistory(fromWaId);
 
-  const isFirstMessage = history.length === 0;
   const system =
     `${SYSTEM}\n\n` +
-    (isFirstMessage
-      ? `זוהי ההודעה הראשונה בשיחה — פתח/י בהצגה עצמית קצרה כנציג/ת ה-AI של MEZU.\n\n`
-      : `זו אינה ההודעה הראשונה בשיחה — אל תציג/י את עצמך שוב.\n\n`) +
+    `אל תציג/י את עצמך מחדש — ההצגה כבר נשלחה בתחילת השיחה.\n\n` +
     `מידע להקשר: מספר הטלפון של מי שכותב/ת כעת הוא ${senderPhone}.\n\n` +
     `=== ידע עסקי (קטלוג, מחירים, מידות, צבעים, קלף) ===\n${knowledge || "(לא זמין כרגע)"}`;
 
@@ -241,5 +283,5 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
     { role: "assistant", content: finalText },
   ]);
 
-  return finalText;
+  return txt(finalText);
 }
