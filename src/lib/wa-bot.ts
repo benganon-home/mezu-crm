@@ -9,7 +9,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { findOrders, lookupOrders, type CustomerOrders } from "./order-lookup";
 import { getBusinessKnowledge } from "./bot-knowledge";
-import { toLocalPhone, type ListRow } from "./wa-cloud";
+import { toLocalPhone } from "./wa-cloud";
 import { formatDateShort } from "./utils";
 import { getEffectiveStatus, upsertInbound, escalate, setStatus } from "./wa-conversations";
 import { sendHumanAlert } from "./wa-alert";
@@ -112,12 +112,16 @@ const TOOLS: Anthropic.Tool[] = [
 const SYSTEM = `את/ה נציג/ת ה-AI של MEZU — עסק שמייצר פריטי בית מעוצבים בהדפסה תלת-ממדית (מזוזות, שלטי דלת/בית, ברכות). את/ה יודע/ת לענות על רוב השאלות של הלקוחות.
 דבר/י בעברית תקנית, נכונה וטבעית, קצרה וחמה.
 
-הצגה עצמית:
-- בהודעה הראשונה בשיחה הצג/י את עצמך בקצרה: נציג/ת ה-AI של MEZU שישמח/תשמח לעזור ולענות על רוב השאלות — ואז שאל/י במה אפשר לעזור. אל תחזור/חזרי על ההצגה בהודעות הבאות.
+הצגה עצמית (הודעת פתיחה):
+- בהודעה הראשונה בשיחה פתח/י בברכה חמה ומזמינה עם כמה אימוג'ים עדינים ואלגנטיים (למשל 🤍🌸✨), הצג/י את עצמך כנציג/ת ה-AI של MEZU שישמח/תשמח לעזור ולענות על רוב השאלות.
+- הצג/י בקצרה במה אפשר לעזור, עם אימוג'י מעודן בתחילת כל שורה — לדוגמה: 🛍️ מוצרים ומחירים · 📦 מעקב הזמנה · 🎨 עיצוב אישי · 🚚 משלוחים ומדיניות.
+- סיים/י בשאלה חמה כמו "במה אוכל לעזור?" 🤍
+- אל תחזור/חזרי על ההצגה בהודעות הבאות.
 
 סגנון ומיתוג (חשוב מאוד):
 - אל תשתמש/י בכוכביות (*) או בכל סימון אחר (Markdown). כתוב/כתבי טקסט רגיל בלבד, ללא הדגשות בכוכביות.
-- שמור/שמרי על אווירה נקייה, קלאסית ואלגנטית. השתמש/י באימוג'ים עדינים ומעודנים בלבד, במשורה (אחד עד שניים בהודעה לכל היותר), כמו 🤍 🌸 🌷 ✨ — להרגשה רגועה ויוקרתית. הימנע/י מאימוג'ים רועשים או ילדותיים.
+- שמור/שמרי על אווירה נקייה, קלאסית ואלגנטית. השתמש/י באימוג'ים עדינים ומעודנים כמו 🤍 🌸 🌷 ✨ 📦 🛍️ 🎨 🚚 — להרגשה רגועה ויוקרתית. הימנע/י מאימוג'ים רועשים או ילדותיים.
+- בהודעת הפתיחה אפשר להשתמש בכמה אימוג'ים כדי ליצור חמימות; בשאר ההודעות שמור/שמרי עליהם במשורה (אחד עד שניים).
 
 חשוב מאוד לגבי השפה:
 - כתוב/כתבי עברית מדויקת. אל תפצל/י מילים (למשל "בשבילך", ולא "בשביל יך") ואל תמציא/י מילים שלא קיימות.
@@ -144,39 +148,6 @@ const SYSTEM = `את/ה נציג/ת ה-AI של MEZU — עסק שמייצר פר
 - אם אין לך מידע — אמור/אמרי בכנות שאין לך אותו ושאפשר לפנות לנציג אנושי.
 - אל תבקש/י פרטים אישיים רגישים.`;
 
-// ─── Navigation menu (WhatsApp interactive list) ───────────────────────────
-const MENU_BUTTON = "תפריט";
-const MENU_ROWS: ListRow[] = [
-  { id: "track",    title: "📦 מעקב הזמנה",      description: "סטטוס ההזמנה והמשלוח שלך" },
-  { id: "products", title: "🛍️ מוצרים ומחירים",  description: "מחירים, צבעים, מידות וקטלוג" },
-  { id: "shipping", title: "🚚 משלוחים ומדיניות", description: "זמני אספקה, עלויות ומדיניות" },
-  { id: "human",    title: "💬 מעבר לנציג אנושי", description: "נשמח לחבר אתכם לנציג שלנו" },
-];
-const INTRO_BODY =
-  "היי! 🤍 אני נציג ה-AI של MEZU — אשמח לעזור ולענות על רוב השאלות.\nבחרו מהתפריט למטה, או פשוט כתבו לי כאן מה תרצו לדעת.";
-
-// When a customer taps a menu row, the webhook maps its id to one of these
-// queries and feeds it back through the normal bot flow.
-export const MENU_QUERIES: Record<string, string> = {
-  track:    "מה הסטטוס של ההזמנה שלי?",
-  products: "ספרו לי על המוצרים, המחירים, הצבעים והמידות",
-  shipping: "מה מדיניות המשלוחים וזמני האספקה?",
-  human:    "אני רוצה לעבור לנציג אנושי",
-  back_to_bot: "בוט", // tapped on the hand-off button → returns to the AI rep
-};
-
-const BACK_TO_BOT_BUTTON = { id: "back_to_bot", title: "🔙 חזרה לנציג AI" };
-
-export interface BotMenu { body: string; button: string; rows: ListRow[] }
-export type BotReply =
-  | { kind: "text"; text: string }
-  | { kind: "list"; menu: BotMenu }
-  | { kind: "buttons"; body: string; buttons: { id: string; title: string }[] }
-  | null;
-
-const txt = (text: string): BotReply => ({ kind: "text", text });
-const menu = (body: string): BotReply => ({ kind: "list", menu: { body, button: MENU_BUTTON, rows: MENU_ROWS } });
-
 /** Short "take me back to the AI rep" message (used to leave human-handoff mode). */
 function isReturnToBot(text: string): boolean {
   const t = (text || "").trim();
@@ -184,7 +155,7 @@ function isReturnToBot(text: string): boolean {
   return /בוט/.test(t) || /חזרה לנציג|חזרה לצ['׳]?אט/.test(t);
 }
 
-export async function botReply(fromWaId: string, text: string, senderName?: string | null): Promise<BotReply> {
+export async function botReply(fromWaId: string, text: string, senderName?: string | null): Promise<string | null> {
   const key = process.env.ANTHROPIC_API_KEY;
   const senderPhone = toLocalPhone(fromWaId);
 
@@ -203,43 +174,30 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
       { role: "user", content: text },
       { role: "assistant", content: reply },
     ]);
-    return txt(reply);
+    return reply;
   }
 
   await upsertInbound(fromWaId, text, senderName ?? null, status !== "bot");
   if (status !== "bot") return null;
 
-  const history = await loadHistory(fromWaId);
-
-  // First message in the conversation → greet and show the navigation menu.
-  // Deterministic so the intro stays on-brand (no asterisks, controlled emoji).
-  if (history.length === 0) {
-    await saveMessages(fromWaId, [
-      { role: "user", content: text },
-      { role: "assistant", content: INTRO_BODY },
-    ]);
-    return menu(INTRO_BODY);
-  }
-
-  // "תפריט" / "menu" anytime → resend the navigation menu.
-  if (/^(תפריט|menu)$/i.test(text.trim())) {
-    return menu("בחרו מהתפריט 🤍");
-  }
-
   // Without an API key, fall back to a plain templated reply (sender's orders).
   if (!key) {
     const { customerName, orders } = await lookupOrders(senderPhone);
-    if (!customerName) return txt("שלום! לא מצאנו הזמנות למספר הזה. אנא ודאו שאתם כותבים מהמספר שאיתו בוצעה ההזמנה, או שלחו מספר הזמנה.");
-    if (orders.length === 0) return txt(`שלום ${customerName}! לא נמצאו הזמנות במערכת.`);
-    return txt(`שלום ${customerName}! 🙂 נמצאו ${orders.length} הזמנות. לפרטים מלאים נסו שוב מאוחר יותר.`);
+    if (!customerName) return "שלום! לא מצאנו הזמנות למספר הזה. אנא ודאו שאתם כותבים מהמספר שאיתו בוצעה ההזמנה, או שלחו מספר הזמנה.";
+    if (orders.length === 0) return `שלום ${customerName}! לא נמצאו הזמנות במערכת.`;
+    return `שלום ${customerName}! 🙂 נמצאו ${orders.length} הזמנות. לפרטים מלאים נסו שוב מאוחר יותר.`;
   }
 
   let knowledge = "";
   try { knowledge = await getBusinessKnowledge(); } catch { /* non-fatal */ }
+  const history = await loadHistory(fromWaId);
 
+  const isFirstMessage = history.length === 0;
   const system =
     `${SYSTEM}\n\n` +
-    `אל תציג/י את עצמך מחדש — ההצגה כבר נשלחה בתחילת השיחה.\n\n` +
+    (isFirstMessage
+      ? `זוהי ההודעה הראשונה בשיחה — פתח/י בהצגה עצמית קצרה כנציג/ת ה-AI של MEZU.\n\n`
+      : `זו אינה ההודעה הראשונה בשיחה — אל תציג/י את עצמך שוב.\n\n`) +
     `מידע להקשר: מספר הטלפון של מי שכותב/ת כעת הוא ${senderPhone}.\n\n` +
     `=== ידע עסקי (קטלוג, מחירים, מידות, צבעים, קלף) ===\n${knowledge || "(לא זמין כרגע)"}`;
 
@@ -247,7 +205,6 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
   const messages: Anthropic.MessageParam[] = [...history, { role: "user", content: text }];
 
   let finalText = "";
-  let escalated = false;
   for (let turn = 0; turn < 4; turn++) {
     const resp = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
@@ -269,8 +226,7 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
           // hand-off message to the customer in the same turn.
           await escalate(fromWaId);
           await sendHumanAlert(fromWaId, senderName ?? null, text);
-          escalated = true;
-          results.push({ type: "tool_result", tool_use_id: block.id, content: "השיחה סומנה והועברה לנציג אנושי. כתוב/כתבי ללקוח הודעה קצרה וחמה שניצור קשר בהקדם. (כפתור 'חזרה לנציג AI' יתווסף אוטומטית — אין צורך להזכיר אותו בטקסט.)" });
+          results.push({ type: "tool_result", tool_use_id: block.id, content: "השיחה סומנה והועברה לנציג אנושי. הודע/י ללקוח בעדינות שניצור קשר בהקדם, וציין/י שבכל רגע אפשר לחזור לשיחה עם נציג ה-AI על-ידי כתיבת \"בוט\"." });
         }
       }
       messages.push({ role: "user", content: results });
@@ -289,11 +245,5 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
     { role: "assistant", content: finalText },
   ]);
 
-  // On hand-off to a human, attach a native "back to AI rep" button so the
-  // customer can return with one tap (no need to know the "בוט" keyword).
-  if (escalated) {
-    return { kind: "buttons", body: finalText, buttons: [BACK_TO_BOT_BUTTON] };
-  }
-
-  return txt(finalText);
+  return finalText;
 }
