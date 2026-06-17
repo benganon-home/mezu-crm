@@ -29,6 +29,11 @@ function getInitials(name: string): string {
 export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusChange, onDeleteItem, onClick }: Props) {
   const customer = order.customer
   const items    = order.items || []
+  // Order total: prefer the stored total_price (reflects sales-rule discounts AND
+  // the manual "מחיר מותאם" override set in the drawer); fall back to summing items
+  // for older orders that predate total_price.
+  const itemsTotal = items.reduce((s, i) => s + (i.price || 0), 0)
+  const orderTotal = order.total_price ?? itemsTotal
   const productColors = useProductColors()
   const [deletingId, setDeletingId]   = useState<string | null>(null)
   const [previewImg, setPreviewImg]   = useState<{ src: string; x: number; y: number } | null>(null)
@@ -93,12 +98,12 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
           {order.paid_amount != null ? (
             <>
               <span className="block text-base font-semibold text-emerald-600 dark:text-emerald-400" title="שולם בפועל (HYP)">{formatPrice(order.paid_amount)}</span>
-              {Math.abs(order.paid_amount - items.reduce((s, i) => s + (i.price || 0), 0)) > 0.5 && (
-                <span className="block text-[10px] text-muted line-through">{formatPrice(items.reduce((s, i) => s + (i.price || 0), 0))}</span>
+              {Math.abs(order.paid_amount - orderTotal) > 0.5 && (
+                <span className="block text-[10px] text-muted line-through">{formatPrice(orderTotal)}</span>
               )}
             </>
           ) : (
-            <span className="text-base font-semibold text-gold">{formatPrice(items.reduce((s, i) => s + (i.price || 0), 0))}</span>
+            <span className="text-base font-semibold text-gold">{formatPrice(orderTotal)}</span>
           )}
         </div>
       </div>
@@ -237,12 +242,12 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
           {order.paid_amount != null ? (
             <>
               <span className="block text-sm font-semibold text-emerald-600 dark:text-emerald-400" title="שולם בפועל (HYP)">{formatPrice(order.paid_amount)}</span>
-              {Math.abs(order.paid_amount - items.reduce((s, i) => s + (i.price || 0), 0)) > 0.5 && (
-                <span className="block text-[10px] text-muted line-through">{formatPrice(items.reduce((s, i) => s + (i.price || 0), 0))}</span>
+              {Math.abs(order.paid_amount - orderTotal) > 0.5 && (
+                <span className="block text-[10px] text-muted line-through">{formatPrice(orderTotal)}</span>
               )}
             </>
           ) : (
-            <span className="text-sm font-semibold text-gold">{formatPrice(items.reduce((s, i) => s + (i.price || 0), 0))}</span>
+            <span className="text-sm font-semibold text-gold">{formatPrice(orderTotal)}</span>
           )}
         </div>
 

@@ -136,6 +136,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
       body: JSON.stringify({ total_price: newTotal }),
     })
     setStoredTotal(newTotal)
+    onUpdate({ ...order, total_price: newTotal, items: updatedItems, customer })
   }
 
   // Save manual override
@@ -152,6 +153,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
     setPriceLocked(true)
     setEditingTotal(false)
     setSavingTotal(false)
+    onUpdate({ ...order, total_price: v, total_price_locked: true, items, customer })
   }
 
   // Reset to auto-calculated
@@ -165,6 +167,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
     })
     setStoredTotal(newTotal)
     setPriceLocked(false)
+    onUpdate({ ...order, total_price: newTotal, total_price_locked: false, items, customer })
   }
 
   // ── General order save ────────────────────────────────────────
