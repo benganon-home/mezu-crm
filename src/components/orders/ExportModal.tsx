@@ -52,7 +52,7 @@ export function ExportModal({ onClose }: Props) {
       }
 
       // One row per order-item
-      const headers = ['תאריך', 'שם לקוח', 'טלפון', 'כתובת', 'סטטוס הזמנה', 'מוצר', 'קטגוריה', 'גודל', 'צבע', 'טקסט', 'פונט', 'מחיר פריט', 'סה"כ הזמנה']
+      const headers = ['תאריך', 'שם לקוח', 'טלפון', 'כתובת', 'סטטוס הזמנה', 'מוצר', 'קטגוריה', 'גודל', 'צבע', 'טקסט', 'פונט', 'מחיר פריט', 'סה"כ הזמנה', 'שולם בפועל (HYP)']
       const rows: string[][] = [headers]
 
       for (const order of orders) {
@@ -63,9 +63,10 @@ export function ExportModal({ onClose }: Props) {
         const status   = order.status
         const items    = order.items || []
         const total    = items.reduce((s: number, i: any) => s + (i.price || 0), 0) || order.total_price || 0
+        const paid     = order.paid_amount != null ? String(order.paid_amount) : ''
 
         if (items.length === 0) {
-          rows.push([date, name, phone, address, status, '', '', '', '', '', '', '', String(total)])
+          rows.push([date, name, phone, address, status, '', '', '', '', '', '', '', String(total), paid])
         } else {
           items.forEach((item: any, idx: number) => {
             rows.push([
@@ -78,6 +79,7 @@ export function ExportModal({ onClose }: Props) {
               item.font || '',
               String(item.price || 0),
               idx === 0 ? String(total) : '', // total only on first item row
+              idx === 0 ? paid : '',          // paid amount only on first item row
             ])
           })
         }

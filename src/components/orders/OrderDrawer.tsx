@@ -706,6 +706,21 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
                   </div>
                 )}
               </div>
+
+              {/* Real amount charged via HYP — source of truth for accounting */}
+              {order.paid_amount != null && (
+                <div className="flex justify-between items-center gap-2 mt-1.5 pt-1.5 border-t border-cream-dark/50 dark:border-navy-light/30">
+                  <span className="text-sm text-muted flex items-center gap-1.5">
+                    שולם בפועל (HYP)
+                    {Math.abs(order.paid_amount - (priceLocked ? storedTotal : finalTotal)) > 0.5 && (
+                      <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 px-1.5 py-0.5 rounded-full">
+                        פער ₪{Math.abs(order.paid_amount - (priceLocked ? storedTotal : finalTotal)).toFixed(2)}
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-400 ltr">{formatPrice(order.paid_amount)}</span>
+                </div>
+              )}
             </div>
           </div>
 

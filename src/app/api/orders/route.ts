@@ -30,7 +30,30 @@ export async function GET(req: NextRequest) {
     : await query.range(from, to)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ data, count, page, pageSize })
+
+  // Attach the real amount charged via HYP (matched by invoice_id ↔ HYP txn id,
+  // then order_ref ↔ order_number) — the source of truth for what the customer
+  // actually paid, incl. shipping. null when no HYP transaction is linked.
+  const orders = (data ?? []) as any[]
+  const invoiceIds = [...new Set(orders.map(o => o.invoice_id).filter(Boolean).map(String))]
+  const hasNums = orders.some(o => o.order_number)
+  if (invoiceIds.length || hasNums) {
+    const byId  = new Map<string, number>()
+    const byRef = new Map<string, number>()
+    const [{ data: hById }, { data: hByRef }] = await Promise.all([
+      invoiceIds.length ? supabase.from('hyp_transactions').select('id, amount').in('id', invoiceIds) : Promise.resolve({ data: [] as any[] }),
+      hasNums ? supabase.from('hyp_transactions').select('order_ref, amount').not('order_ref', 'is', null) : Promise.resolve({ data: [] as any[] }),
+    ])
+    for (const h of (hById ?? [])) byId.set(String(h.id), Number(h.amount))
+    for (const h of (hByRef ?? [])) byRef.set(String(h.order_ref).slice(0, 8), Number(h.amount))
+    for (const o of orders) {
+      const amt = (o.invoice_id ? byId.get(String(o.invoice_id)) : undefined)
+        ?? (o.order_number ? byRef.get(String(o.order_number).slice(0, 8)) : undefined)
+      o.paid_amount = amt ?? null
+    }
+  }
+
+  return NextResponse.json({ data: orders, count, page, pageSize })
 }
 
 export async function POST(req: NextRequest) {

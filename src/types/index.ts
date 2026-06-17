@@ -191,6 +191,9 @@ export interface Order {
   // joined
   customer?: Customer
   items?: OrderItem[]
+  // Real amount charged via HYP (source of truth for accounting), matched by
+  // invoice_id; null when no HYP transaction is linked. Attached at read time.
+  paid_amount?: number | null
 }
 
 export interface SalesRuleCondition {

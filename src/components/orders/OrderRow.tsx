@@ -89,8 +89,17 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
             </div>
           )}
         </div>
-        <div className="ltr text-base font-semibold text-gold tabular-nums shrink-0">
-          {formatPrice(items.reduce((s, i) => s + (i.price || 0), 0))}
+        <div className="ltr text-right tabular-nums shrink-0">
+          {order.paid_amount != null ? (
+            <>
+              <span className="block text-base font-semibold text-emerald-600 dark:text-emerald-400" title="שולם בפועל (HYP)">{formatPrice(order.paid_amount)}</span>
+              {Math.abs(order.paid_amount - items.reduce((s, i) => s + (i.price || 0), 0)) > 0.5 && (
+                <span className="block text-[10px] text-muted line-through">{formatPrice(items.reduce((s, i) => s + (i.price || 0), 0))}</span>
+              )}
+            </>
+          ) : (
+            <span className="text-base font-semibold text-gold">{formatPrice(items.reduce((s, i) => s + (i.price || 0), 0))}</span>
+          )}
         </div>
       </div>
 
@@ -224,8 +233,17 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
         </div>
 
         {/* Total */}
-        <div className="ltr text-sm font-semibold text-gold tabular-nums mt-auto">
-          {formatPrice(items.reduce((s, i) => s + (i.price || 0), 0))}
+        <div className="ltr text-right tabular-nums mt-auto">
+          {order.paid_amount != null ? (
+            <>
+              <span className="block text-sm font-semibold text-emerald-600 dark:text-emerald-400" title="שולם בפועל (HYP)">{formatPrice(order.paid_amount)}</span>
+              {Math.abs(order.paid_amount - items.reduce((s, i) => s + (i.price || 0), 0)) > 0.5 && (
+                <span className="block text-[10px] text-muted line-through">{formatPrice(items.reduce((s, i) => s + (i.price || 0), 0))}</span>
+              )}
+            </>
+          ) : (
+            <span className="text-sm font-semibold text-gold">{formatPrice(items.reduce((s, i) => s + (i.price || 0), 0))}</span>
+          )}
         </div>
 
         {/* Notes */}
