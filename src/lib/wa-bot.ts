@@ -11,7 +11,7 @@ import { findOrders, lookupOrders, type CustomerOrders } from "./order-lookup";
 import { getBusinessKnowledge } from "./bot-knowledge";
 import { toLocalPhone } from "./wa-cloud";
 import { formatDateShort } from "./utils";
-import { getEffectiveStatus, upsertInbound, escalate } from "./wa-conversations";
+import { getEffectiveStatus, upsertInbound, escalate, setStatus } from "./wa-conversations";
 import { sendHumanAlert } from "./wa-alert";
 
 function admin() {
@@ -136,10 +136,20 @@ const SYSTEM = `את/ה נציג/ת ה-AI של MEZU — עסק שמייצר פר
 מוצרים/מחירים/צבעים/מידות:
 - ענה/י מתוך הידע העסקי שסופק לך בלבד.
 
+עיצוב אישי ובקשות מיוחדות:
+- אם הלקוח/ה מבקש/ת עיצוב מותאם אישית שאינו מופיע באפשרויות הרגילות (למשל שני טקסטים שונים על שלט דלת, גופן מיוחד, או כל בקשת עיצוב אחרת) — הסבר/י בעדינות: לכתוב את שם המשפחה בשדה הטקסט של השלט, ולהוסיף את כל פרטי העיצוב הנוספים בשדה "הערות" בשלב התשלום — ואנחנו ניצור קשר ונעזור להשלים את העיצוב יחד. 🤍
+
 כללי זהב:
 - ענה/י אך ורק על סמך הידע העסקי ותוצאות הכלי. אל תמציא/י מחירים, מידות, תאריכים, סטטוסים או קישורים.
 - אם אין לך מידע — אמור/אמרי בכנות שאין לך אותו ושאפשר לפנות לנציג אנושי.
 - אל תבקש/י פרטים אישיים רגישים.`;
+
+/** Short "take me back to the AI rep" message (used to leave human-handoff mode). */
+function isReturnToBot(text: string): boolean {
+  const t = (text || "").trim();
+  if (t.length > 24) return false;
+  return /בוט/.test(t) || /חזרה לנציג|חזרה לצ['׳]?אט/.test(t);
+}
 
 export async function botReply(fromWaId: string, text: string, senderName?: string | null): Promise<string | null> {
   const key = process.env.ANTHROPIC_API_KEY;
@@ -149,6 +159,20 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
   // bot stays silent so it doesn't talk over the owner. Record the message and
   // flag it unread so it surfaces in the CRM inbox.
   const status = await getEffectiveStatus(fromWaId);
+
+  // Let the customer leave human-handoff mode and return to the AI rep by
+  // sending a short "בוט" / "חזרה לבוט" message.
+  if (status !== "bot" && isReturnToBot(text)) {
+    await setStatus(fromWaId, "bot");
+    await upsertInbound(fromWaId, text, senderName ?? null, false);
+    const reply = "חזרתם לשיחה עם נציג ה-AI של MEZU 🤍 במה אפשר לעזור?";
+    await saveMessages(fromWaId, [
+      { role: "user", content: text },
+      { role: "assistant", content: reply },
+    ]);
+    return reply;
+  }
+
   await upsertInbound(fromWaId, text, senderName ?? null, status !== "bot");
   if (status !== "bot") return null;
 
@@ -198,7 +222,7 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
           // hand-off message to the customer in the same turn.
           await escalate(fromWaId);
           await sendHumanAlert(fromWaId, senderName ?? null, text);
-          results.push({ type: "tool_result", tool_use_id: block.id, content: "השיחה סומנה והועברה לנציג אנושי. הודע/י ללקוח בעדינות שניצור קשר בהקדם." });
+          results.push({ type: "tool_result", tool_use_id: block.id, content: "השיחה סומנה והועברה לנציג אנושי. הודע/י ללקוח בעדינות שניצור קשר בהקדם, וציין/י שבכל רגע אפשר לחזור לשיחה עם נציג ה-AI על-ידי כתיבת \"בוט\"." });
         }
       }
       messages.push({ role: "user", content: results });
