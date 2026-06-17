@@ -2,7 +2,7 @@
 //  GET  — Meta's webhook verification handshake.
 //  POST — incoming customer messages → bot reply with order/shipping status.
 
-import { sendWhatsAppText, sendWhatsAppList, verifySignature } from "@/lib/wa-cloud";
+import { sendWhatsAppText, sendWhatsAppList, sendWhatsAppButtons, verifySignature } from "@/lib/wa-cloud";
 import { botReply, MENU_QUERIES } from "@/lib/wa-bot";
 
 export const dynamic = "force-dynamic";
@@ -89,6 +89,9 @@ export async function POST(request: Request) {
             const lines = reply.menu.rows.map((r) => `• ${r.title}`).join("\n");
             await sendWhatsAppText(m.from, `${reply.menu.body}\n\n${lines}\n\nכתבו לי את שם האפשרות או שאלו אותי ישירות 🤍`);
           }
+        } else if (reply.kind === "buttons") {
+          const ok = await sendWhatsAppButtons(m.from, reply.body, reply.buttons);
+          if (!ok) await sendWhatsAppText(m.from, reply.body); // text fallback (no button)
         } else {
           await sendWhatsAppText(m.from, reply.text);
         }

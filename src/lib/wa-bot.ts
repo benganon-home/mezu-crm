@@ -162,12 +162,16 @@ export const MENU_QUERIES: Record<string, string> = {
   products: "ספרו לי על המוצרים, המחירים, הצבעים והמידות",
   shipping: "מה מדיניות המשלוחים וזמני האספקה?",
   human:    "אני רוצה לעבור לנציג אנושי",
+  back_to_bot: "בוט", // tapped on the hand-off button → returns to the AI rep
 };
+
+const BACK_TO_BOT_BUTTON = { id: "back_to_bot", title: "🔙 חזרה לנציג AI" };
 
 export interface BotMenu { body: string; button: string; rows: ListRow[] }
 export type BotReply =
   | { kind: "text"; text: string }
   | { kind: "list"; menu: BotMenu }
+  | { kind: "buttons"; body: string; buttons: { id: string; title: string }[] }
   | null;
 
 const txt = (text: string): BotReply => ({ kind: "text", text });
@@ -243,6 +247,7 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
   const messages: Anthropic.MessageParam[] = [...history, { role: "user", content: text }];
 
   let finalText = "";
+  let escalated = false;
   for (let turn = 0; turn < 4; turn++) {
     const resp = await anthropic.messages.create({
       model: "claude-haiku-4-5-20251001",
@@ -264,7 +269,8 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
           // hand-off message to the customer in the same turn.
           await escalate(fromWaId);
           await sendHumanAlert(fromWaId, senderName ?? null, text);
-          results.push({ type: "tool_result", tool_use_id: block.id, content: "השיחה סומנה והועברה לנציג אנושי. הודע/י ללקוח בעדינות שניצור קשר בהקדם, וציין/י שבכל רגע אפשר לחזור לשיחה עם נציג ה-AI על-ידי כתיבת \"בוט\"." });
+          escalated = true;
+          results.push({ type: "tool_result", tool_use_id: block.id, content: "השיחה סומנה והועברה לנציג אנושי. כתוב/כתבי ללקוח הודעה קצרה וחמה שניצור קשר בהקדם. (כפתור 'חזרה לנציג AI' יתווסף אוטומטית — אין צורך להזכיר אותו בטקסט.)" });
         }
       }
       messages.push({ role: "user", content: results });
@@ -282,6 +288,12 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
     { role: "user", content: text },
     { role: "assistant", content: finalText },
   ]);
+
+  // On hand-off to a human, attach a native "back to AI rep" button so the
+  // customer can return with one tap (no need to know the "בוט" keyword).
+  if (escalated) {
+    return { kind: "buttons", body: finalText, buttons: [BACK_TO_BOT_BUTTON] };
+  }
 
   return txt(finalText);
 }

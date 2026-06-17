@@ -99,6 +99,48 @@ export async function sendWhatsAppList(
   return true;
 }
 
+export interface ReplyButton {
+  id: string;
+  title: string; // max 20 chars
+}
+
+/** Send up to 3 native reply buttons under a message. Returns true on success. */
+export async function sendWhatsAppButtons(to: string, body: string, buttons: ReplyButton[]): Promise<boolean> {
+  const token = process.env.WHATSAPP_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (!token || !phoneId) {
+    console.error("WhatsApp env missing (WHATSAPP_TOKEN / WHATSAPP_PHONE_NUMBER_ID)");
+    return false;
+  }
+  const res = await fetch(`${GRAPH}/${phoneId}/messages`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      recipient_type: "individual",
+      to,
+      type: "interactive",
+      interactive: {
+        type: "button",
+        body: { text: body.slice(0, 1024) },
+        action: {
+          buttons: buttons.slice(0, 3).map((b) => ({ type: "reply", reply: { id: b.id.slice(0, 256), title: b.title.slice(0, 20) } })),
+        },
+      },
+    }),
+  });
+  if (!res.ok) {
+    let detail = "";
+    try {
+      const j = (await res.json()) as { error?: { code?: number; message?: string } };
+      detail = `${j.error?.code ?? ""} ${j.error?.message ?? ""}`.trim();
+    } catch { detail = await res.text().catch(() => ""); }
+    console.error(`WhatsApp buttons send failed ${res.status}: ${detail}`);
+    return false;
+  }
+  return true;
+}
+
 /** Verify Meta's X-Hub-Signature-256 against the raw request body. Skipped if no app secret. */
 export function verifySignature(rawBody: string, signature: string | null): boolean {
   const secret = process.env.WHATSAPP_APP_SECRET;
