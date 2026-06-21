@@ -31,6 +31,8 @@ export default function SignEditor({ initial }: { initial?: SignEditorInitial })
   const [name, setName] = useState(initial?.name ?? "");
   const [userScale, setUserScale] = useState(1.1);
   const [lineSpacing, setLineSpacing] = useState(30);
+  const [source, setSource] = useState<"text" | "svg">("text");
+  const [uploadName, setUploadName] = useState<string | null>(null);
   const preset = MODEL_PRESETS[modelId];
   const [depth, setDepth] = useState(preset.depth);
   const [textOffsetY, setTextOffsetY] = useState(preset.textOffsetY);
@@ -44,7 +46,9 @@ export default function SignEditor({ initial }: { initial?: SignEditorInitial })
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Build the outlined SVG (debounced) for preview + generation.
+  // Skipped in "svg" mode — there the SVG comes from the uploaded file.
   useEffect(() => {
+    if (source !== "text") return;
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(async () => {
       const def = FONTS.find((f) => f.key === fontKey) ?? FONTS[0];
@@ -71,7 +75,31 @@ export default function SignEditor({ initial }: { initial?: SignEditorInitial })
       if (timer.current) clearTimeout(timer.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lines, fontKey, lineSpacing]);
+  }, [lines, fontKey, lineSpacing, source]);
+
+  // Load an uploaded SVG file as the cut shape (instead of the text creator).
+  async function onSvgUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      if (!/<svg[\s>]/i.test(text)) {
+        setError("הקובץ אינו SVG תקין");
+        return;
+      }
+      setError(null);
+      setSvgContent(text);
+      if (lastUrl.current) URL.revokeObjectURL(lastUrl.current);
+      const url = URL.createObjectURL(new Blob([text], { type: "image/svg+xml" }));
+      lastUrl.current = url;
+      setSvgUrl(url);
+      const base = file.name.replace(/\.svg$/i, "");
+      setUploadName(base);
+      if (!name.trim()) setName(base);
+    } catch {
+      setError("טעינת ה-SVG נכשלה");
+    }
+  }
 
   const params = paramsFor(modelId, userScale, depth, textOffsetY);
 
@@ -125,6 +153,48 @@ export default function SignEditor({ initial }: { initial?: SignEditorInitial })
           </div>
         </div>
 
+        {/* Source: text creator vs SVG upload */}
+        <div>
+          <label className="label">מקור</label>
+          <div className="mt-1 grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setSource("text")}
+              className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                source === "text" ? "border-gold bg-gold/10 text-gold" : "border-cream-dark hover:border-gold/50"
+              }`}
+            >
+              יוצר טקסט
+            </button>
+            <button
+              onClick={() => setSource("svg")}
+              className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                source === "svg" ? "border-gold bg-gold/10 text-gold" : "border-cream-dark hover:border-gold/50"
+              }`}
+            >
+              העלאת SVG
+            </button>
+          </div>
+        </div>
+
+        {/* SVG upload */}
+        {source === "svg" && (
+          <div>
+            <label className="label">קובץ SVG</label>
+            <input
+              type="file"
+              accept=".svg,image/svg+xml"
+              onChange={onSvgUpload}
+              className="input mt-1 w-full"
+            />
+            <p className="mt-1 text-[11px] text-muted">
+              השתמשו ב-SVG עם נתיבים (paths) בלבד — טקסט חי לא ייחתך. כווננו את הגודל עם &quot;קנה מידה&quot;.
+              {uploadName ? ` · נטען: ${uploadName}` : ""}
+            </p>
+          </div>
+        )}
+
+        {source === "text" && (
+        <>
         {/* Lines */}
         <div className="space-y-2">
           <label className="label">שורות טקסט</label>
@@ -161,11 +231,15 @@ export default function SignEditor({ initial }: { initial?: SignEditorInitial })
             ))}
           </select>
         </div>
+        </>
+        )}
 
         {/* Sliders */}
         <div className="grid grid-cols-2 gap-3 text-sm">
           <Slider label="קנה מידה" value={userScale} min={0.3} max={2.5} step={0.05} onChange={setUserScale} />
-          <Slider label="ריווח שורות" value={lineSpacing} min={0} max={80} step={2} onChange={setLineSpacing} />
+          {source === "text" && (
+            <Slider label="ריווח שורות" value={lineSpacing} min={0} max={80} step={2} onChange={setLineSpacing} />
+          )}
           <Slider label="מיקום אנכי" value={textOffsetY} min={-30} max={30} step={1} onChange={setTextOffsetY} />
           <Slider label='עומק חיתוך מ"מ' value={depth} min={0.5} max={10} step={0.1} onChange={setDepth} />
         </div>
