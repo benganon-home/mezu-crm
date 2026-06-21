@@ -30,7 +30,7 @@ export default function SignEditor({ initial }: { initial?: SignEditorInitial })
   const [fontKey, setFontKey] = useState(initial?.fontKey ?? FONTS[0].key);
   const [name, setName] = useState(initial?.name ?? "");
   const [userScale, setUserScale] = useState(1.1);
-  const [lineSpacing, setLineSpacing] = useState(50);
+  const [lineSpacing, setLineSpacing] = useState(30);
   const preset = MODEL_PRESETS[modelId];
   const [depth, setDepth] = useState(preset.depth);
   const [textOffsetY, setTextOffsetY] = useState(preset.textOffsetY);
