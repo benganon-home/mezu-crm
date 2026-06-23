@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Plus, Minus, Trash2, Boxes } from 'lucide-react'
 import type { Product, StockItem } from '@/types'
-import { ITEM_COLOR_MAP } from '@/types'
+import { cn } from '@/lib/utils'
+import { dottedStyle } from '@/lib/colorPattern'
+import { useProductColors, resolveColor } from '@/lib/productColors'
 import { AddStockModal } from '@/components/stock/AddStockModal'
 
 const CATEGORY_ORDER = ['מזוזות', 'שלטי בית', 'ברכות', 'אחר']
@@ -120,7 +122,8 @@ function StockRow({
   onAdjust: (i: StockItem, d: number) => void
   onRemove: (i: StockItem) => void
 }) {
-  const swatch = item.color ? ITEM_COLOR_MAP[item.color] : undefined
+  const colors = useProductColors()
+  const swatch = item.color ? resolveColor(item.color, colors) : undefined
   return (
     <div className="flex items-center gap-3 px-4 py-2.5">
       <div className="min-w-0 flex-1">
@@ -129,7 +132,10 @@ function StockRow({
           {item.size && <span>{item.size} ס״מ</span>}
           {item.color && (
             <span className="inline-flex items-center gap-1">
-              <span className="h-3 w-3 rounded-full" style={{ background: swatch?.hex || '#ccc', boxShadow: swatch?.border ? 'inset 0 0 0 1px #d4d4d4' : undefined }} />
+              <span
+                className={cn('h-3 w-3 rounded-full', swatch?.has_border ? 'border border-black/15' : 'border border-black/10')}
+                style={dottedStyle(swatch?.hex ?? '#ccc', swatch?.has_dots)}
+              />
               {item.color}
             </span>
           )}
