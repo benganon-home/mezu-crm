@@ -164,9 +164,22 @@ export interface OrderItem {
   apartment_number?: string | null
   price: number
   status: OrderStatus
+  from_stock?: boolean        // fulfilled from ready stock (pre-made) → "מהמלאי" label
   created_at: string
   // joined
   product?: { images?: string[] } | null
+}
+
+export interface StockItem {
+  id: string
+  product_id: string | null
+  item_name: string
+  category?: string | null
+  size?: string | null
+  color?: string | null
+  quantity: number
+  created_at: string
+  updated_at: string
 }
 
 export interface Order {

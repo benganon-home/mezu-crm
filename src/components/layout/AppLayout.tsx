@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import {
   ShoppingBag, Users, Bell, BarChart2, Settings, Package, Layers, Receipt, Scale, CreditCard,
-  Menu, X, ChevronsLeft, Box, MessageCircle
+  Menu, X, ChevronsLeft, Box, MessageCircle, Boxes
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { href: '/conversations', icon: MessageCircle, label: 'וואטסאפ' },
   { href: '/customers', icon: Users,       label: 'לקוחות'   },
   { href: '/products',    icon: Package,     label: 'מוצרים'   },
+  { href: '/stock',      icon: Boxes,       label: 'מלאי'     },
   { href: '/signmaker',  icon: Box,         label: 'שלטים'    },
   { href: '/categories', icon: Layers,      label: 'קטגוריות' },
   { href: '/reminders',  icon: Bell,        label: 'תזכורות'  },

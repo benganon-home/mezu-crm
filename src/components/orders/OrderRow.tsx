@@ -142,6 +142,11 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                   <span className="font-medium text-navy dark:text-cream/90">{item.item_name}</span>
                   {item.size && <span className="text-muted"> · {item.size} ס״מ</span>}
                   {item.model && <span className="text-muted"> · {item.model}</span>}
+                  {item.from_stock && (
+                    <span className="mr-1.5 inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 align-middle dark:bg-emerald-500/15 dark:text-emerald-400">
+                      מהמלאי
+                    </span>
+                  )}
                 </div>
                 <span className="ltr text-sm font-medium tabular-nums shrink-0">
                   {item.price > 0 ? formatPrice(item.price) : '—'}

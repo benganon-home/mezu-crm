@@ -1119,7 +1119,14 @@ function EditableItemCard({
           }
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium truncate">{item.item_name}</div>
+          <div className="text-sm font-medium truncate">
+            {item.item_name}
+            {item.from_stock && (
+              <span className="mr-1.5 inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 align-middle dark:bg-emerald-500/15 dark:text-emerald-400">
+                מהמלאי
+              </span>
+            )}
+          </div>
           <div className="text-xs text-muted mt-0.5">
             {[item.color, item.size && `${item.size} ס״מ`, item.font].filter(Boolean).join(' · ')}
           </div>

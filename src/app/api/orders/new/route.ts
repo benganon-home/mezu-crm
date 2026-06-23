@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { applySalesRules } from '@/lib/sales-rules'
+import { fulfillFromStock } from '@/lib/stock'
 import type { SalesRule } from '@/types'
 
 export async function POST(req: NextRequest) {
@@ -94,22 +95,22 @@ export async function POST(req: NextRequest) {
 
   // 4. Create items (with rule-adjusted prices when applicable)
   if (adjustedItems.length > 0) {
-    const { error: itemsErr } = await supabase
-      .from('order_items')
-      .insert(
-        adjustedItems.map((i: any) => ({
-          order_id:   order.id,
-          product_id: i.product_id || null,
-          item_name:  i.item_name || 'פריט',
-          model:      i.model    || null,
-          color:      i.color    || null,
-          sign_text:  i.sign_text || null,
-          font:       i.font     || null,
-          size:       i.size     || null,
-          price:      Number(i.price) || 0,
-          status:     'received',
-        }))
-      )
+    const itemRows = adjustedItems.map((i: any) => ({
+      order_id:   order.id,
+      product_id: i.product_id || null,
+      item_name:  i.item_name || 'פריט',
+      model:      i.model    || null,
+      color:      i.color    || null,
+      sign_text:  i.sign_text || null,
+      font:       i.font     || null,
+      size:       i.size     || null,
+      price:      Number(i.price) || 0,
+      status:     'received' as const,
+      from_stock: false,
+    }))
+    // Auto-fulfill matching items from ready stock (marks them 'ready' + from_stock).
+    await fulfillFromStock(supabase, itemRows)
+    const { error: itemsErr } = await supabase.from('order_items').insert(itemRows)
     if (itemsErr) return NextResponse.json({ error: itemsErr.message }, { status: 400 })
   }
 
