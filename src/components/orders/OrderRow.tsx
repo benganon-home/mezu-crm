@@ -326,6 +326,11 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
                   {item.item_name}
                   {item.size && <span className="font-normal text-muted"> - {item.size} ס״מ</span>}
                   {item.model && <span className="font-normal text-muted"> | {item.model}</span>}
+                  {item.from_stock && (
+                    <span className="mr-1.5 inline-flex items-center rounded-full bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 align-middle dark:bg-emerald-500/15 dark:text-emerald-400">
+                      מהמלאי
+                    </span>
+                  )}
                 </div>
               </div>
 
