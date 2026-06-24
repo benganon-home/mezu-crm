@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Plus, Minus, Trash2, Boxes } from 'lucide-react'
+import { Plus, Minus, Trash2, Boxes, RefreshCw } from 'lucide-react'
 import type { Product, StockItem } from '@/types'
 import { cn } from '@/lib/utils'
 import { dottedStyle } from '@/lib/colorPattern'
@@ -15,6 +15,8 @@ export default function StockPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading]   = useState(true)
   const [showAdd, setShowAdd]   = useState(false)
+  const [syncing, setSyncing]   = useState(false)
+  const [syncResult, setSyncResult] = useState<string | null>(null)
 
   const fetchStock = async () => {
     const res = await fetch('/api/stock')
@@ -48,6 +50,26 @@ export default function StockPage() {
     await fetch(`/api/stock/${item.id}`, { method: 'DELETE' })
   }
 
+  // Apply ready stock to existing 'received' orders (same matching as new orders).
+  async function syncToOrders() {
+    setSyncing(true)
+    setSyncResult(null)
+    try {
+      const res = await fetch('/api/stock/sync', { method: 'POST' })
+      const d = await res.json()
+      if (!res.ok) {
+        setSyncResult(d.error || 'שגיאה בהתאמה')
+      } else {
+        setSyncResult(d.marked > 0 ? `סומנו ${d.marked} פריטים כמוכנים מהמלאי ✓` : 'אין התאמות חדשות במלאי')
+        await fetchStock()
+      }
+    } catch {
+      setSyncResult('שגיאה בהתאמה')
+    } finally {
+      setSyncing(false)
+    }
+  }
+
   const groups = useMemo(() => {
     const map = new Map<string, StockItem[]>()
     for (const s of stock) {
@@ -72,11 +94,21 @@ export default function StockPage() {
             {totalUnits} יחידות מוכנות{stock.length ? ` · ${stock.length} סוגים` : ''}
           </p>
         </div>
-        <button onClick={() => setShowAdd(true)} className="btn-primary flex items-center gap-2">
-          <Plus size={14} strokeWidth={1.5} />
-          הוספת מוצר מוכן
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={syncToOrders} disabled={syncing} className="btn-secondary flex items-center gap-2 disabled:opacity-50">
+            <RefreshCw size={14} strokeWidth={1.5} className={syncing ? 'animate-spin' : undefined} />
+            {syncing ? 'בודק…' : 'התאמה להזמנות'}
+          </button>
+          <button onClick={() => setShowAdd(true)} className="btn-primary flex items-center gap-2">
+            <Plus size={14} strokeWidth={1.5} />
+            הוספת מוצר מוכן
+          </button>
+        </div>
       </div>
+
+      {syncResult && (
+        <div className="rounded-lg bg-gold/10 px-3 py-2 text-sm text-gold">{syncResult}</div>
+      )}
 
       {loading ? (
         <div className="text-sm text-muted">טוען…</div>
