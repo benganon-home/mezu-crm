@@ -13,6 +13,7 @@ export interface ColorOption {
   hex: string
   has_border: boolean
   has_dots: boolean
+  is_active: boolean   // false = retired / sold-out ("אזל") — still selectable, just marked
 }
 
 let cache: ColorOption[] | null = null
@@ -24,21 +25,25 @@ export function loadProductColors(): Promise<ColorOption[]> {
     inflight = fetch('/api/product-colors')
       .then(r => r.json())
       .then((d: any[]) => {
+        // Include inactive ("אזל") colors too — consumers decide whether to
+        // mark/grey them; resolveColor also needs them to render retired colors
+        // that still appear on old orders. Active colors are ordered first.
         const list = (Array.isArray(d) ? d : [])
-          .filter(c => c.is_active)
           .map(c => ({
             name_he:    c.name_he as string,
             hex:        c.hex as string,
             has_border: !!c.has_border,
             has_dots:   !!c.has_dots,
+            is_active:  c.is_active !== false,
           }))
+          .sort((a, b) => Number(b.is_active) - Number(a.is_active))
         cache = list
         return list
       })
       .catch(() => {
         // Fallback to the legacy static map if the API is unavailable.
         const list = Object.entries(ITEM_COLOR_MAP).map(([name_he, { hex, border }]) => ({
-          name_he, hex, has_border: !!border, has_dots: false,
+          name_he, hex, has_border: !!border, has_dots: false, is_active: true,
         }))
         cache = list
         return list
@@ -48,7 +53,7 @@ export function loadProductColors(): Promise<ColorOption[]> {
   return inflight
 }
 
-/** Hook returning the active product colors (empty until loaded). */
+/** Hook returning all product colors incl. inactive/"אזל" (empty until loaded). */
 export function useProductColors(): ColorOption[] {
   const [colors, setColors] = useState<ColorOption[]>(cache ?? [])
   useEffect(() => {
@@ -68,6 +73,6 @@ export function resolveColor(name: string | null | undefined, colors: ColorOptio
   const known = colors.find(c => c.name_he === name)
   if (known) return known
   const legacy = ITEM_COLOR_MAP[name]
-  if (legacy) return { name_he: name, hex: legacy.hex, has_border: !!legacy.border, has_dots: false }
+  if (legacy) return { name_he: name, hex: legacy.hex, has_border: !!legacy.border, has_dots: false, is_active: true }
   return null
 }

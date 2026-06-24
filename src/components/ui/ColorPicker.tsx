@@ -33,7 +33,7 @@ export function ColorPicker({ value, onChange, placeholder = 'צבע — ללא'
   // append it so it still renders as selected.
   const options: ColorOption[] = [...colors]
   if (value && !known) {
-    options.push(selected ?? { name_he: value, hex: '#CCCCCC', has_border: false, has_dots: false })
+    options.push(selected ?? { name_he: value, hex: '#CCCCCC', has_border: false, has_dots: false, is_active: false })
   }
 
   return (
@@ -74,7 +74,7 @@ export function ColorPicker({ value, onChange, placeholder = 'צבע — ללא'
             <span className="flex-1">{placeholder}</span>
           </button>
 
-          {options.map(({ name_he, hex, has_border, has_dots }) => (
+          {options.map(({ name_he, hex, has_border, has_dots, is_active }) => (
             <button
               key={name_he}
               type="button"
@@ -89,6 +89,7 @@ export function ColorPicker({ value, onChange, placeholder = 'צבע — ללא'
                 style={dottedStyle(hex, has_dots)}
               />
               <span className="flex-1">{name_he}</span>
+              {is_active === false && <span className="rounded bg-amber-100 px-1 text-[10px] font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">אזל</span>}
               {value === name_he && <span className="text-gold text-xs">✓</span>}
             </button>
           ))}

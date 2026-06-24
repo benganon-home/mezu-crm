@@ -5,7 +5,7 @@ import { X, Plus, Minus, Package, Check } from 'lucide-react'
 import type { Product } from '@/types'
 import { cn } from '@/lib/utils'
 import { dottedStyle } from '@/lib/colorPattern'
-import { useProductColors, resolveColor } from '@/lib/productColors'
+import { useProductColors } from '@/lib/productColors'
 
 export function AddStockModal({
   products,
@@ -27,21 +27,14 @@ export function AddStockModal({
   const product = useMemo(() => products.find(p => p.id === productId) ?? null, [products, productId])
   const sizes  = (product?.sizes ?? []) as { label: string; price: number }[]
 
-  // Colors the product comes in (resolved against the global palette for the
-  // correct hex/pattern). Falls back to the full palette if the product has
-  // no colors set — so a color can always be chosen to match an order exactly.
-  const colorOptions = useMemo(() => {
-    const names = (product?.colors ?? []) as string[]
-    const list = names.length
-      ? names.map(n => resolveColor(n, allColors) ?? { name_he: n, hex: '#CCCCCC', has_border: false, has_dots: false })
-      : allColors
-    return list
-  }, [product, allColors])
+  // Full palette including retired ("אזל") colors — so any color can be chosen
+  // to match an order exactly, even one that's sold out / no longer produced.
+  const colorOptions = allColors
 
   function selectProduct(p: Product) {
     setProductId(p.id)
     setSize(p.sizes?.[0]?.label ?? '')
-    const firstColor = (p.colors?.length ? p.colors[0] : allColors[0]?.name_he) ?? ''
+    const firstColor = (allColors.find(c => c.is_active) ?? allColors[0])?.name_he ?? ''
     setColor(firstColor)
     setError(null)
   }
@@ -168,6 +161,7 @@ export function AddStockModal({
                           style={dottedStyle(c.hex, c.has_dots)}
                         />
                         {c.name_he}
+                        {!c.is_active && <span className="rounded bg-amber-100 px-1 text-[9px] font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">אזל</span>}
                       </button>
                     )
                   })}

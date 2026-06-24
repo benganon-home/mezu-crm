@@ -56,7 +56,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
     fetch('/api/product-colors')
       .then(r => r.ok ? r.json() : [])
       .then((rows: ProductColor[]) => {
-        if (Array.isArray(rows)) setAllColors(rows.filter(c => c.is_active))
+        if (Array.isArray(rows)) setAllColors(rows)  // include inactive ("אזל") — still selectable
       })
       .catch(() => {})
   }, [])
@@ -330,7 +330,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
                     >
                       <option value="">בלי צבע</option>
                       {allColors.map(c => (
-                        <option key={c.id} value={c.name_he}>{c.name_he}</option>
+                        <option key={c.id} value={c.name_he}>{c.name_he}{c.is_active === false ? ' · אזל' : ''}</option>
                       ))}
                     </select>
                   </div>
