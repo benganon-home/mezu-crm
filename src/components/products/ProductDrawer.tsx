@@ -51,15 +51,25 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
   })
   const [allColors, setAllColors]     = useState<ProductColor[]>([])
   const [sizes, setSizes]             = useState<ProductSize[]>(product?.sizes || [])
+  // Which colors this product is available in. Defaults to all active colors
+  // (set once the palette loads) when the product has none saved yet.
+  const [availableColors, setAvailableColors] = useState<string[]>(product?.colors ?? [])
 
   useEffect(() => {
     fetch('/api/product-colors')
       .then(r => r.ok ? r.json() : [])
       .then((rows: ProductColor[]) => {
-        if (Array.isArray(rows)) setAllColors(rows)  // include inactive ("אזל") — still selectable
+        if (!Array.isArray(rows)) return
+        setAllColors(rows)  // include inactive ("אזל") — still selectable
+        if (!(product?.colors?.length)) {
+          setAvailableColors(rows.filter(c => c.is_active).map(c => c.name_he))
+        }
       })
       .catch(() => {})
   }, [])
+
+  const toggleColor = (name: string) =>
+    setAvailableColors(prev => prev.includes(name) ? prev.filter(c => c !== name) : [...prev, name])
 
   // Auto-generate slug from name (unless manually edited)
   const autoSlug = (text: string) =>
@@ -191,7 +201,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
       images,
       image_colors: imageColors.slice(0, images.length),
       sizes,
-      colors: product?.colors || [],
+      colors: availableColors,
     }
 
     const url    = isEdit ? `/api/products/${product!.id}` : '/api/products'
@@ -368,6 +378,36 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
             {uploadError && (
               <p className="text-xs text-red-600 dark:text-red-400 mt-1.5">{uploadError}</p>
             )}
+          </div>
+
+          {/* Available colors */}
+          <div>
+            <div className="label mb-1.5">צבעים זמינים</div>
+            <div className="flex flex-wrap gap-2">
+              {allColors.map(c => {
+                const on = availableColors.includes(c.name_he)
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => toggleColor(c.name_he)}
+                    className={cn(
+                      'flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition',
+                      on ? 'border-gold bg-gold/10 text-gold' : 'border-cream-dark dark:border-navy-light text-muted hover:border-gold/50',
+                    )}
+                  >
+                    <span
+                      className={cn('w-3.5 h-3.5 rounded-full shrink-0', c.has_border && 'border border-black/15')}
+                      style={dottedStyle(c.hex, c.has_dots)}
+                    />
+                    {c.name_he}
+                    {c.is_active === false && <span className="rounded bg-amber-100 px-1 text-[9px] font-medium text-amber-700 dark:bg-amber-500/15 dark:text-amber-400">אזל</span>}
+                    {on && <Check size={12} strokeWidth={3} className="text-gold" />}
+                  </button>
+                )
+              })}
+            </div>
+            <p className="text-[11px] text-muted mt-1.5">הצבעים שנבחרו יוצגו ללקוח עבור המוצר · כברירת מחדל כולם נבחרים</p>
           </div>
 
           {/* STL 3D file */}
