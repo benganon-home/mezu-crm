@@ -31,7 +31,7 @@ export async function isThermalAgentUp(): Promise<boolean> {
  */
 export async function printLabelThermal(
   labelPdfUrl: string,
-  opts: { size?: string; rotate?: number; mode?: 'pages' | 'sheet' } = {},
+  opts: { size?: string; rotate?: number; margin?: number; mode?: 'pages' | 'sheet' } = {},
 ): Promise<ThermalResult> {
   // 1) get the label PDF from mezu-crm
   let pdf: Blob
@@ -44,11 +44,13 @@ export async function printLabelThermal(
   }
 
   // 2) send it to the local print agent
-  const size = opts.size ?? '60x80'
-  const rotate = opts.rotate ?? 90
+  // Label stock: 80mm wide (across head) x 60mm feed, printed landscape, filled.
+  const size = opts.size ?? '80x60'
+  const rotate = opts.rotate ?? 0
+  const margin = opts.margin ?? 1
   const mode = opts.mode ?? 'pages'
   try {
-    const res = await fetch(`${AGENT}/print?size=${size}&rotate=${rotate}&mode=${mode}`, {
+    const res = await fetch(`${AGENT}/print?size=${size}&rotate=${rotate}&margin=${margin}&mode=${mode}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/pdf' },
       body: pdf,
