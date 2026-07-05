@@ -144,14 +144,23 @@ export async function createShipment(p: CreateShipmentParams): Promise<RunShipme
 
   const xml = await res.text()
 
-  if (xmlTag(xml, 'shgiya_yn') === 'y') {
-    throw new Error(xmlTag(xml, 'message') || 'Run API החזיר שגיאה')
-  }
-
   const shipNum = xmlTag(xml, 'ship_create_num')
   const randId  = xmlTag(xml, 'ship_num_rand')
 
-  if (!shipNum) throw new Error('לא התקבל מספר משלוח מ-Run')
+  // Run signals failure either explicitly (shgiya_yn='y') or by returning a
+  // ship number of "0" / empty — most commonly when the city (יישוב) can't be
+  // matched to Run's locality list.
+  const failed = xmlTag(xml, 'shgiya_yn') === 'y' || !shipNum || shipNum === '0'
+  if (failed) {
+    const msg = xmlTag(xml, 'message') || xmlTag(xml, 'shgiya_desc') || xmlTag(xml, 'shgiya_teur')
+    console.error('[run.createShipment] rejected — city=%j street=%j building=%j | resp=%s',
+      p.city, p.street, p.building, xml.slice(0, 1000))
+    throw new Error(
+      msg
+        ? `Run דחה את יצירת המשלוח: ${msg}`
+        : `Run לא יצר משלוח — ככל הנראה היישוב "${p.city}" אינו מזוהה במערכת השילוח. בדוק/י את שם היישוב בכתובת.`,
+    )
+  }
 
   return { shipNum, randId }
 }
