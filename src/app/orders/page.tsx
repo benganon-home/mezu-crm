@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Plus, Search, ChevronDown, Download, Printer } from 'lucide-react'
+import { Plus, Search, ChevronDown, Download, Printer, Loader2 } from 'lucide-react'
+import { printLabelThermal } from '@/lib/thermalPrint'
 import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG } from '@/types'
 import { UndoToast } from '@/components/ui/UndoToast'
 import { formatPrice, cn } from '@/lib/utils'
@@ -18,6 +19,7 @@ const PAGE_SIZE = 60
 export default function OrdersPage() {
   const [allOrders, setAllOrders]     = useState<Order[]>([])
   const [loading, setLoading]         = useState(true)
+  const [batchPrinting, setBatchPrinting] = useState(false)
   const [loadError, setLoadError]     = useState<string | null>(null)
   const [search, setSearch]           = useState('')
   const [selectedStatuses, setSelectedStatuses] = useState<OrderStatus[]>(DEFAULT_STATUSES)
@@ -325,11 +327,26 @@ export default function OrdersPage() {
             target="_blank"
             rel="noopener noreferrer"
             className="btn-secondary flex items-center gap-2 text-sm"
-            title="הדפס תוויות לכל ההזמנות המוכנות"
+            title="הדפס תוויות לכל ההזמנות המוכנות (PDF ל-A4)"
           >
             <Printer size={14} strokeWidth={1.5} />
             תוויות מוכן
           </a>
+          <button
+            onClick={async () => {
+              setBatchPrinting(true)
+              const r = await printLabelThermal('/api/labels/thermal', { mode: 'pages' })
+              setBatchPrinting(false)
+              if (r.ok) alert(`✅ נשלחו ${r.labels ?? 0} תוויות למדפסת התרמית`)
+              else alert(`❌ ${r.error ?? 'שגיאת הדפסה'}`)
+            }}
+            disabled={batchPrinting}
+            className="btn-secondary flex items-center gap-2 text-sm disabled:opacity-50"
+            title="הדפס את כל התוויות שטרם נשלחו למדפסת התרמית (Bluetooth)"
+          >
+            {batchPrinting ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} strokeWidth={1.5} />}
+            תרמי — הכל
+          </button>
           <button
             onClick={() => setShowExport(true)}
             className="btn-secondary flex items-center gap-2 text-sm"

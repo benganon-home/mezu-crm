@@ -6,6 +6,7 @@ import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG, ITEM_COLOR_
 import { formatDate, formatPrice, cn } from '@/lib/utils'
 import { applySalesRules } from '@/lib/sales-rules'
 import { getWaLink, getInvoiceWaLink } from '@/lib/whatsapp'
+import { printLabelThermal } from '@/lib/thermalPrint'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { ColorPicker } from '@/components/ui/ColorPicker'
@@ -26,6 +27,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const [tracking, setTracking]           = useState(['', '0', null, undefined].includes(order.tracking_number as any) ? '' : order.tracking_number || '')
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting]           = useState(false)
+  const [thermalPrinting, setThermalPrinting] = useState(false)
 
   // Invoice
   const [invoiceId, setInvoiceId]     = useState(order.invoice_id || null)
@@ -793,6 +795,20 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
                       className="flex items-center gap-1 text-xs font-medium text-blue-700 hover:text-blue-900 bg-blue-100 dark:bg-blue-800/40 hover:bg-blue-200 px-2.5 py-1 rounded-full transition-colors">
                       <Printer size={11} /> תווית
                     </a>
+                    <button
+                      onClick={async () => {
+                        setThermalPrinting(true)
+                        const r = await printLabelThermal(`/api/shipments/${tracking}/label`)
+                        setThermalPrinting(false)
+                        if (r.ok) alert(`✅ נשלחו ${r.labels ?? 1} תוויות למדפסת התרמית`)
+                        else alert(`❌ ${r.error ?? 'שגיאת הדפסה'}`)
+                      }}
+                      disabled={thermalPrinting}
+                      title="הדפס למדפסת התרמית (Bluetooth)"
+                      className="flex items-center gap-1 text-xs font-medium text-emerald-700 hover:text-emerald-900 bg-emerald-100 dark:bg-emerald-800/40 hover:bg-emerald-200 px-2.5 py-1 rounded-full transition-colors disabled:opacity-50">
+                      {thermalPrinting ? <Loader2 size={11} className="animate-spin" /> : <Printer size={11} />}
+                      תרמי
+                    </button>
                     <button onClick={() => loadTracking(tracking)} disabled={loadingTracking}
                       className="flex items-center gap-1 text-xs font-medium text-blue-700 hover:text-blue-900 bg-blue-100 dark:bg-blue-800/40 hover:bg-blue-200 px-2.5 py-1 rounded-full transition-colors disabled:opacity-50">
                       {loadingTracking ? <Loader2 size={11} className="animate-spin" /> : <RefreshCw size={11} />}
