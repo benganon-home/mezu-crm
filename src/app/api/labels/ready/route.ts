@@ -17,13 +17,14 @@ function getSupabaseAdmin() {
 export async function GET() {
   const supabase = getSupabaseAdmin()
 
-  // Fetch all orders with their items and tracking number
+  // Fetch orders with tracking number that haven't been shipped or cancelled yet
   const { data: orders, error } = await supabase
     .from('orders')
-    .select('id, tracking_number, items:order_items(status)')
+    .select('id, tracking_number, status, items:order_items(status)')
     .not('tracking_number', 'is', null)
     .neq('tracking_number', '')
     .neq('tracking_number', '0')
+    .not('status', 'in', '("shipped","cancelled")')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
