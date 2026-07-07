@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent iOS auto-zoom when focusing a field on mobile (it zooms when the
+   field font-size is < 16px). Forcing 16px on touch stops the zoom while
+   keeping pinch-zoom available. */
+@media (max-width: 640px) {
+  input, textarea, select { font-size: 16px !important; }
+}
+
 /* ─── CSS Variables ─────────────────────────────────────────── */
 :root {
   --navy:        #2D2B55;
