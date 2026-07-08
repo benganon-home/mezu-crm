@@ -17,7 +17,10 @@ function getSupabaseAdmin() {
 export async function GET() {
   const supabase = getSupabaseAdmin()
 
-  // Fetch orders with tracking number that haven't been shipped or cancelled yet
+  // Fetch recent orders with tracking number that haven't been shipped or cancelled.
+  // Only look at orders from the last 30 days to avoid printing labels for old
+  // orders that were never marked as shipped.
+  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
   const { data: orders, error } = await supabase
     .from('orders')
     .select('id, tracking_number, status, items:order_items(status)')
@@ -25,6 +28,7 @@ export async function GET() {
     .neq('tracking_number', '')
     .neq('tracking_number', '0')
     .not('status', 'in', '("shipped","cancelled")')
+    .gte('created_at', cutoff)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
