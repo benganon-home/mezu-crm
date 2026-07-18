@@ -31,7 +31,7 @@ export async function isThermalAgentUp(): Promise<boolean> {
  */
 export async function printLabelThermal(
   labelPdfUrl: string,
-  opts: { size?: string; rotate?: number; margin?: number; mode?: 'pages' | 'sheet' } = {},
+  opts: { size?: string; rotate?: number; margin?: number; mode?: 'pages' | 'sheet'; trim?: boolean } = {},
 ): Promise<ThermalResult> {
   // 1) get the label PDF from mezu-crm
   let pdf: Blob
@@ -49,8 +49,10 @@ export async function printLabelThermal(
   const rotate = opts.rotate ?? 0
   const margin = opts.margin ?? 1
   const mode = opts.mode ?? 'pages'
+  // Only append trim when explicitly set, so the agent keeps its default (trim on).
+  const trimQS = opts.trim === undefined ? '' : `&trim=${opts.trim ? 1 : 0}`
   try {
-    const res = await fetch(`${AGENT}/print?size=${size}&rotate=${rotate}&margin=${margin}&mode=${mode}`, {
+    const res = await fetch(`${AGENT}/print?size=${size}&rotate=${rotate}&margin=${margin}&mode=${mode}${trimQS}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/pdf' },
       body: pdf,
