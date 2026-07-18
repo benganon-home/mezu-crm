@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
-import { Plus, Search, ChevronDown, Download, Printer, Loader2, Sticker } from 'lucide-react'
+import { Plus, Minus, Search, ChevronDown, Download, Printer, Loader2, Sticker } from 'lucide-react'
 import { printLabelThermal } from '@/lib/thermalPrint'
 import { Order, OrderItem, OrderStatus, ALL_STATUSES, STATUS_CONFIG } from '@/types'
 import { UndoToast } from '@/components/ui/UndoToast'
@@ -21,6 +21,7 @@ export default function OrdersPage() {
   const [loading, setLoading]         = useState(true)
   const [batchPrinting, setBatchPrinting] = useState(false)
   const [logoPrinting, setLogoPrinting]   = useState(false)
+  const [logoQty, setLogoQty]             = useState(1)
   const [loadError, setLoadError]     = useState<string | null>(null)
   const [search, setSearch]           = useState('')
   const [selectedStatuses, setSelectedStatuses] = useState<OrderStatus[]>(DEFAULT_STATUSES)
@@ -348,22 +349,43 @@ export default function OrdersPage() {
             {batchPrinting ? <Loader2 size={14} className="animate-spin" /> : <Printer size={14} strokeWidth={1.5} />}
             תרמי — הכל
           </button>
+          {/* quantity stepper for the logo sticker */}
+          <div className="flex items-center gap-1" title="כמות מדבקות להדפסה">
+            <button
+              onClick={() => setLogoQty(q => Math.max(1, q - 1))}
+              disabled={logoPrinting || logoQty <= 1}
+              className="grid h-8 w-8 place-items-center rounded-md border border-line hover:border-gold disabled:opacity-40"
+              aria-label="פחות"
+            >
+              <Minus size={13} />
+            </button>
+            <span className="w-7 text-center text-sm font-semibold tabular-nums">{logoQty}</span>
+            <button
+              onClick={() => setLogoQty(q => Math.min(50, q + 1))}
+              disabled={logoPrinting || logoQty >= 50}
+              className="grid h-8 w-8 place-items-center rounded-md border border-line hover:border-gold disabled:opacity-40"
+              aria-label="עוד"
+            >
+              <Plus size={13} />
+            </button>
+          </div>
           <button
             onClick={async () => {
               setLogoPrinting(true)
               // 60x40mm sticker, MEZU logo ~34.5mm wide; dy=-10 counters this
               // printer's ~10mm downward feed offset so it lands centered.
               // trim OFF so the whitespace (and the size) is preserved.
-              const r = await printLabelThermal('/api/labels/logo?dy=-10', {
+              // qty = how many identical labels to print in one job.
+              const r = await printLabelThermal(`/api/labels/logo?dy=-10&qty=${logoQty}`, {
                 size: '60x40', margin: 0, mode: 'pages', trim: false,
               })
               setLogoPrinting(false)
-              if (r.ok) alert('✅ נשלחה מדבקת לוגו למדפסת התרמית')
+              if (r.ok) alert(`✅ נשלחו ${r.labels ?? logoQty} מדבקות לוגו למדפסת התרמית`)
               else alert(`❌ ${r.error ?? 'שגיאת הדפסה'}`)
             }}
             disabled={logoPrinting}
             className="btn-secondary flex items-center gap-2 text-sm disabled:opacity-50"
-            title="הדפס מדבקת לוגו MEZU (60x40 מ״מ, לוגו ברוחב 30 מ״מ) למדפסת התרמית"
+            title="הדפס מדבקות לוגו MEZU (60x40 מ״מ, לוגו ברוחב 34.5 מ״מ) למדפסת התרמית"
           >
             {logoPrinting ? <Loader2 size={14} className="animate-spin" /> : <Sticker size={14} strokeWidth={1.5} />}
             מדבקת לוגו

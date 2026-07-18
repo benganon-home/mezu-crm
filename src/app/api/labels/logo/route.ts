@@ -27,6 +27,7 @@ export async function GET(req: Request) {
   )
   const dx = (Number(url.searchParams.get('dx')) || 0) * MM_TO_PT // + = right
   const dy = (Number(url.searchParams.get('dy')) || 0) * MM_TO_PT // + = down
+  const qty = Math.min(Math.max(Math.round(Number(url.searchParams.get('qty')) || 1), 1), 50)
 
   const pageW = labelWmm * MM_TO_PT
   const pageH = labelHmm * MM_TO_PT
@@ -34,16 +35,18 @@ export async function GET(req: Request) {
   const scale = logoW / MEZU_LOGO.width
   const logoH = MEZU_LOGO.height * scale
 
-  const pdf = await PDFDocument.create()
-  const page = pdf.addPage([pageW, pageH])
-
   // Center both axes, then apply the dx/dy nudge. drawSvgPath places the SVG
   // origin (top-left, y-down) at (x, y) and draws downward, so y = top edge.
   const x = (pageW - logoW) / 2 + dx
   const yTop = pageH - (pageH - logoH) / 2 - dy
 
-  for (const d of MEZU_LOGO.paths) {
-    page.drawSvgPath(d, { x, y: yTop, scale, color: rgb(0, 0, 0) })
+  const pdf = await PDFDocument.create()
+  // One page per sticker — the print agent prints each page as one label.
+  for (let i = 0; i < qty; i++) {
+    const page = pdf.addPage([pageW, pageH])
+    for (const d of MEZU_LOGO.paths) {
+      page.drawSvgPath(d, { x, y: yTop, scale, color: rgb(0, 0, 0) })
+    }
   }
 
   const bytes = await pdf.save()
