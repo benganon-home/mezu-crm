@@ -180,6 +180,17 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
     if (!name.trim()) return
     setSaving(true)
     const finalSlug = (slug.trim() || autoSlug(name)) || null
+    // Keep sizes in sync with the base price: size prices are only meaningful
+    // when there is a real size choice (2+ rows). A single size row always
+    // mirrors base_price — otherwise the website (which prices single-size
+    // products by base_price) and the CRM would show different prices.
+    const basePriceNum = parseFloat(basePrice) || 0
+    const cleanSizes = sizes
+      .map(s => ({ ...s, label: String(s.label).trim(), price: Number(s.price) || 0 }))
+      .filter(s => s.label !== '' && s.price > 0)
+    const syncedSizes = cleanSizes.length === 1
+      ? [{ ...cleanSizes[0], price: basePriceNum }]
+      : cleanSizes
     const payload = {
       name: name.trim(),
       slug: finalSlug,
@@ -188,7 +199,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
       long_description: longDescription.trim() || null,
       materials: materials.trim() || null,
       care_instructions: careInstructions.trim() || null,
-      base_price: parseFloat(basePrice) || 0,
+      base_price: basePriceNum,
       sale_price: salePrice.trim() === '' ? null : (parseFloat(salePrice) || null),
       unit_cost:  unitCost.trim() === ''  ? 0    : (parseFloat(unitCost)  || 0),
       category: category || null,
@@ -200,7 +211,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
       display_order: parseInt(displayOrder) || 0,
       images,
       image_colors: imageColors.slice(0, images.length),
-      sizes,
+      sizes: syncedSizes,
       colors: availableColors,
     }
 

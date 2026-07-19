@@ -94,7 +94,9 @@ export async function POST(req: NextRequest) {
   const lookupPrice = (name: string, size?: string | null): { id: string | null; price: number } => {
     const p = (products || []).find((x: any) => x.name === name)
     if (!p) return { id: null, price: 0 }
-    if (size && p.sizes?.length > 0) {
+    // Size prices only apply when the product genuinely has multiple sizes —
+    // a lone size row mirrors base_price (same rule as the website/pricing lib).
+    if (size && p.sizes?.length > 1) {
       const s = p.sizes.find((x: any) => x.label === size)
       if (s) return { id: p.id, price: s.price }
     }

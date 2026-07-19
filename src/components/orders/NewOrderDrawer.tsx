@@ -149,12 +149,15 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
 
   // Items
   const addItemFromProduct = (product: Product, size?: ProductSize) => {
+    // Size prices only apply when there is a real size choice (2+ rows);
+    // single-size products are always priced by base_price (same rule as the site).
+    const hasRealSizes = (product.sizes?.length ?? 0) > 1
     const item = {
       ...makeItem(
         product.name,
         product.category || '',
         size?.label || '',
-        size ? size.price.toString() : product.base_price.toString(),
+        hasRealSizes && size ? size.price.toString() : product.base_price.toString(),
       ),
       product_id: product.id,
     }

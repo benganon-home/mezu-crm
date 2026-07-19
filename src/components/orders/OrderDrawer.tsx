@@ -262,7 +262,9 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
     setNewProduct(p)
     setNewSize('')
     if (p) {
-      setNewPrice(p.sizes?.length ? '' : String(p.base_price))
+      // Only a real size choice (2+ rows) defers the price to the size pick;
+      // single-size products are priced by base_price (same rule as the site).
+      setNewPrice((p.sizes?.length ?? 0) > 1 ? '' : String(p.base_price))
     } else {
       setNewPrice('')
     }
@@ -271,7 +273,9 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const selectSize = (label: string) => {
     setNewSize(label)
     if (newProduct) {
-      const s = newProduct.sizes?.find(x => x.label === label)
+      const s = (newProduct.sizes?.length ?? 0) > 1
+        ? newProduct.sizes?.find(x => x.label === label)
+        : undefined
       setNewPrice(s ? String(s.price) : String(newProduct.base_price))
     }
   }
@@ -1092,13 +1096,15 @@ function EditableItemCard({
     const p = catalog.find(x => x.id === id) || null
     setEditProduct(p)
     setEditSize('')
-    if (p) setEditPrice(p.sizes?.length ? '' : String(p.base_price))
+    if (p) setEditPrice((p.sizes?.length ?? 0) > 1 ? '' : String(p.base_price))
   }
 
   const handleSizeChange = (label: string) => {
     setEditSize(label)
     if (editProduct) {
-      const s = editProduct.sizes?.find(x => x.label === label)
+      const s = (editProduct.sizes?.length ?? 0) > 1
+        ? editProduct.sizes?.find(x => x.label === label)
+        : undefined
       setEditPrice(s ? String(s.price) : String(editProduct.base_price))
     }
   }
