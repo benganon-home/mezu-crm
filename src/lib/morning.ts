@@ -106,7 +106,9 @@ export async function createInvoice(params: CreateInvoiceParams) {
     type:     320,
     lang:     'he',
     currency: 'ILS',
-    vatType:  1,
+    // 0 = VAT included per the business settings (עוסק מורשה since 07/2026).
+    // Item prices are consumer prices incl. VAT; Morning breaks out the VAT.
+    vatType:  0,
     client: {
       name:  params.customerName,
       phone: params.customerPhone || '',
@@ -115,7 +117,7 @@ export async function createInvoice(params: CreateInvoiceParams) {
       description: i.description,
       quantity:    i.quantity,
       price:       i.price,
-      vatType:     i.vatType ?? 1,
+      vatType:     i.vatType ?? 0,
     })),
     ...(params.sendEmail && params.emailAddress
       ? { sendByEmail: true, emailAddress: params.emailAddress }

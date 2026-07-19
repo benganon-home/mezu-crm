@@ -70,7 +70,7 @@ export async function POST(_req: NextRequest, { params }: { params: { id: string
         description: [i.item_name, i.size && `${i.size} ס"מ`, i.color, i.sign_text].filter(Boolean).join(' — '),
         quantity:    1,
         price:       Number(i.price) || 0,
-        vatType:     1,
+        vatType:     0,
       })),
     })
 
