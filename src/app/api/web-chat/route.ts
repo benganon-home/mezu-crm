@@ -71,8 +71,8 @@ export async function POST(req: NextRequest) {
     : [];
 
   try {
-    const reply = await webBotReply(history, message);
-    return NextResponse.json({ reply }, { headers: cors });
+    const { text, products } = await webBotReply(history, message);
+    return NextResponse.json({ reply: text, products }, { headers: cors });
   } catch (e) {
     console.error("web-chat error", e);
     return NextResponse.json({ error: "server error" }, { status: 500, headers: cors });
