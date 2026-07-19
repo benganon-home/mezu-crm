@@ -38,7 +38,16 @@ ITEM_COLOR_MAP = {
 
 ## External integrations
 
-### Morning (Green Invoice) — `src/lib/morning.ts`
+### HYP (hyp.co.il / Yaad) — payments + invoicing — `src/lib/yaadpay.ts`
+- **The active payment + invoicing provider since ~07/2026.** Clearing via HYP; the
+  ספק אשראי (acquirer) is MAX. Invoices (חשבונית מס-קבלה) are issued through HYP.
+- CRM has a `/hyp` page + `hyp_transactions` table (import via `/api/hyp/import`).
+- Business is עוסק מורשה since 07/2026 — all consumer prices include VAT.
+
+### Morning (Green Invoice) — `src/lib/morning.ts` — **LEGACY, NOT IN USE**
+- Replaced by HYP (above) around 07/2026. Code paths still exist (invoice button,
+  analytics Morning revenue, webhook auto-link) but should not be extended —
+  candidates for removal.
 - Auth: `POST /auth/tokens` with `id` + `secret` from env → JWT token (cached 50min)
 - `searchInvoicesByName(name)` — searches invoices by customer name
 - Invoice URL fields: `url.he` (Hebrew PDF), `url.origin` (original)
