@@ -35,6 +35,50 @@ export async function sendWhatsAppText(to: string, body: string): Promise<boolea
   return true;
 }
 
+// Claude's vision API accepts exactly these media types.
+const IMAGE_MEDIA_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"] as const;
+export type ImageMediaType = (typeof IMAGE_MEDIA_TYPES)[number];
+
+export interface WaMediaImage {
+  data: string; // base64
+  mediaType: ImageMediaType;
+}
+
+/**
+ * Download an incoming media attachment. Meta's webhook only carries a media id —
+ * resolving it is a two-step dance: GET /{media-id} → short-lived CDN URL, then
+ * GET that URL (both with the WhatsApp token). Returns null on any failure or
+ * on media types Claude can't consume.
+ */
+export async function fetchWhatsAppMedia(mediaId: string): Promise<WaMediaImage | null> {
+  const token = process.env.WHATSAPP_TOKEN;
+  if (!token || !mediaId) return null;
+  try {
+    const metaRes = await fetch(`${GRAPH}/${mediaId}`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!metaRes.ok) {
+      console.error("WhatsApp media meta failed", metaRes.status, await metaRes.text().catch(() => ""));
+      return null;
+    }
+    const meta = (await metaRes.json()) as { url?: string; mime_type?: string };
+    const mediaType = (meta.mime_type ?? "").split(";")[0].trim() as ImageMediaType;
+    if (!meta.url || !IMAGE_MEDIA_TYPES.includes(mediaType)) return null;
+
+    const fileRes = await fetch(meta.url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!fileRes.ok) {
+      console.error("WhatsApp media download failed", fileRes.status);
+      return null;
+    }
+    const buf = Buffer.from(await fileRes.arrayBuffer());
+    // Claude caps images at 5MB; WhatsApp caps incoming images at ~5MB too,
+    // but guard anyway rather than erroring mid-conversation.
+    if (buf.byteLength > 5 * 1024 * 1024) return null;
+    return { data: buf.toString("base64"), mediaType };
+  } catch (e) {
+    console.error("WhatsApp media fetch error", e);
+    return null;
+  }
+}
+
 /** Verify Meta's X-Hub-Signature-256 against the raw request body. Skipped if no app secret. */
 export function verifySignature(rawBody: string, signature: string | null): boolean {
   const secret = process.env.WHATSAPP_APP_SECRET;

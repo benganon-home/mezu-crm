@@ -4,7 +4,7 @@
 //         Also handles smb_message_echoes (owner replies from WA Business App)
 //         to auto-pause the bot when the owner takes over a conversation.
 
-import { sendWhatsAppText, verifySignature } from "@/lib/wa-cloud";
+import { sendWhatsAppText, verifySignature, fetchWhatsAppMedia } from "@/lib/wa-cloud";
 import { botReply, recordTurn } from "@/lib/wa-bot";
 import { setStatus } from "@/lib/wa-conversations";
 
@@ -26,6 +26,7 @@ interface WaMessage {
   from: string;
   type: string;
   text?: { body: string };
+  image?: { id: string; mime_type?: string; caption?: string };
 }
 
 interface WaContact {
@@ -96,18 +97,31 @@ export async function POST(request: Request) {
     );
   }
 
-  // Reply to each text message. (Meta retries on non-200, so always 200 at the end.)
+  // Reply to each text/image message. (Meta retries on non-200, so always 200 at the end.)
   await Promise.all(
     messages
-      .filter((m) => m.type === "text" && m.text?.body && m.from)
+      .filter((m) => m.from && ((m.type === "text" && m.text?.body) || (m.type === "image" && m.image?.id)))
       .map(async (m) => {
         try {
-          const reply = await botReply(m.from, m.text!.body, names.get(m.from) ?? null);
+          // For images: download the media so Claude can actually see it. The
+          // caption (if any) rides along as the text; without one we pass a
+          // placeholder so history/inbox still show a readable line.
+          const isImage = m.type === "image";
+          const media = isImage ? await fetchWhatsAppMedia(m.image!.id) : null;
+          if (isImage && !media) {
+            await sendWhatsAppText(m.from, "קיבלנו את התמונה אך לא הצלחנו לטעון אותה 🙏 אפשר לנסות לשלוח שוב, או לכתוב לנו במילים במה נוכל לעזור.");
+            return;
+          }
+          const userText = isImage
+            ? (m.image!.caption?.trim() ? `[תמונה] ${m.image!.caption!.trim()}` : "[הלקוח שלח/ה תמונה ללא כיתוב]")
+            : m.text!.body;
+
+          const reply = await botReply(m.from, userText, names.get(m.from) ?? null, media);
           // reply === null means a human is handling this chat — stay silent.
           if (reply) {
             const ok = await sendWhatsAppText(m.from, reply);
             // Only commit the turn to memory if it was actually delivered.
-            if (ok) await recordTurn(m.from, m.text!.body, reply);
+            if (ok) await recordTurn(m.from, userText, reply);
           }
         } catch (e) {
           console.error("WA bot error", e);

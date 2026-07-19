@@ -9,7 +9,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { findOrders, lookupOrders, type CustomerOrders } from "./order-lookup";
 import { getBusinessKnowledge } from "./bot-knowledge";
-import { toLocalPhone } from "./wa-cloud";
+import { toLocalPhone, type WaMediaImage } from "./wa-cloud";
 import { formatDateShort } from "./utils";
 import { getEffectiveStatus, upsertInbound, escalate, setStatus } from "./wa-conversations";
 import { sendHumanAlert } from "./wa-alert";
@@ -162,6 +162,12 @@ const SYSTEM = `את/ה נציג/ת ה-AI של MEZU — עסק שמייצר פר
 עיצוב אישי ובקשות מיוחדות:
 - אם הלקוח/ה מבקש/ת עיצוב מותאם אישית שאינו מופיע באפשרויות הרגילות (למשל שני טקסטים שונים על שלט דלת, גופן מיוחד, או כל בקשת עיצוב אחרת) — הסבר/י בעדינות: לכתוב את שם המשפחה בשדה הטקסט של השלט, ולהוסיף את כל פרטי העיצוב הנוספים בשדה "הערות" בשלב התשלום — ואנחנו ניצור קשר ונעזור להשלים את העיצוב יחד. 🤍
 
+תמונות:
+- לקוחות יכולים לשלוח תמונות (למשל: דלת הכניסה שלהם, מוצר שהגיע, צילום מסך של הזמנה). התבונן/י בתמונה וענה/י לעניין.
+- אם שלחו תמונה של דלת/משקוף — אפשר להמליץ בעדינות על שלט או מזוזה מתאימים מתוך הקטלוג (צבע/סגנון), בלי להמציא מוצרים.
+- אם שלחו תמונה של מוצר פגום — הבע/י אמפתיה והשתמש/י בכלי escalate_to_human כדי שנציג יטפל.
+- אם התמונה לא ברורה או לא קשורה — שאל/י בעדינות מה רצו להראות.
+
 כללי זהב:
 - ענה/י אך ורק על סמך הידע העסקי ותוצאות הכלי. אל תמציא/י מחירים, מידות, תאריכים, סטטוסים או קישורים.
 - אם אין לך מידע — אמור/אמרי בכנות שאין לך אותו ושאפשר לפנות לנציג אנושי.
@@ -176,7 +182,12 @@ function isReturnToBot(text: string): boolean {
   return /(^|\s)(בוט|לבוט)(\s|$|[.!?,])/.test(t) || /חזרה ל(בוט|נציג)|חזור לבוט|חזרה לצ['׳]?אט/.test(t);
 }
 
-export async function botReply(fromWaId: string, text: string, senderName?: string | null): Promise<string | null> {
+export async function botReply(
+  fromWaId: string,
+  text: string,
+  senderName?: string | null,
+  image?: WaMediaImage | null,
+): Promise<string | null> {
   const key = process.env.ANTHROPIC_API_KEY;
   const senderPhone = toLocalPhone(fromWaId);
 
@@ -219,7 +230,15 @@ export async function botReply(fromWaId: string, text: string, senderName?: stri
     `=== ידע עסקי (קטלוג, מחירים, מידות, צבעים, קלף) ===\n${knowledge || "(לא זמין כרגע)"}`;
 
   const anthropic = new Anthropic({ apiKey: key });
-  const messages: Anthropic.MessageParam[] = [...history, { role: "user", content: text }];
+  // With an attached photo the user turn becomes multimodal: the image block
+  // first, then the caption (or a placeholder the webhook provides).
+  const userContent: Anthropic.ContentBlockParam[] | string = image
+    ? [
+        { type: "image", source: { type: "base64", media_type: image.mediaType, data: image.data } },
+        { type: "text", text },
+      ]
+    : text;
+  const messages: Anthropic.MessageParam[] = [...history, { role: "user", content: userContent }];
 
   let finalText = "";
   let escalated = false;
