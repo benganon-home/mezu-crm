@@ -552,6 +552,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
                 onChange={e => setBasePrice(e.target.value)}
                 type="number"
                 min="0"
+                step="0.01"
                 dir="ltr"
               />
             </div>
@@ -578,6 +579,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
               onChange={e => setSalePrice(e.target.value)}
               type="number"
               min="0"
+              step="0.01"
               dir="ltr"
             />
             <p className="text-[11px] text-muted mt-1">
@@ -683,6 +685,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
                       className="input text-sm ltr text-right"
                       type="number"
                       min="0"
+                      step="0.01"
                       value={s.price || ''}
                       onChange={e => updateSizePrice(i, e.target.value)}
                       placeholder="0"
@@ -712,6 +715,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
                 className="input text-sm ltr text-right"
                 type="number"
                 min="0"
+                step="0.01"
                 placeholder="מחיר"
                 value={newSizePrice}
                 onChange={e => setNewSizePrice(e.target.value)}
