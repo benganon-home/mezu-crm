@@ -111,6 +111,10 @@ export default function OrdersPage() {
       )
     }
 
+    // Pinned orders float to the top (stable sort — within each group the
+    // newest-first order from the API is preserved).
+    result = [...result].sort((a, b) => Number(!!b.is_pinned) - Number(!!a.is_pinned))
+
     return result
   }, [allOrders, selectedStatuses, preparingActive, readyActive, deliveryFilter, search])
 
@@ -132,6 +136,20 @@ export default function OrdersPage() {
     ).length,
     revenue:   filteredOrders.reduce((s, o) => s + (o.total_price || 0), 0),
   }), [filteredOrders])
+
+  // ── Pin / unpin order ─────────────────────────────────────────
+  const togglePin = async (orderId: string, pinned: boolean) => {
+    // Optimistic — flip locally, revert on failure.
+    setAllOrders(prev => prev.map(o => o.id === orderId ? { ...o, is_pinned: pinned } : o))
+    const res = await fetch(`/api/orders/${orderId}`, {
+      method:  'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ is_pinned: pinned }),
+    })
+    if (!res.ok) {
+      setAllOrders(prev => prev.map(o => o.id === orderId ? { ...o, is_pinned: !pinned } : o))
+    }
+  }
 
   // ── Mark all preparing → ready ───────────────────────────────
   const markAllPreparingReady = async (e: React.MouseEvent) => {
@@ -536,6 +554,7 @@ export default function OrdersPage() {
               onToggleItem={toggleItemSelect}
               onItemStatusChange={onItemStatusChange}
               onDeleteItem={onDeleteItem}
+              onTogglePin={togglePin}
               onClick={() => setActiveOrder(order)}
             />
           ))}

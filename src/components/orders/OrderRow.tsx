@@ -16,6 +16,7 @@ interface Props {
   onToggleItem: (id: string, e: React.MouseEvent) => void
   onItemStatusChange: (itemId: string, status: OrderStatus) => void
   onDeleteItem: (itemId: string, orderId: string, item: OrderItem) => void
+  onTogglePin: (orderId: string, pinned: boolean) => void
   onClick: () => void
 }
 
@@ -26,7 +27,7 @@ function getInitials(name: string): string {
   return words[0].charAt(0) + words[words.length - 1].charAt(0)
 }
 
-export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusChange, onDeleteItem, onClick }: Props) {
+export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusChange, onDeleteItem, onTogglePin, onClick }: Props) {
   const customer = order.customer
   const items    = order.items || []
   // Order total: prefer the stored total_price (reflects sales-rule discounts AND
@@ -57,10 +58,38 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
     setDeletingId(null)
   }
 
+  const handleTogglePin = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onTogglePin(order.id, !order.is_pinned)
+  }
+
+  // Pin affordance: sits on the order-number/date line. Filled amber when
+  // pinned; muted ghost otherwise (revealed on hover on desktop).
+  const pinButton = (
+    <button
+      onClick={handleTogglePin}
+      title={order.is_pinned ? 'ביטול נעיצה' : 'נעיצת הזמנה'}
+      aria-label={order.is_pinned ? 'ביטול נעיצה' : 'נעיצת הזמנה'}
+      className={cn(
+        'mr-auto p-1 -m-1 rounded transition-colors',
+        order.is_pinned
+          ? 'text-amber-500 hover:text-amber-600'
+          : 'text-muted/30 hover:text-amber-500 md:opacity-0 md:group-hover/order:opacity-100',
+      )}
+    >
+      <Pin size={13} strokeWidth={2} className={order.is_pinned ? 'fill-amber-400' : undefined} />
+    </button>
+  )
+
   return (
     <>
     {/* ──────────────── Mobile card (hidden on desktop) ──────────── */}
-    <div className="md:hidden rounded-lg border border-cream-dark dark:border-navy-light/60 overflow-hidden bg-white dark:bg-navy-dark">
+    <div className={cn(
+      'md:hidden rounded-lg border overflow-hidden',
+      order.is_pinned
+        ? 'border-amber-300/80 dark:border-amber-500/40 bg-amber-50/60 dark:bg-amber-500/[0.07]'
+        : 'border-cream-dark dark:border-navy-light/60 bg-white dark:bg-navy-dark',
+    )}>
 
       {/* Customer header (tap → drawer) */}
       <div
@@ -76,7 +105,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
               <span className="ltr font-mono font-semibold text-gold">#{order.order_number}</span>
             )}
             {formatDateShort(order.created_at)}
-            {order.is_pinned && <Pin size={9} className="text-gold" />}
+            {pinButton}
           </div>
           <div className="font-medium text-sm truncate mt-0.5">{customer?.name}</div>
           <div className="ltr text-xs text-muted">{customer?.phone}</div>
@@ -200,7 +229,12 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
     </div>
 
     {/* ──────────────── Desktop table row (hidden on mobile) ─────── */}
-    <div className="hidden md:flex min-h-[80px] rounded-lg border border-cream-dark dark:border-navy-light/60 overflow-hidden bg-white dark:bg-navy-dark">
+    <div className={cn(
+      'hidden md:flex min-h-[80px] rounded-lg border overflow-hidden group/order',
+      order.is_pinned
+        ? 'border-amber-300/80 dark:border-amber-500/40 bg-amber-50/60 dark:bg-amber-500/[0.07]'
+        : 'border-cream-dark dark:border-navy-light/60 bg-white dark:bg-navy-dark',
+    )}>
 
       {/* ── Right panel: order info ───────────────────────── */}
       <div
@@ -213,7 +247,7 @@ export function OrderRow({ order, selectedItemIds, onToggleItem, onItemStatusCha
             <span className="ltr font-mono font-semibold text-gold">#{order.order_number}</span>
           )}
           {formatDateShort(order.created_at)}
-          {order.is_pinned && <Pin size={10} className="text-gold" />}
+          {pinButton}
         </div>
 
         {/* Customer */}
