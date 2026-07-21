@@ -61,8 +61,31 @@ export interface Product {
   is_new?: boolean
   has_apartment_number?: boolean
   stl_file?: string | null
+  // Filament weight in grams per size label; 'default' covers no-size products.
+  weights?: Record<string, number>
   created_at: string
   updated_at: string
+}
+
+// ─── Filament (raw material) inventory ────────────────────────
+export interface Filament {
+  id: string
+  color: string
+  spool_grams: number
+  threshold_grams: number
+  is_active: boolean
+  notes?: string | null
+  created_at: string
+}
+
+// Row returned by GET /api/filaments — filament + computed stock/demand.
+export interface FilamentSummary extends Filament {
+  stock_g: number
+  demand_g: number
+  demand_items: number
+  unknown_weight_items: number
+  projected_g: number
+  status: 'ok' | 'low' | 'order'
 }
 
 // ─── Storefront entities ──────────────────────────────────────

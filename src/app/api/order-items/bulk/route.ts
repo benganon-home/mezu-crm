@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { OrderStatus } from '@/types'
+import { syncPrintMovements } from '@/lib/filaments'
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
@@ -16,5 +17,9 @@ export async function POST(req: NextRequest) {
     .in('id', ids)
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+  // Filament ledger follows item status (deduct on ready/shipped, refund on revert).
+  await syncPrintMovements(supabase, ids)
+
   return NextResponse.json({ updated: count })
 }

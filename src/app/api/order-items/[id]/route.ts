@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { syncPrintMovements } from '@/lib/filaments'
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const supabase = createClient()
@@ -13,6 +14,10 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+
+  // Filament ledger follows item status (deduct on ready/shipped, refund on revert).
+  if (body.status !== undefined) await syncPrintMovements(supabase, [params.id])
+
   return NextResponse.json(data)
 }
 
