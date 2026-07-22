@@ -38,8 +38,11 @@ export async function getEffectiveStatus(waId: string): Promise<ConvStatus> {
   return data.status as ConvStatus;
 }
 
-/** Record an inbound customer message (updates preview + unread). */
-export async function upsertInbound(waId: string, message: string, customerName: string | null, unread: boolean): Promise<void> {
+/** Record an inbound customer message (updates preview + unread).
+ * Returns true when this message flipped the conversation to unread —
+ * i.e. it's the FIRST new message since the owner last read the thread —
+ * so callers can alert once per waiting period instead of on every message. */
+export async function upsertInbound(waId: string, message: string, customerName: string | null, unread: boolean): Promise<boolean> {
   const now = new Date().toISOString();
   const row: Record<string, unknown> = {
     wa_id: waId,
@@ -50,8 +53,12 @@ export async function upsertInbound(waId: string, message: string, customerName:
   if (customerName) row.customer_name = customerName;
   if (unread) row.unread = true;
   try {
+    const { data: prev } = await admin().from("wa_conversations").select("unread").eq("wa_id", waId).maybeSingle();
     await admin().from("wa_conversations").upsert(row, { onConflict: "wa_id" });
-  } catch { /* best-effort */ }
+    return unread && !prev?.unread;
+  } catch {
+    return false; /* best-effort */
+  }
 }
 
 /** Flag a conversation as awaiting a human + mark unread. */

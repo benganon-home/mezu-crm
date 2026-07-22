@@ -214,8 +214,14 @@ export async function botReply(
     return "חזרתם לשיחה עם נציג ה-AI של MEZU 🤍 במה אפשר לעזור?";
   }
 
-  await upsertInbound(fromWaId, text, senderName ?? null, status !== "bot");
-  if (status !== "bot") return null;
+  const newlyUnread = await upsertInbound(fromWaId, text, senderName ?? null, status !== "bot");
+  if (status !== "bot") {
+    // The bot stays silent in human-mode — but the owner must know someone is
+    // waiting. Alert once per waiting period (when the thread flips to unread),
+    // not on every message.
+    if (newlyUnread) await sendHumanAlert(fromWaId, senderName ?? null, text, "waiting");
+    return null;
+  }
 
   // Without an API key, fall back to a plain templated reply (sender's orders).
   if (!key) {
