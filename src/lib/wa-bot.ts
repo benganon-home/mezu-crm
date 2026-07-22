@@ -13,6 +13,7 @@ import { toLocalPhone, type WaMediaImage } from "./wa-cloud";
 import { formatDateShort } from "./utils";
 import { getEffectiveStatus, upsertInbound, escalate, setStatus } from "./wa-conversations";
 import { sendHumanAlert } from "./wa-alert";
+import { stripMarkdown } from "./web-bot";
 
 function admin() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
@@ -283,7 +284,7 @@ export async function botReply(
     break;
   }
 
-  finalText = finalText || "מצטערים, לא הצלחנו לעבד את הבקשה כרגע. נסו שוב מאוחר יותר.";
+  finalText = stripMarkdown(finalText) || "מצטערים, לא הצלחנו לעבד את הבקשה כרגע. נסו שוב מאוחר יותר.";
 
   // On hand-off to a human, always append the "type בוט to return" hint so the
   // customer knows how to come back to the AI rep (deterministic, not LLM-reliant).

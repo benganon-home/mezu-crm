@@ -179,6 +179,12 @@ async function runShowProducts(input: any, out: ChatProduct[]): Promise<string> 
   }
 }
 
+// Brand style forbids Markdown, but the model still slips **bold** in
+// occasionally — strip it deterministically instead of trusting the prompt.
+export function stripMarkdown(s: string): string {
+  return s.replace(/\*+/g, "").replace(/^#+\s*/gm, "");
+}
+
 export type ChatTurn = { role: "user" | "assistant"; content: string };
 
 export interface WebBotResult {
@@ -226,7 +232,7 @@ export async function webBotReply(history: ChatTurn[], text: string): Promise<We
     break;
   }
   return {
-    text: finalText || `מצטערים, לא הצלחנו לעבד את הבקשה כרגע. אפשר להמשיך בוואטסאפ: ${WA_LINK}`,
+    text: stripMarkdown(finalText) || `מצטערים, לא הצלחנו לעבד את הבקשה כרגע. אפשר להמשיך בוואטסאפ: ${WA_LINK}`,
     products,
   };
 }
