@@ -587,7 +587,7 @@ export function ProductDrawer({ product, onClose, onSave, onDelete, onDuplicate 
             </p>
           </div>
 
-          {/* Unit cost — used for COGS in /finance */}
+          {/* Unit cost — reference for product profitability */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <div className="label">עלות יחידה (₪)</div>
