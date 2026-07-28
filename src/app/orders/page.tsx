@@ -12,6 +12,7 @@ import { NewOrderDrawer } from '@/components/orders/NewOrderDrawer'
 import { BulkStatusBar } from '@/components/orders/BulkStatusBar'
 import { OrderRow } from '@/components/orders/OrderRow'
 import { ExportModal } from '@/components/orders/ExportModal'
+import { FilamentAlertBanner } from '@/components/filaments/FilamentAlertBanner'
 
 const DEFAULT_STATUSES: OrderStatus[] = ['received', 'preparing', 'ready', 'cancelled']
 const PAGE_SIZE = 60
@@ -318,6 +319,9 @@ export default function OrdersPage() {
 
   return (
     <div className={cn('flex flex-col gap-5', selectedItemIds.size > 0 && 'pb-24')}>
+
+      {/* Filament reorder alert (only when a color's projection is negative) */}
+      <FilamentAlertBanner />
 
       {/* Page header */}
       <div className="page-header">
