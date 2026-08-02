@@ -23,6 +23,41 @@ function eqOrNull(q: any, col: string, val: string | null | undefined) {
 }
 
 /**
+ * Global FIFO stock allocation: scan ALL waiting items (status 'received',
+ * non-personalized, in non-cancelled orders) ordered oldest-first, and fulfill
+ * whatever matches available stock. This is the ONLY way stock is handed out —
+ * order creation runs it too (after insert), so a new order can never jump the
+ * queue ahead of an older waiting order. Returns how many items were marked.
+ */
+export async function syncStockToOrders(supabase: SupabaseClient): Promise<number> {
+  const { data, error } = await supabase
+    .from('order_items')
+    .select('id, product_id, size, color, sign_text, orders(status)')
+    .eq('status', 'received')
+    .is('sign_text', null)
+    .not('product_id', 'is', null)
+    .order('created_at', { ascending: true })
+  if (error || !data) return 0
+
+  // Skip items whose order is cancelled.
+  const items = data.filter((r: any) => {
+    const ord = Array.isArray(r.orders) ? r.orders[0] : r.orders
+    return ord?.status !== 'cancelled'
+  }) as (FulfillableItem & { id: string })[]
+
+  await fulfillFromStock(supabase, items)
+
+  const matchedIds = items.filter(i => i.from_stock).map(i => i.id)
+  if (matchedIds.length > 0) {
+    await supabase
+      .from('order_items')
+      .update({ status: 'ready', from_stock: true })
+      .in('id', matchedIds)
+  }
+  return matchedIds.length
+}
+
+/**
  * Mutates each item in place: sets status='ready' + from_stock=true and
  * decrements stock for items that match an available ready unit. Processes
  * sequentially so multiple identical units in one order draw down stock

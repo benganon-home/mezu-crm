@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { applySalesRules } from '@/lib/sales-rules'
-import { fulfillFromStock } from '@/lib/stock'
+import { syncStockToOrders } from '@/lib/stock'
 import type { SalesRule } from '@/types'
 
 export async function POST(req: NextRequest) {
@@ -108,10 +108,11 @@ export async function POST(req: NextRequest) {
       status:     'received' as const,
       from_stock: false,
     }))
-    // Auto-fulfill matching items from ready stock (marks them 'ready' + from_stock).
-    await fulfillFromStock(supabase, itemRows)
     const { error: itemsErr } = await supabase.from('order_items').insert(itemRows)
     if (itemsErr) return NextResponse.json({ error: itemsErr.message }, { status: 400 })
+    // Global FIFO stock pass — the OLDEST waiting order gets available stock,
+    // not necessarily this new one (it joins the back of the queue).
+    await syncStockToOrders(supabase)
   }
 
   // 5. Return full order

@@ -3,7 +3,7 @@ import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import { searchInvoicesByName } from '@/lib/morning'
 import { applySalesRules } from '@/lib/sales-rules'
-import { fulfillFromStock } from '@/lib/stock'
+import { syncStockToOrders } from '@/lib/stock'
 
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -178,13 +178,14 @@ export async function POST(req: NextRequest) {
   if (orderErr) return NextResponse.json({ error: orderErr.message }, { status: 400 })
 
   // ── 6. Create items ───────────────────────────────────────────
-  // Auto-fulfill matching items from ready stock (marks them 'ready' + from_stock).
-  await fulfillFromStock(supabase, items)
   if (items.length > 0) {
     const { error: itemsErr } = await supabase
       .from('order_items')
       .insert(items.map(i => ({ ...i, order_id: order.id })))
     if (itemsErr) return NextResponse.json({ error: itemsErr.message }, { status: 400 })
+    // Global FIFO stock pass — the OLDEST waiting order gets available stock,
+    // not necessarily this new one (it joins the back of the queue).
+    await syncStockToOrders(supabase)
   }
 
   // ── 7. Auto-link Morning invoice by customer name ─────────────
