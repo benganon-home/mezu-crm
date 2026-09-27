@@ -9,8 +9,16 @@ const heebo = Heebo({
 })
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://mezu-crm.vercel.app'),
   title: 'MEZU CRM',
   description: 'מערכת ניהול הזמנות — MEZU',
+  openGraph: {
+    title: 'MEZU CRM',
+    description: 'מערכת ניהול הזמנות — MEZU',
+    siteName: 'MEZU',
+    locale: 'he_IL',
+    type: 'website',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
