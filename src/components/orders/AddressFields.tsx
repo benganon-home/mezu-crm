@@ -6,7 +6,7 @@ export const EMPTY_ADDRESS: AddressParts = { city: '', street: '', building: '',
 
 const REQUIRED: (keyof AddressParts)[] = ['city', 'street', 'building']
 
-// City + street on their own rows, then building / entrance / floor / apartment.
+// City + street on their own rows, then building / floor / apartment.
 export function AddressFields({ value, onChange, autoFocus }: {
   value: AddressParts
   onChange: (v: AddressParts) => void
@@ -28,9 +28,8 @@ export function AddressFields({ value, onChange, autoFocus }: {
     <div className="flex flex-col gap-2">
       {field('city', autoFocus)}
       {field('street')}
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-3 gap-2">
         {field('building')}
-        {field('entrance')}
         {field('floor')}
         {field('apartment')}
       </div>
