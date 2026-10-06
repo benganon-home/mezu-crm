@@ -6,6 +6,9 @@ import { Customer, Product, ProductSize, SalesRule, FONTS } from '@/types'
 import { formatPrice, cn } from '@/lib/utils'
 import { applySalesRules } from '@/lib/sales-rules'
 import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
+import { AddressFields, EMPTY_ADDRESS } from '@/components/orders/AddressFields'
+import { AddressParts, normalizeAddress } from '@/lib/address'
+import { parseAddress } from '@/lib/run'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -46,7 +49,7 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
   // Customer state
   const [phone, setPhone]               = useState('')
   const [customerName, setCustomerName] = useState('')
-  const [address, setAddress]           = useState('')
+  const [addr, setAddr]                 = useState<AddressParts>(EMPTY_ADDRESS)
   const [foundCustomer, setFoundCustomer] = useState<Customer | null>(null)
   const [isNewCustomer, setIsNewCustomer] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
@@ -124,7 +127,12 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
       if (match) {
         setFoundCustomer(match)
         setCustomerName(match.name)
-        setAddress(match.address || '')
+        setAddr(match.address_city
+          ? normalizeAddress({
+              city: match.address_city, street: match.address_street, building: match.address_building,
+              entrance: match.address_entrance, floor: match.address_floor, apartment: match.address_apartment,
+            })
+          : { entrance: '', ...parseAddress(match.address || '') })
         setIsNewCustomer(false)
       } else if (clean.length >= 10) {
         setFoundCustomer(null)
@@ -144,7 +152,7 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
     setFoundCustomer(null)
     setIsNewCustomer(false)
     setCustomerName('')
-    setAddress('')
+    setAddr(EMPTY_ADDRESS)
   }
 
   // Items
@@ -196,8 +204,9 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          customer: { phone, name: customerName, address: address || null },
-          order:    { delivery_type: deliveryType, delivery_address: address, notes },
+          customer: { phone, name: customerName },
+          order:    { delivery_type: deliveryType, notes },
+          address_parts: deliveryType === 'delivery' && addr.city.trim() ? normalizeAddress(addr) : null,
           items:    items.flatMap(({ _id, qty, ...rest }) => {
             const row = { ...rest, price: parseFloat(rest.price) || 0 }
             return Array.from({ length: qty }, () => ({ ...row }))
@@ -401,12 +410,7 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
               ))}
             </div>
             {deliveryType === 'delivery' && (
-              <input
-                className="input"
-                placeholder="כתובת מלאה למשלוח..."
-                value={address}
-                onChange={e => setAddress(e.target.value)}
-              />
+              <AddressFields value={addr} onChange={setAddr} />
             )}
           </section>
 

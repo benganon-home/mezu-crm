@@ -16,6 +16,12 @@ export interface Customer {
   phone: string
   email?: string | null
   address?: string | null
+  address_city?: string | null
+  address_street?: string | null
+  address_building?: string | null
+  address_entrance?: string | null
+  address_floor?: string | null
+  address_apartment?: string | null
   notes?: string | null
   tags: string[]
   created_at: string
@@ -213,6 +219,12 @@ export interface Order {
   status: OrderStatus
   delivery_type: DeliveryType
   delivery_address?: string | null
+  delivery_city?: string | null
+  delivery_street?: string | null
+  delivery_building?: string | null
+  delivery_entrance?: string | null
+  delivery_floor?: string | null
+  delivery_apartment?: string | null
   source: OrderSource
   total_price: number
   total_price_locked?: boolean

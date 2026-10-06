@@ -11,6 +11,9 @@ import { StatusBadge } from '@/components/ui/StatusBadge'
 import { CopyButton } from '@/components/ui/CopyButton'
 import { ColorPicker } from '@/components/ui/ColorPicker'
 import { useDrawerAnimation } from '@/hooks/useDrawerAnimation'
+import { AddressFields } from '@/components/orders/AddressFields'
+import { AddressParts, formatAddress, normalizeAddress, validateAddress, orderAddressColumns } from '@/lib/address'
+import { parseAddress } from '@/lib/run'
 
 interface Props {
   order: Order
@@ -37,34 +40,16 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const [morningInvoices, setMorningInvoices]     = useState<any[] | null>(null)
   const [linkingId, setLinkingId]               = useState<string | null>(null)
 
-  // Shipping (Run) — parse address for pre-fill
-  const parsed = (() => {
-    const addr = order.delivery_address || ''
-    const empty = { city: '', street: '', building: '', floor: '', apartment: '' }
-    if (!addr) return empty
-    const lastComma = addr.lastIndexOf(',')
-    if (lastComma === -1) return { ...empty, street: addr.trim() }
-    const city = addr.slice(lastComma + 1).trim()
-    const raw  = addr.slice(0, lastComma).trim()
-    const full = raw.match(/^(.+?)\s+(\d+)\s+קומה\s+(\d+)\s+דירה\s+(\d+)\s*$/i)
-    if (full) return { city, street: full[1].trim(), building: full[2], floor: full[3], apartment: full[4] }
-    const withApt = raw.match(/^(.+?)\s+(\d+)\s+דירה\s+(\d+)\s*$/i)
-    if (withApt) return { city, street: withApt[1].trim(), building: withApt[2], floor: '', apartment: withApt[3] }
-    const withFloor = raw.match(/^(.+?)\s+(\d+)\s+קומה\s+(\d+)\s*$/i)
-    if (withFloor) return { city, street: withFloor[1].trim(), building: withFloor[2], floor: withFloor[3], apartment: '' }
-    const slash = raw.match(/^(.+?)\s+(\d+)\/(\d+)\s*$/)
-    if (slash) return { city, street: slash[1].trim(), building: slash[2], floor: '', apartment: slash[3] }
-    const simple = raw.match(/^(.+?)\s+(\d+[א-ת]?)\s*$/)
-    if (simple) return { city, street: simple[1].trim(), building: simple[2], floor: '', apartment: '' }
-    return { city, street: raw, building: '', floor: '', apartment: '' }
-  })()
+  // Structured address columns; older orders only have the text, so parse it.
+  const initialAddress: AddressParts = order.delivery_city
+    ? normalizeAddress({
+        city: order.delivery_city, street: order.delivery_street, building: order.delivery_building,
+        entrance: order.delivery_entrance, floor: order.delivery_floor, apartment: order.delivery_apartment,
+      })
+    : { entrance: '', ...parseAddress(order.delivery_address || '') }
 
   const [showShipForm, setShowShipForm]         = useState(false)
-  const [shipCity, setShipCity]                 = useState(parsed.city)
-  const [shipStreet, setShipStreet]             = useState(parsed.street)
-  const [shipBuilding, setShipBuilding]         = useState(parsed.building)
-  const [shipFloor, setShipFloor]               = useState(parsed.floor)
-  const [shipApt, setShipApt]                   = useState(parsed.apartment)
+  const [shipAddr, setShipAddr]                 = useState<AddressParts>(initialAddress)
   const [shipNotes, setShipNotes]               = useState('')
   const [creatingShipment, setCreatingShipment] = useState(false)
   const [shipmentError, setShipmentError]       = useState<string | null>(null)
@@ -80,7 +65,8 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
 
   // Address editing
   const [editingAddress, setEditingAddress] = useState(false)
-  const [editAddress, setEditAddress]       = useState(order.delivery_address || '')
+  const [editAddr, setEditAddr]             = useState<AddressParts>(initialAddress)
+  const [addressError, setAddressError]     = useState<string | null>(null)
   const [savingAddress, setSavingAddress]   = useState(false)
 
   // Manual total-price override
@@ -225,12 +211,18 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
 
   // ── Address save ──────────────────────────────────────────────
   const saveAddress = async () => {
+    const addr = normalizeAddress(editAddr)
+    const err = validateAddress(addr)
+    if (err) { setAddressError(err); return }
+    setAddressError(null)
     setSavingAddress(true)
+    const fields = { delivery_address: formatAddress(addr), ...orderAddressColumns(addr) }
     await fetch(`/api/orders/${order.id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ delivery_address: editAddress }),
+      body: JSON.stringify(fields),
     })
-    onUpdate({ ...order, items, customer, delivery_address: editAddress })
+    onUpdate({ ...order, items, customer, ...fields })
+    setShipAddr(addr)
     setEditingAddress(false)
     setSavingAddress(false)
   }
@@ -376,11 +368,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body:    JSON.stringify({
           order_id:       order.id,
-          city:           shipCity.trim(),
-          street:         shipStreet.trim(),
-          building:       shipBuilding.trim(),
-          floor:          shipFloor.trim(),
-          apartment:      shipApt.trim(),
+          ...normalizeAddress(shipAddr),
           shipping_notes: shipNotes.trim(),
         }),
       })
@@ -388,7 +376,8 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
       if (!res.ok) throw new Error(data.error || 'שגיאה ביצירת משלוח')
       setTracking(data.shipNum)
       setShowShipForm(false)
-      onUpdate({ ...order, items, customer, tracking_number: data.shipNum })
+      const addr = normalizeAddress(shipAddr)
+      onUpdate({ ...order, items, customer, tracking_number: data.shipNum, delivery_address: formatAddress(addr), ...orderAddressColumns(addr) })
     } catch (err: any) {
       setShipmentError(err.message)
     } finally {
@@ -745,13 +734,14 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
             </div>
             {editingAddress ? (
               <div className="flex flex-col gap-2">
-                <input className="input text-sm" value={editAddress} onChange={e => setEditAddress(e.target.value)} autoFocus />
+                <AddressFields value={editAddr} onChange={setEditAddr} autoFocus />
+                {addressError && <div className="text-xs text-red-500">{addressError}</div>}
                 <div className="flex gap-2">
                   <button onClick={saveAddress} disabled={savingAddress}
                     className="btn-primary text-xs px-4 py-1.5 flex items-center gap-1.5 disabled:opacity-50">
                     <Check size={12} />{savingAddress ? 'שומר...' : 'שמור'}
                   </button>
-                  <button onClick={() => { setEditingAddress(false); setEditAddress(order.delivery_address || '') }}
+                  <button onClick={() => { setEditingAddress(false); setEditAddr(initialAddress); setAddressError(null) }}
                     className="btn-secondary text-xs px-4 py-1.5">ביטול</button>
                 </div>
               </div>
@@ -865,13 +855,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
                       שם: <span className="font-medium text-navy dark:text-cream">{customer?.name}</span>
                       {' · '}טלפון: <span className="ltr font-medium text-navy dark:text-cream">{customer?.phone}</span>
                     </div>
-                    <input className="input text-sm" placeholder="עיר *" value={shipCity} onChange={e => setShipCity(e.target.value)} autoFocus />
-                    <input className="input text-sm" placeholder="רחוב *" value={shipStreet} onChange={e => setShipStreet(e.target.value)} />
-                    <div className="grid grid-cols-3 gap-2">
-                      <input className="input text-sm" placeholder="בניין" value={shipBuilding} onChange={e => setShipBuilding(e.target.value)} />
-                      <input className="input text-sm" placeholder="קומה" value={shipFloor} onChange={e => setShipFloor(e.target.value)} />
-                      <input className="input text-sm" placeholder="דירה" value={shipApt} onChange={e => setShipApt(e.target.value)} />
-                    </div>
+                    <AddressFields value={shipAddr} onChange={setShipAddr} autoFocus />
                     <textarea
                       className="input text-sm min-h-[60px] resize-none"
                       placeholder="הערות למשלוח (יודפסו על המדבקה)"
@@ -883,7 +867,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
                     )}
                     <div className="flex gap-2 mt-1">
                       <button onClick={createRunShipment}
-                        disabled={creatingShipment || !shipCity.trim() || !shipStreet.trim()}
+                        disabled={creatingShipment || validateAddress(normalizeAddress(shipAddr)) !== null}
                         className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg py-2 text-sm font-medium transition-colors disabled:opacity-50">
                         {creatingShipment ? <><Loader2 size={13} className="animate-spin" /> יוצר...</> : <><Truck size={13} /> שלח לRun</>}
                       </button>

@@ -3,19 +3,29 @@ import { createClient } from '@/lib/supabase/server'
 import { applySalesRules } from '@/lib/sales-rules'
 import { syncStockToOrders } from '@/lib/stock'
 import type { SalesRule } from '@/types'
+import { AddressParts, normalizeAddress, validateAddress, formatAddress, orderAddressColumns, customerAddressColumns } from '@/lib/address'
 
 export async function POST(req: NextRequest) {
   const supabase = createClient()
-  const { customer: customerData, order: orderData, items, total_price_override, total_price_locked } = await req.json()
+  const body = await req.json()
+  const { customer: customerData, order: orderData, items, total_price_override, total_price_locked } = body
 
   // Normalize phone to 0XX format
   const cleanPhone = customerData.phone.replace(/\D/g, '')
   const phone = cleanPhone.startsWith('972') ? '0' + cleanPhone.slice(3) : cleanPhone
 
+  // Optional on manual orders; when given, the display string is built from the parts.
+  const parts: AddressParts | null = body.address_parts ? normalizeAddress(body.address_parts) : null
+  if (parts) {
+    const addrErr = validateAddress(parts)
+    if (addrErr) return NextResponse.json({ error: addrErr }, { status: 400 })
+  }
+  const deliveryAddress = parts ? formatAddress(parts) : null
+
   // 1. Find existing customer by phone
   const { data: existing } = await supabase
     .from('customers')
-    .select('id, name, address')
+    .select('id, name, address, address_city')
     .eq('phone', phone)
     .maybeSingle()
 
@@ -24,13 +34,16 @@ export async function POST(req: NextRequest) {
   if (existing) {
     customerId = existing.id
     // Update address if we have one and they didn't
-    if (customerData.address && !existing.address) {
-      await supabase.from('customers').update({ address: customerData.address }).eq('id', customerId)
+    if (deliveryAddress && !existing.address) {
+      await supabase.from('customers').update({ address: deliveryAddress }).eq('id', customerId)
+    }
+    if (parts && !existing.address_city) {
+      await supabase.from('customers').update(customerAddressColumns(parts)).eq('id', customerId)
     }
   } else {
     const { data: newCustomer, error: custErr } = await supabase
       .from('customers')
-      .insert({ name: customerData.name, phone, address: customerData.address || null })
+      .insert({ name: customerData.name, phone, address: deliveryAddress, ...(parts ? customerAddressColumns(parts) : {}) })
       .select('id')
       .single()
     if (custErr) return NextResponse.json({ error: custErr.message }, { status: 400 })
@@ -82,7 +95,8 @@ export async function POST(req: NextRequest) {
       customer_id:      customerId,
       status:           'received',
       delivery_type:    orderData.delivery_type,
-      delivery_address: orderData.delivery_type === 'delivery' ? (orderData.delivery_address || null) : null,
+      delivery_address: orderData.delivery_type === 'delivery' ? deliveryAddress : null,
+      ...(parts && orderData.delivery_type === 'delivery' ? orderAddressColumns(parts) : {}),
       notes:            orderData.notes || null,
       total_price:      totalPrice,
       total_price_locked: !!total_price_locked,

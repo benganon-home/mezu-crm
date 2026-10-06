@@ -42,6 +42,7 @@ export interface ParsedAddress {
   apartment: string
 }
 
+// Fallback for orders saved before the structured address columns existed.
 export function parseAddress(address: string): ParsedAddress {
   const empty: ParsedAddress = { city: '', street: '', building: '', floor: '', apartment: '' }
   if (!address) return empty
@@ -83,6 +84,7 @@ export interface CreateShipmentParams {
   city:       string   // city (P13)
   street:     string   // street (P15)
   building?:  string   // building no (P16)
+  entrance?:  string   // entrance (P17)
   floor?:     string   // floor (P18)
   apartment?: string   // apartment (P19)
   phone:      string   // primary phone (P20)
@@ -117,7 +119,7 @@ export async function createShipment(p: CreateShipmentParams): Promise<RunShipme
     a(),                                    // P14 street code
     a(p.street.slice(0, 30)),               // P15 street name
     a((p.building || '').slice(0, 5)),      // P16 building no
-    a(),                                    // P17 entrance
+    a((p.entrance || '').slice(0, 2)),      // P17 entrance
     a((p.floor || '').slice(0, 2)),         // P18 floor
     a((p.apartment || '').slice(0, 4)),     // P19 apartment
     a(p.phone.replace(/\D/g, '').slice(0, 20)), // P20 phone (digits only)

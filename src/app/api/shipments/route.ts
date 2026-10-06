@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createClient as createServerClient } from '@/lib/supabase/server'
 import { createClient } from '@supabase/supabase-js'
 import { createShipment } from '@/lib/run'
+import { normalizeAddress, validateAddress, formatAddress, orderAddressColumns } from '@/lib/address'
 
 function getSupabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
@@ -11,13 +12,17 @@ function getSupabaseAdmin() {
 }
 
 // POST /api/shipments
-// Body: { order_id, city, street, building?, floor?, apartment? }
+// Body: { order_id, city, street, building, entrance?, floor?, apartment?, shipping_notes? }
+// The address the label was created with is saved back to the order.
 
 export async function POST(req: Request) {
   try {
-    const { order_id, city, street, building, floor, apartment, shipping_notes } = await req.json()
+    const body = await req.json()
+    const { order_id, shipping_notes } = body
     if (!order_id) return NextResponse.json({ error: 'order_id חסר' }, { status: 400 })
-    if (!city || !street) return NextResponse.json({ error: 'עיר ורחוב הם שדות חובה' }, { status: 400 })
+    const addr = normalizeAddress(body)
+    const addrErr = validateAddress(addr)
+    if (addrErr) return NextResponse.json({ error: addrErr }, { status: 400 })
 
     const supabase = getSupabaseAdmin()
 
@@ -35,11 +40,12 @@ export async function POST(req: Request) {
 
     const shipment = await createShipment({
       name:      customer?.name || 'לקוח',
-      city,
-      street,
-      building:  building  || '',
-      floor:     floor     || '',
-      apartment: apartment || '',
+      city:      addr.city,
+      street:    addr.street,
+      building:  addr.building,
+      entrance:  addr.entrance  || '',
+      floor:     addr.floor     || '',
+      apartment: addr.apartment || '',
       phone:     customer?.phone || '',
       email:     customer?.email || '',
       reference: order_id,
@@ -48,7 +54,11 @@ export async function POST(req: Request) {
 
     const { error: updateErr } = await supabase
       .from('orders')
-      .update({ tracking_number: shipment.shipNum })
+      .update({
+        tracking_number:  shipment.shipNum,
+        delivery_address: formatAddress(addr),
+        ...orderAddressColumns(addr),
+      })
       .eq('id', order_id)
 
     if (updateErr) {
