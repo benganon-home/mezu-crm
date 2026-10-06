@@ -6,6 +6,7 @@ import { formatPrice, formatDateShort, formatPhone, buildWaLink, cn } from '@/li
 import { StatCard } from '@/components/ui/StatCard'
 import { BarChart } from '@/components/ui/BarChart'
 import type { MarketingReport, AbandonedCheckout, MarketingAction } from '@/lib/marketing'
+import type { SiteReport, FunnelStep } from '@/lib/marketing-ga'
 
 const ACTION_STYLE: Record<MarketingAction['level'], { icon: typeof AlertTriangle; cls: string }> = {
   alert: { icon: AlertTriangle, cls: 'text-amber-600' },
@@ -16,6 +17,38 @@ const ACTION_STYLE: Record<MarketingAction['level'], { icon: typeof AlertTriangl
 function weekLabel(key: string) {
   const d = new Date(key + 'T00:00:00')
   return `${d.getDate()}/${d.getMonth() + 1}`
+}
+
+function FunnelBars({ steps }: { steps: FunnelStep[] }) {
+  const top = Math.max(steps[0]?.users ?? 0, 1)
+  return (
+    <div className="flex flex-col gap-2.5">
+      {steps.map((s, i) => {
+        const change = s.prevUsers > 0 ? Math.round(((s.users - s.prevUsers) / s.prevUsers) * 100) : null
+        return (
+          <div key={s.event}>
+            <div className="flex items-baseline justify-between text-xs mb-1">
+              <span className="font-medium">{s.label}</span>
+              <span className="flex items-center gap-2 tabular-nums">
+                {i > 0 && s.stepPct != null && <span className="text-muted">{s.stepPct}% מהשלב הקודם</span>}
+                <span className="font-semibold ltr">{s.users.toLocaleString('he-IL')}</span>
+                {change != null && (
+                  <span className={cn('ltr text-[10px]', change >= 0 ? 'text-emerald-600' : 'text-red-500')}>
+                    {change > 0 ? '+' : ''}{change}%
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="h-2 bg-cream dark:bg-navy-deeper rounded-full overflow-hidden">
+              <div className="h-full bg-gold rounded-full transition-all duration-500"
+                   style={{ width: `${Math.max((s.users / top) * 100, 1)}%` }} />
+            </div>
+          </div>
+        )
+      })}
+      <p className="text-[10px] text-muted mt-1">משתמשים, 30 הימים האחרונים. האחוז הצבעוני — שינוי מ-30 הימים שלפני.</p>
+    </div>
+  )
 }
 
 function StatusCell({ a }: { a: AbandonedCheckout }) {
@@ -41,6 +74,8 @@ export default function MarketingPage() {
   const [data, setData]       = useState<MarketingReport | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError]     = useState<string | null>(null)
+  const [site, setSite]       = useState<SiteReport | null>(null)
+  const [siteError, setSiteError] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/marketing')
@@ -48,6 +83,10 @@ export default function MarketingPage() {
       .then(setData)
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
+    fetch('/api/marketing/site')
+      .then(async r => { const j = await r.json(); if (!r.ok) throw new Error(j.error || 'שגיאה'); return j })
+      .then(setSite)
+      .catch(e => setSiteError(e.message))
   }, [])
 
   if (loading) {
@@ -67,7 +106,8 @@ export default function MarketingPage() {
     )
   }
 
-  const { kpis, weekly, abandoned, actions } = data
+  const { kpis, weekly, abandoned } = data
+  const actions = [...data.actions, ...(site?.actions ?? [])]
   const chartOrders    = weekly.map(w => ({ week: weekLabel(w.week), count: w.orders }))
   const chartAbandoned = weekly.map(w => ({ week: weekLabel(w.week), count: w.abandoned }))
 
@@ -76,7 +116,7 @@ export default function MarketingPage() {
       <div className="page-header">
         <div>
           <h1>שיווק</h1>
-          <p className="text-xs text-muted mt-0.5">30 הימים האחרונים · הזמנות מהאתר</p>
+          <p className="text-xs text-muted mt-0.5">30 הימים האחרונים · הזמנות מהאתר ונתוני גוגל אנליטיקס</p>
         </div>
       </div>
 
@@ -128,6 +168,43 @@ export default function MarketingPage() {
             })}
           </div>
         )}
+      </div>
+
+      {/* ── Site (Google Analytics) ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="surface p-5">
+          <div className="label mb-4">משפך האתר</div>
+          {site ? <FunnelBars steps={site.funnel} />
+            : <div className="text-xs text-muted text-center py-8">{siteError ?? 'טוען נתוני גוגל אנליטיקס...'}</div>}
+        </div>
+        <div className="surface p-5 overflow-x-auto">
+          <div className="label mb-4">מאיפה מגיעים</div>
+          {site ? (
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-muted">
+                  <th className="text-right font-medium pb-2">מקור</th>
+                  <th className="text-left font-medium pb-2">כניסות</th>
+                  <th className="text-left font-medium pb-2">קניות</th>
+                  <th className="text-left font-medium pb-2">המרה</th>
+                  <th className="text-left font-medium pb-2">הכנסה</th>
+                </tr>
+              </thead>
+              <tbody>
+                {site.sources.map(r => (
+                  <tr key={r.channel} className="border-t border-cream-dark dark:border-navy-light">
+                    <td className="py-2">{r.label}</td>
+                    <td className="py-2 text-left ltr tabular-nums">{r.sessions.toLocaleString('he-IL')}</td>
+                    <td className="py-2 text-left ltr tabular-nums">{r.purchases}</td>
+                    <td className="py-2 text-left ltr tabular-nums">{r.convPct != null ? `${r.convPct}%` : '—'}</td>
+                    <td className="py-2 text-left ltr tabular-nums">{formatPrice(r.revenue)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : <div className="text-xs text-muted text-center py-8">{siteError ?? 'טוען...'}</div>}
+          {site && <p className="text-[10px] text-muted mt-2">לפי המקור של הביקור שבו נקנה. מי שראה מודעה ונכנס אחר כך מאינסטגרם נספר כ"רשתות חברתיות".</p>}
+        </div>
       </div>
 
       {/* ── Weekly trend ── */}
