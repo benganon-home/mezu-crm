@@ -203,7 +203,7 @@ export default function MarketingPage() {
               </tbody>
             </table>
           ) : <div className="text-xs text-muted text-center py-8">{siteError ?? 'טוען...'}</div>}
-          {site && <p className="text-[10px] text-muted mt-2">לפי המקור של הביקור שבו נקנה. מי שראה מודעה ונכנס אחר כך מאינסטגרם נספר כ"רשתות חברתיות".</p>}
+          {site && <p className="text-[10px] text-muted mt-2">לפי המקור של הביקור שבו נקנה. מי שראה מודעה ונכנס אחר כך מאינסטגרם נספר כ״רשתות חברתיות״.</p>}
         </div>
       </div>
 
