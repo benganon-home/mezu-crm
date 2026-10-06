@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react'
 import { formatPrice, cn } from '@/lib/utils'
 import { ITEM_COLOR_MAP } from '@/types'
+import { BarChart } from '@/components/ui/BarChart'
 
 interface AnalyticsData {
   db: {
@@ -18,7 +19,7 @@ interface AnalyticsData {
     deliveryBreakdown:  { delivery: number; pickup: number }
     byDayOfWeek:        Array<{ day: string; count: number }>
   }
-  morning: {
+  revenue: {
     monthly:      Array<{ month: string; total: number }>
     currentMonth: number | null
     lastMonth:    number | null
@@ -36,36 +37,6 @@ function Trend({ current, prev }: { current: number | null; prev: number | null 
   return pct > 0
     ? <span className="flex items-center gap-0.5 text-xs text-emerald-600"><TrendingUp size={11} />+{pct}%</span>
     : <span className="flex items-center gap-0.5 text-xs text-red-500"><TrendingDown size={11} />{pct}%</span>
-}
-
-function BarChart({ data, valueKey, labelKey, color = 'bg-gold' }: {
-  data: Array<Record<string, any>>
-  valueKey: string
-  labelKey: string
-  color?: string
-}) {
-  const max = Math.max(...data.map(d => d[valueKey] || 0), 1)
-  return (
-    <div className="flex items-end gap-2 h-28">
-      {data.map((d, i) => {
-        const pct = Math.round((d[valueKey] / max) * 100)
-        return (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1">
-            <span className="text-[10px] text-muted tabular-nums leading-none">
-              {d[valueKey] > 0 ? (valueKey === 'revenue' ? `₪${Math.round(d[valueKey]/1000)}k` : d[valueKey]) : ''}
-            </span>
-            <div className="w-full flex items-end" style={{ height: 72 }}>
-              <div
-                className={cn('w-full rounded-t-md transition-all duration-500', color)}
-                style={{ height: `${Math.max(pct, 3)}%`, opacity: 0.85 + (i / data.length) * 0.15 }}
-              />
-            </div>
-            <span className="text-[10px] text-muted leading-none">{d[labelKey]}</span>
-          </div>
-        )
-      })}
-    </div>
-  )
 }
 
 function RankRow({ name, count, max, color }: { name: string; count: number; max: number; color?: string }) {
@@ -111,10 +82,10 @@ export default function AnalyticsPage() {
 
   if (!data) return null
 
-  const { db, morning } = data
+  const { db, revenue } = data
 
-  const revenueChange = morning.currentMonth != null && morning.lastMonth != null && morning.lastMonth > 0
-    ? Math.round(((morning.currentMonth - morning.lastMonth) / morning.lastMonth) * 100)
+  const revenueChange = revenue.currentMonth != null && revenue.lastMonth != null && revenue.lastMonth > 0
+    ? Math.round(((revenue.currentMonth - revenue.lastMonth) / revenue.lastMonth) * 100)
     : null
 
   const maxDayCount = Math.max(...db.byDayOfWeek.map(d => d.count), 1)
@@ -122,7 +93,7 @@ export default function AnalyticsPage() {
   const maxFont     = Math.max(...db.topFonts.map(f => f.count), 1)
   const maxSign     = Math.max(...db.topSignTypes.map(s => s.count), 1)
 
-  const morningChartData = morning.monthly.map(m => ({
+  const revenueChartData = revenue.monthly.map(m => ({
     month: heMonth(m.month),
     revenue: m.total,
   }))
@@ -151,10 +122,10 @@ export default function AnalyticsPage() {
         <div className="surface px-4 py-3 flex flex-col gap-1">
           <div className="text-xs text-muted font-medium">הכנסות החודש</div>
           <div className="text-2xl font-semibold text-gold leading-none">
-            {morning.currentMonth != null ? formatPrice(morning.currentMonth) : '—'}
+            {revenue.currentMonth != null ? formatPrice(revenue.currentMonth) : '—'}
           </div>
           <div className="flex items-center gap-2 mt-0.5">
-            <Trend current={morning.currentMonth} prev={morning.lastMonth} />
+            <Trend current={revenue.currentMonth} prev={revenue.lastMonth} />
             <span className="text-[10px] text-muted">מהחודש שעבר</span>
           </div>
         </div>
@@ -181,12 +152,12 @@ export default function AnalyticsPage() {
       {/* ── Revenue charts ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-        {/* Morning revenue by month */}
+        {/* Revenue by month (orders, VAT incl.) */}
         <div className="surface p-5">
-          <div className="label mb-4">הכנסות לפי חודש — מורנינג</div>
-          {morningChartData.length > 0
-            ? <BarChart data={morningChartData} valueKey="revenue" labelKey="month" color="bg-gold" />
-            : <div className="text-xs text-muted text-center py-8">אין נתוני מורנינג</div>
+          <div className="label mb-4">הכנסות לפי חודש</div>
+          {revenueChartData.length > 0
+            ? <BarChart data={revenueChartData} valueKey="revenue" labelKey="month" color="bg-gold" />
+            : <div className="text-xs text-muted text-center py-8">אין נתונים</div>
           }
         </div>
 

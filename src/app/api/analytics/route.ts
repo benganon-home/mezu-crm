@@ -1,8 +1,5 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { getToken } from '@/lib/morning'
-
-const MORNING_BASE = 'https://api.greeninvoice.co.il/api/v1'
 
 export async function GET() {
   const supabase = createClient()
@@ -74,56 +71,23 @@ export async function GET() {
   orders.forEach(o => { dayCount[new Date(o.created_at).getDay()]++ })
   const byDayOfWeek = dayLabels.map((day, i) => ({ day, count: dayCount[i] }))
 
-  // ── Morning: last 6 months revenue ───────────────────────────
-  // Income document types: 20=חשבונית מס, 305=חשבונית מס/קבלה, 400=קבלה
-  const INCOME_TYPES = [20, 305, 400]
-
-  let morningMonthly: Array<{ month: string; total: number }> = []
-  let currentMonthRevenue: number | null = null
-  let lastMonthRevenue:    number | null = null
-
-  try {
-    const token = await getToken()
-
-    const months = Array.from({ length: 6 }, (_, i) => {
-      const d      = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const yr     = d.getFullYear()
-      const mo     = String(d.getMonth() + 1).padStart(2, '0')
-      const lastDay = new Date(yr, d.getMonth() + 1, 0).toISOString().split('T')[0]
-      return { key: `${yr}-${mo}`, from: `${yr}-${mo}-01`, to: lastDay }
-    }).reverse()
-
-    // Fetch all pages for each month, sum only income document types
-    // IMPORTANT: Never use aggregations — they are unreliable for date-filtered totals
-    const fetchMonthTotal = async (m: { from: string; to: string }) => {
-      let total = 0
-      let page  = 1
-      while (true) {
-        const res = await fetch(`${MORNING_BASE}/documents/search`, {
-          method:  'POST',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body:    JSON.stringify({ pageSize: 100, page, documentDateFrom: m.from, documentDateTo: m.to }),
-        })
-        const data = await res.json()
-        const docs = data?.items ?? []
-        if (docs.length === 0) break
-        for (const doc of docs) {
-          if (INCOME_TYPES.includes(doc.type)) total += doc.amount ?? 0
-        }
-        if (docs.length < 100) break
-        page++
-      }
-      return Math.round(total * 100) / 100
-    }
-
-    const totals = await Promise.all(months.map(fetchMonthTotal))
-    morningMonthly = months.map((m, i) => ({ month: m.key, total: totals[i] }))
-
-    currentMonthRevenue = morningMonthly.at(-1)?.total ?? null
-    lastMonthRevenue    = morningMonthly.at(-2)?.total ?? null
-  } catch {
-    // Morning is best-effort
+  // ── Revenue: last 6 months from orders (Morning is retired since 07/2026) ──
+  const sixMonthsStart = new Date(now.getFullYear(), now.getMonth() - 5, 1)
+  const { data: recentOrders } = await supabase
+    .from('orders')
+    .select('created_at, total_price, status')
+    .gte('created_at', sixMonthsStart.toISOString())
+  const months = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })
+  const revByMonth: Record<string, number> = Object.fromEntries(months.map(m => [m, 0]))
+  for (const o of recentOrders ?? []) {
+    if (o.status === 'cancelled') continue
+    const m = o.created_at.slice(0, 7)
+    if (m in revByMonth) revByMonth[m] += o.total_price || 0
   }
+  const revenueMonthly = months.map(m => ({ month: m, total: Math.round(revByMonth[m] * 100) / 100 }))
 
   return NextResponse.json({
     db: {
@@ -142,10 +106,10 @@ export async function GET() {
       deliveryBreakdown:   { delivery: deliveryCount, pickup: pickupCount },
       byDayOfWeek,
     },
-    morning: {
-      monthly:      morningMonthly,
-      currentMonth: currentMonthRevenue,
-      lastMonth:    lastMonthRevenue,
+    revenue: {
+      monthly:      revenueMonthly,
+      currentMonth: revenueMonthly.at(-1)?.total ?? null,
+      lastMonth:    revenueMonthly.at(-2)?.total ?? null,
     },
   })
 }
