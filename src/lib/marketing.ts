@@ -55,6 +55,18 @@ export function normPhone(raw: string | null | undefined): string {
 }
 const normEmail = (e: string | null | undefined) => String(e || '').trim().toLowerCase()
 
+// The owner's own test checkouts — never counted as abandoned carts.
+const TEST_PHONES = new Set(['0547635911'])
+const TEST_EMAILS = new Set(['benganon206@gmail.com'])
+const TEST_NAMES  = [/בן גנון/, /ben ganon/i]
+
+export function isTestSession(customer: any): boolean {
+  const c = customer ?? {}
+  return TEST_PHONES.has(normPhone(c.phone))
+    || TEST_EMAILS.has(normEmail(c.email))
+    || TEST_NAMES.some(re => re.test(String(c.name || '')))
+}
+
 // Sunday-start week key (Israeli business week), as YYYY-MM-DD of that Sunday.
 export function weekKey(iso: string): string {
   const d = new Date(iso)
@@ -66,6 +78,7 @@ export function buildMarketingReport(
   sessions: SessionRow[], orders: OrderRow[], customers: CustomerRow[], now: Date,
 ): MarketingReport {
   const since30 = now.getTime() - 30 * DAY
+  sessions = sessions.filter(s => !isTestSession(s.data?.customer))
   const paidOrders = orders.filter(o => o.status !== 'cancelled')
 
   // Customer ids reachable by phone / email.
