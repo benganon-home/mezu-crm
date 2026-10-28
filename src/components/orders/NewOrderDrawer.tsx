@@ -94,6 +94,7 @@ export function NewOrderDrawer({ onClose, onCreated }: Props) {
     }
     const expanded = items.flatMap(it =>
       Array.from({ length: it.qty }, () => ({
+        item_name: it.item_name,
         model: it.model || null,
         size:  it.size  || null,
         price: parseFloat(it.price) || 0,

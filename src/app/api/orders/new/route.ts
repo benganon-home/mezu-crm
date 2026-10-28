@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
   // The user's manual override (total_price_locked=true) always wins — preserves
   // the "I just want this exact total" escape hatch on the drawer.
   const itemsForRules = (items || []).map((i: any) => ({
+    item_name: i.item_name || null, // lets the engine tell door numbers from signs
     model: i.model || null,
     size:  i.size  || null,
     price: Number(i.price) || 0,

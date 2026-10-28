@@ -108,7 +108,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   const { appliedRule: matchingRule, finalTotal } = useMemo(() => {
     if (items.length === 0) return { appliedRule: null, finalTotal: autoTotal }
     // Build items array for the shared engine (don't mutate originals)
-    const ruleItems = items.map(i => ({ model: i.model, size: i.size, price: i.price }))
+    const ruleItems = items.map(i => ({ item_name: i.item_name, model: i.model, size: i.size, price: i.price }))
     const result = applySalesRules(ruleItems, salesRules)
     return { appliedRule: result.appliedRule, finalTotal: result.finalTotal }
   }, [items, salesRules, autoTotal])
@@ -116,7 +116,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
   // Patch order total whenever items or rule changes — unless price is manually locked.
   const patchTotal = async (updatedItems: OrderItem[]) => {
     if (priceLocked) return
-    const ruleItems = updatedItems.map(i => ({ model: i.model, size: i.size, price: i.price }))
+    const ruleItems = updatedItems.map(i => ({ item_name: i.item_name, model: i.model, size: i.size, price: i.price }))
     const { finalTotal: newTotal } = applySalesRules(ruleItems, salesRules)
     await fetch(`/api/orders/${order.id}`, {
       method: 'PATCH',
@@ -146,7 +146,7 @@ export function OrderDrawer({ order, onClose, onUpdate, onDelete }: Props) {
 
   // Reset to auto-calculated
   const resetManualTotal = async () => {
-    const ruleItems = items.map(i => ({ model: i.model, size: i.size, price: i.price }))
+    const ruleItems = items.map(i => ({ item_name: i.item_name, model: i.model, size: i.size, price: i.price }))
     const { finalTotal: newTotal } = applySalesRules(ruleItems, salesRules)
     await fetch(`/api/orders/${order.id}`, {
       method: 'PATCH',

@@ -13,6 +13,18 @@ export interface RuleItem {
   [key: string]: unknown
 }
 
+// Door numbers ("מספר לדלת") share the שלטי בית category with family-name
+// signs but are NOT a sign for the "שלט + מזוזה" bundles — counting them let a
+// ₪59.90 door number pair with an 18cm mezuzah and push it UP to ₪80.
+// Callers flag them with `door_number: true`; the name is a fallback for
+// rows that only carry item_name / product_name.
+export const DOOR_NUMBER_TAG = 'מספר לדלת'
+export function isDoorNumberItem(item: RuleItem): boolean {
+  if (item.door_number === true) return true
+  const name = String(item.item_name ?? item.product_name ?? '')
+  return name.includes(DOOR_NUMBER_TAG)
+}
+
 export interface AppliedRule {
   rule:        SalesRule
   itemIndices: number[]   // indexes into the items array consumed by this rule
@@ -75,6 +87,7 @@ export function applySalesRules<T extends RuleItem>(
         const item = items[idx]
         if (item.model !== cond.category) continue
         if (cond.size && item.size !== cond.size) continue
+        if (cond.category === 'שלטי בית' && isDoorNumberItem(item)) continue
         matching.push(idx)
       }
       if (matching.length < cond.min_qty) {
@@ -87,8 +100,6 @@ export function applySalesRules<T extends RuleItem>(
     if (!canApply) continue
 
     const allConsumed = conditionAssignments.flat()
-    allConsumed.forEach(i => consumed.add(i))
-
     const consumedRetailSum = allConsumed.reduce((s, idx) => s + (items[idx].price || 0), 0)
 
     if (rule.discount_type === 'fixed_total') {
@@ -98,6 +109,12 @@ export function applySalesRules<T extends RuleItem>(
       const otherRetail      = otherIndices.reduce((s, idx) => s + (items[idx].price || 0), 0)
       const firstCondTarget  = Math.max(0, Number(rule.discount_value) - otherRetail)
       const firstCondRetail  = firstCondIndices.reduce((s, idx) => s + (items[idx].price || 0), 0)
+
+      // A "deal" must never raise a price (e.g. items already discounted, or
+      // cheaper than the bundle assumes). Skip it and leave the items free
+      // for a later rule.
+      if (firstCondRetail - firstCondTarget < 0.005) continue
+      allConsumed.forEach(i => consumed.add(i))
 
       if (firstCondRetail > 0 && firstCondIndices.length > 0) {
         firstCondIndices.forEach(idx => {
@@ -114,6 +131,8 @@ export function applySalesRules<T extends RuleItem>(
         savings:     parseFloat((firstCondRetail - firstCondTarget).toFixed(2)),
       })
     } else if (rule.discount_type === 'percent') {
+      if (!(Number(rule.discount_value) > 0)) continue
+      allConsumed.forEach(i => consumed.add(i))
       const target = consumedRetailSum * (1 - Number(rule.discount_value) / 100)
       if (consumedRetailSum > 0) {
         allConsumed.forEach(idx => {
