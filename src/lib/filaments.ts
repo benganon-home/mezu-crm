@@ -21,7 +21,13 @@ export function itemGrams(
 ): number | null {
   if (!weights) return null
   if (size && weights[size] != null && Number(weights[size]) > 0) return Number(weights[size])
+  // Old site labels like "📏 24 ס״מ מוגדל (+₪30)" — match on the number inside.
+  const num = size?.match(/\d+/)?.[0]
+  if (num && weights[num] != null && Number(weights[num]) > 0) return Number(weights[num])
   if (weights.default != null && Number(weights.default) > 0) return Number(weights.default)
+  // Site orders often carry no size; a single-size product's only weight still applies.
+  const known = Object.values(weights).map(Number).filter(g => g > 0)
+  if (!size && known.length === 1) return known[0]
   return null
 }
 
